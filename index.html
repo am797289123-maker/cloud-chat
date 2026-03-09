@@ -1,0 +1,3460 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Pulse</title>
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ═══════════════════════════════════
+   TOKENS & THEMES
+═══════════════════════════════════ */
+:root{
+  --fa:'Tajawal',sans-serif;
+  --fe:'Space Grotesk',sans-serif;
+  --ease:cubic-bezier(.4,0,.2,1);
+  --spring:cubic-bezier(.34,1.56,.64,1);
+}
+
+/* NIGHT GOLD (default) */
+[data-theme="gold"]{
+  --bg:#0C0B08;--s0:#13120E;--s1:#1A1914;--s2:#25231C;--s3:#332F24;
+  --br:rgba(255,210,100,0.08);
+  --acc:#D4A843;--acc2:rgba(212,168,67,0.12);--acc3:rgba(212,168,67,0.06);
+  --bme:#D4A843;--bme-t:#0C0B08;
+  --bother:#1A1914;--bother-t:#EDE8DC;
+  --t0:#F5F0E8;--t1:#EDE8DC;--t2:#A89B7E;--t3:#665E47;
+  --bar:#13120E;--online:#4ADE80;--badge:#EF4444;
+  --sh:0 2px 8px rgba(0,0,0,.5);--shlg:0 8px 32px rgba(0,0,0,.7);
+}
+/* MIDNIGHT */
+[data-theme="midnight"]{
+  --bg:#050508;--s0:#0D0D14;--s1:#12121C;--s2:#1A1A28;--s3:#242436;
+  --br:rgba(120,110,255,0.08);
+  --acc:#7C6FFF;--acc2:rgba(124,111,255,0.12);--acc3:rgba(124,111,255,0.06);
+  --bme:#7C6FFF;--bme-t:#fff;
+  --bother:#1A1A28;--bother-t:#E8E6FF;
+  --t0:#F0EEFF;--t1:#E0DEFF;--t2:#8880B8;--t3:#4A4470;
+  --bar:#0D0D14;--online:#34D399;--badge:#FF453A;
+  --sh:0 2px 8px rgba(0,0,0,.6);--shlg:0 8px 32px rgba(0,0,0,.8);
+}
+/* AURORA */
+[data-theme="aurora"]{
+  --bg:#050F0A;--s0:#0A1A12;--s1:#0F2018;--s2:#152B20;--s3:#1C3829;
+  --br:rgba(52,211,153,0.08);
+  --acc:#34D399;--acc2:rgba(52,211,153,0.12);--acc3:rgba(52,211,153,0.06);
+  --bme:#34D399;--bme-t:#050F0A;
+  --bother:#152B20;--bother-t:#D1FAE5;
+  --t0:#ECFDF5;--t1:#D1FAE5;--t2:#6EE7B7;--t3:#34706A;
+  --bar:#0A1A12;--online:#4ADE80;--badge:#F59E0B;
+  --sh:0 2px 8px rgba(0,0,0,.5);--shlg:0 8px 32px rgba(0,0,0,.7);
+}
+/* ROSE */
+[data-theme="rose"]{
+  --bg:#FAFAF8;--s0:#FFFFFF;--s1:#F9F8F6;--s2:#F2F0ED;--s3:#E8E4DF;
+  --br:rgba(0,0,0,0.07);
+  --acc:#C2410C;--acc2:rgba(194,65,12,0.08);--acc3:rgba(194,65,12,0.04);
+  --bme:#C2410C;--bme-t:#fff;
+  --bother:#F2F0ED;--bother-t:#1C1917;
+  --t0:#1C1917;--t1:#292524;--t2:#78716C;--t3:#A8A29E;
+  --bar:#FFFFFF;--online:#16A34A;--badge:#DC2626;
+  --sh:0 1px 4px rgba(0,0,0,.08);--shlg:0 4px 20px rgba(0,0,0,.12);
+}
+
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;-webkit-font-smoothing:antialiased;}
+html,body{height:100%;overflow:hidden;}
+body{font-family:var(--fa);background:var(--bg);color:var(--t1);transition:background .3s,color .3s;}
+
+/* ═══════════════════════════════════
+   APP SHELL
+═══════════════════════════════════ */
+#shell{
+  position:fixed;inset:0;
+  max-width:430px;margin:0 auto;
+  background:var(--s0);
+  display:flex;flex-direction:column;
+  overflow:hidden;
+  box-shadow:0 0 80px rgba(0,0,0,0.4);
+}
+
+/* ═══════════════════════════════════
+   LOGIN
+═══════════════════════════════════ */
+#loginScreen{
+  position:absolute;inset:0;z-index:300;
+  background:var(--bg);
+  display:flex;flex-direction:column;
+  overflow-y:auto;
+}
+#loginScreen.out{animation:loginOut .4s var(--ease) forwards;}
+@keyframes loginOut{to{opacity:0;transform:scale(.96)}}
+
+.login-bg{
+  position:absolute;inset:0;overflow:hidden;pointer-events:none;
+}
+.login-bg::before{
+  content:'';position:absolute;
+  width:400px;height:400px;border-radius:50%;
+  background:radial-gradient(circle,var(--acc) 0%,transparent 70%);
+  top:-150px;left:50%;transform:translateX(-50%);
+  opacity:.15;filter:blur(40px);
+  animation:breathe 4s ease-in-out infinite;
+}
+@keyframes breathe{0%,100%{transform:translateX(-50%) scale(1)}50%{transform:translateX(-50%) scale(1.1)}}
+
+.login-content{
+  position:relative;z-index:1;
+  flex:1;display:flex;flex-direction:column;
+  align-items:center;padding:60px 28px 40px;
+}
+.login-mark{
+  font-size:72px;line-height:1;margin-bottom:16px;
+  animation:markPop .6s var(--spring);
+}
+@keyframes markPop{from{transform:scale(0) rotate(-20deg);opacity:0}to{transform:scale(1) rotate(0);opacity:1}}
+.login-brand{font-family:var(--fe);font-size:36px;font-weight:700;color:var(--t0);letter-spacing:-1px;margin-bottom:6px;}
+.login-tagline{font-size:14px;color:var(--t2);margin-bottom:40px;letter-spacing:.3px;}
+
+.login-card{
+  width:100%;
+  background:var(--s1);
+  border:1px solid var(--br);
+  border-radius:24px;
+  padding:24px;
+  box-shadow:var(--shlg);
+}
+
+.lf{margin-bottom:18px;}
+.lf-label{font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;}
+.lf-row{display:flex;align-items:center;background:var(--s2);border:1.5px solid var(--br);border-radius:14px;overflow:hidden;transition:border-color .2s;}
+.lf-row:focus-within{border-color:var(--acc);}
+.lf-prefix{padding:13px 12px;font-size:13px;color:var(--t2);border-left:1px solid var(--br);white-space:nowrap;flex-shrink:0;}
+.lf-input{flex:1;border:none;background:transparent;padding:13px 14px;font-family:var(--fa);font-size:15px;color:var(--t0);outline:none;direction:ltr;text-align:right;}
+.lf-input::placeholder{color:var(--t3);}
+.lf-solo{width:100%;border:none;background:var(--s2);border:1.5px solid var(--br);border-radius:14px;padding:13px 14px;font-family:var(--fa);font-size:15px;color:var(--t0);outline:none;transition:border-color .2s;}
+.lf-solo:focus{border-color:var(--acc);}
+.lf-solo::placeholder{color:var(--t3);}
+
+.color-pick{display:flex;gap:9px;flex-wrap:wrap;padding:4px 0;}
+.cp-dot{width:30px;height:30px;border-radius:50%;cursor:pointer;border:3px solid transparent;transition:all .18s;display:flex;align-items:center;justify-content:center;}
+.cp-dot.on{border-color:var(--t0);transform:scale(1.18);}
+.cp-dot.on::after{content:'✓';font-size:12px;color:#fff;font-weight:700;}
+
+.login-btn{
+  width:100%;padding:15px;margin-top:6px;
+  background:var(--acc);color:var(--bme-t);
+  border:none;border-radius:14px;
+  font-family:var(--fa);font-size:16px;font-weight:700;
+  cursor:pointer;letter-spacing:.3px;
+  transition:all .2s;
+  position:relative;overflow:hidden;
+}
+.login-btn::before{
+  content:'';position:absolute;inset:0;
+  background:linear-gradient(135deg,rgba(255,255,255,0.15),transparent);
+}
+.login-btn:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(0,0,0,.3);}
+.login-btn:active{transform:scale(.97);}
+
+.login-terms{font-size:11px;color:var(--t3);text-align:center;margin-top:14px;line-height:1.8;}
+
+/* ═══════════════════════════════════
+   MAIN LAYOUT
+═══════════════════════════════════ */
+#mainWrap{
+  flex:1;display:flex;flex-direction:column;
+  overflow:hidden;
+  opacity:0;animation:fadeUp .4s var(--ease) .1s forwards;
+}
+#mainWrap.visible{opacity:1;animation:none;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+
+/* slide panels */
+.slide-wrap{
+  flex:1;display:flex;width:200%;
+  transition:transform .32s var(--ease);
+  overflow:hidden;
+}
+.slide-wrap.open{transform:translateX(50%);}
+.slide-wrap.drag{transition:none;}
+
+.panel{width:50%;display:flex;flex-direction:column;overflow:hidden;}
+
+/* ═══════════════════════════════════
+   TOPBAR
+═══════════════════════════════════ */
+.topbar{
+  background:var(--bar);
+  padding:14px 16px 10px;
+  display:flex;align-items:center;gap:10px;
+  border-bottom:1px solid var(--br);
+  flex-shrink:0;
+  position:relative;
+}
+.topbar::after{
+  content:'';position:absolute;bottom:-1px;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent,var(--acc),transparent);
+  opacity:.3;
+}
+.tb-title{font-family:var(--fe);font-size:17px;font-weight:700;color:var(--t0);flex:1;letter-spacing:-.3px;}
+.tb-acts{display:flex;gap:7px;}
+.tb-btn{
+  width:34px;height:34px;border-radius:11px;
+  background:var(--s2);border:1px solid var(--br);
+  cursor:pointer;display:flex;align-items:center;justify-content:center;
+  font-size:15px;color:var(--t2);
+  transition:all .18s;
+}
+.tb-btn:hover{background:var(--s3);color:var(--t0);}
+.back-btn{
+  width:34px;height:34px;border-radius:11px;
+  background:var(--s2);border:1px solid var(--br);
+  cursor:pointer;display:flex;align-items:center;justify-content:center;
+  font-size:18px;font-weight:300;color:var(--t1);
+  transition:all .18s;flex-shrink:0;
+}
+.back-btn:hover{background:var(--s3);}
+
+/* ═══════════════════════════════════
+   SEARCH
+═══════════════════════════════════ */
+.search-wrap{
+  background:var(--bar);padding:8px 14px 10px;
+  border-bottom:1px solid var(--br);flex-shrink:0;
+}
+.search-inner{
+  display:flex;align-items:center;gap:8px;
+  background:var(--s2);border-radius:12px;
+  padding:9px 13px;border:1px solid var(--br);
+}
+.search-inner input{flex:1;border:none;background:transparent;font-family:var(--fa);font-size:13px;color:var(--t1);outline:none;}
+.search-inner input::placeholder{color:var(--t3);}
+
+/* ═══════════════════════════════════
+   AVATAR
+═══════════════════════════════════ */
+.av{
+  border-radius:50%;display:flex;align-items:center;justify-content:center;
+  font-weight:800;flex-shrink:0;position:relative;overflow:hidden;
+  background:var(--s2);transition:transform .2s var(--spring);
+}
+.av:active{transform:scale(.92);}
+.av img{width:100%;height:100%;object-fit:cover;border-radius:50%;}
+.av-s{width:42px;height:42px;font-size:16px;}
+.av-m{width:48px;height:48px;font-size:18px;}
+.av-l{width:80px;height:80px;font-size:30px;}
+.av-xs{width:28px;height:28px;font-size:11px;}
+.online-ring{
+  position:absolute;bottom:0;right:0;
+  width:12px;height:12px;border-radius:50%;
+  background:var(--online);border:2.5px solid var(--s0);
+}
+
+/* ═══════════════════════════════════
+   CHAT LIST
+═══════════════════════════════════ */
+.chat-list{flex:1;overflow-y:auto;}
+.chat-list::-webkit-scrollbar{width:0;}
+
+.chat-item{
+  display:flex;align-items:center;gap:13px;
+  padding:11px 16px;cursor:pointer;
+  transition:background .15s;position:relative;
+}
+.chat-item::after{content:'';position:absolute;bottom:0;right:75px;left:0;height:1px;background:var(--br);}
+.chat-item:hover{background:var(--s1);}
+.chat-item.active{background:var(--acc3);}
+
+.ci-info{flex:1;min-width:0;}
+.ci-row{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:3px;}
+.ci-name{font-size:15px;font-weight:700;color:var(--t0);letter-spacing:-.2px;}
+.ci-time{font-size:11px;color:var(--t3);}
+.ci-prev{font-size:13px;color:var(--t2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:180px;}
+
+.badge{
+  background:var(--badge);color:#fff;
+  font-size:10px;font-weight:800;min-width:18px;height:18px;
+  border-radius:9px;padding:0 4px;
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  font-family:var(--fe);
+}
+
+.empty-state{
+  flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:12px;padding:40px;
+  animation:fadeUp .3s var(--ease);
+}
+.empty-ico{font-size:52px;opacity:.25;}
+.empty-txt{font-size:14px;color:var(--t3);text-align:center;line-height:1.7;}
+
+/* ═══════════════════════════════════
+   CHAT VIEW
+═══════════════════════════════════ */
+.chat-view{
+  flex:1;display:flex;flex-direction:column;
+  background:var(--bg);overflow:hidden;
+  position:relative;
+}
+/* subtle wallpaper pattern */
+.chat-view::before{
+  content:'';position:absolute;inset:0;
+  background-image:radial-gradient(var(--br) 1px,transparent 1px);
+  background-size:24px 24px;pointer-events:none;opacity:.6;
+}
+
+.chat-topbar{
+  position:relative;z-index:2;
+  background:var(--bar);padding:10px 14px;
+  display:flex;align-items:center;gap:10px;
+  border-bottom:1px solid var(--br);flex-shrink:0;
+  box-shadow:var(--sh);
+}
+.chat-topbar::after{
+  content:'';position:absolute;bottom:-1px;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent,var(--acc),transparent);
+  opacity:.3;
+}
+.ctb-info{flex:1;min-width:0;}
+.ctb-name{font-size:15px;font-weight:700;color:var(--t0);}
+.ctb-sub{font-size:11px;color:var(--t3);}
+.ctb-acts{display:flex;gap:6px;}
+
+.messages{
+  flex:1;overflow-y:auto;padding:16px 14px;
+  display:flex;flex-direction:column;gap:2px;
+  position:relative;z-index:1;
+}
+.messages::-webkit-scrollbar{width:0;}
+
+.date-chip{text-align:center;margin:10px 0 6px;}
+.date-chip span{
+  font-size:11px;color:var(--t3);
+  background:var(--s2);
+  padding:4px 14px;border-radius:20px;
+  border:1px solid var(--br);
+}
+
+.msg-row{display:flex;align-items:flex-end;gap:7px;margin-bottom:1px;animation:msgIn .2s var(--spring);}
+@keyframes msgIn{from{opacity:0;transform:translateY(8px) scale(.96)}to{opacity:1;transform:none}}
+.msg-row.me{flex-direction:row;}
+.msg-row.other{flex-direction:row-reverse;}
+
+.msg-av{width:26px;height:26px;border-radius:50%;overflow:hidden;flex-shrink:0;display:flex;align-items:center;justify-content:center;}
+.msg-av img{width:100%;height:100%;object-fit:cover;border-radius:50%;}
+
+.msg-col{max-width:70%;display:flex;flex-direction:column;}
+.msg-sn{font-size:10px;color:var(--t3);margin-bottom:3px;}
+.msg-bw{display:flex;align-items:flex-end;gap:5px;}
+.msg-row.me .msg-bw{flex-direction:row-reverse;}
+.bub{
+  padding:9px 13px;font-size:14px;line-height:1.55;
+  word-break:break-word;max-width:260px;
+}
+.msg-row.me .bub{
+  background:var(--bme);color:var(--bme-t);
+  border-radius:18px 4px 18px 18px;
+  font-weight:500;
+}
+.msg-row.other .bub{
+  background:var(--bother);color:var(--bother-t);
+  border-radius:4px 18px 18px 18px;
+  box-shadow:var(--sh);
+  border:1px solid var(--br);
+}
+.bub.emo{background:transparent!important;box-shadow:none!important;border:none!important;padding:2px 4px;font-size:34px;line-height:1;}
+.msg-time{font-size:10px;color:var(--t3);white-space:nowrap;flex-shrink:0;padding-bottom:2px;}
+.msg-read{font-size:10px;color:var(--acc);text-align:left;margin-top:2px;}
+
+/* ── Translation bubble ── */
+.msg-trans{
+  font-size:12px;color:var(--t2);
+  padding:5px 10px 6px;margin-top:2px;
+  background:var(--s2);border-radius:10px;
+  border:1px solid var(--br);
+  display:flex;flex-direction:column;gap:2px;
+  animation:fadeUp .2s var(--ease);
+}
+.msg-trans-txt{font-size:13px;color:var(--t1);line-height:1.5;}
+.msg-trans-by{font-size:10px;color:var(--t3);display:flex;align-items:center;gap:4px;}
+
+/* ── Quoted message ── */
+.msg-quote{
+  background:var(--s3);border-radius:8px;padding:6px 10px;
+  margin-bottom:5px;border-right:3px solid var(--acc);
+  font-size:12px;color:var(--t2);
+  max-width:220px;overflow:hidden;
+  white-space:nowrap;text-overflow:ellipsis;
+}
+
+/* ── Message context menu ── */
+.msg-ctx{
+  position:fixed;z-index:8000;
+  background:var(--s2);border-radius:18px;
+  border:1px solid var(--br);box-shadow:0 12px 40px rgba(0,0,0,.7);
+  padding:8px;min-width:220px;
+  animation:fadeUp .18s var(--spring);
+  display:grid;grid-template-columns:repeat(5,1fr);gap:4px;
+}
+.msg-ctx-btn{
+  display:flex;flex-direction:column;align-items:center;gap:4px;
+  padding:10px 6px;border-radius:12px;cursor:pointer;
+  background:transparent;border:none;
+  font-family:var(--fa);color:var(--t1);font-size:11px;font-weight:600;
+  transition:background .15s;
+}
+.msg-ctx-btn:hover{background:var(--s3);}
+.msg-ctx-btn .ctx-ico{font-size:20px;line-height:1;}
+.msg-ctx-btn.danger{color:#EF4444;}
+
+/* ── Easy Mode large font ── */
+body.easy-large{
+  font-size:16px!important;
+}
+body.easy-large .bub{font-size:17px!important;}
+body.easy-large .f-name,.easy-large .pname{font-size:18px!important;}
+body.easy-large .nav-lbl{font-size:13px!important;}
+body.easy-large .tb-btn{font-size:20px!important;width:40px;height:40px;}
+body.easy-large .sh-btn{font-size:17px!important;padding:16px!important;}
+
+/* ── Settings sheet ── */
+.sett-row{
+  display:flex;align-items:center;
+  padding:14px 18px;border-bottom:1px solid var(--br);
+  cursor:pointer;
+}
+.sett-ico{
+  width:36px;height:36px;border-radius:10px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:18px;margin-left:14px;flex-shrink:0;
+}
+.sett-lbl-wrap{flex:1;}
+.sett-lbl{font-size:15px;font-weight:700;color:var(--t0);}
+.sett-sub{font-size:12px;color:var(--t2);margin-top:2px;line-height:1.4;}
+.sett-val{font-size:12px;color:var(--t3);margin-left:8px;}
+
+/* ── Profile info list (WeChat style) ── */
+.pinfo-grp{background:var(--s0);margin-bottom:8px;}
+.pinfo-row{
+  display:flex;align-items:center;
+  padding:14px 18px;border-bottom:1px solid var(--br);cursor:pointer;
+  transition:background .15s;
+}
+.pinfo-row:last-child{border-bottom:none;}
+.pinfo-row:hover{background:var(--s1);}
+.pinfo-key{font-size:15px;color:var(--t1);flex:1;}
+.pinfo-val{font-size:14px;color:var(--t3);margin-left:8px;max-width:50%;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.pinfo-arr{font-size:16px;color:var(--t3);margin-right:-4px;}
+
+.typing-row{
+  display:none;align-items:center;gap:9px;
+  padding:7px 14px;flex-shrink:0;position:relative;z-index:1;
+  font-size:12px;color:var(--t3);
+}
+.typing-row.show{display:flex;}
+.dots span{
+  width:5px;height:5px;border-radius:50%;
+  background:var(--acc);display:inline-block;
+  animation:dotBounce 1.2s infinite;margin:0 1.5px;
+}
+.dots span:nth-child(2){animation-delay:.2s;}
+.dots span:nth-child(3){animation-delay:.4s;}
+@keyframes dotBounce{0%,60%,100%{transform:translateY(0)}30%{transform:translateY(-5px)}}
+
+/* input area */
+.input-area{
+  background:var(--bar);border-top:1px solid var(--br);
+  padding:8px 10px calc(8px + env(safe-area-inset-bottom));
+  flex-shrink:0;position:relative;z-index:1;
+}
+.emoji-strip,.sticker-strip{
+  display:none;flex-wrap:wrap;gap:4px;
+  padding:10px 4px 8px;border-bottom:1px solid var(--br);margin-bottom:8px;
+  max-height:120px;overflow-y:auto;
+  animation:fadeUp .18s var(--ease);
+}
+.emoji-strip.on,.sticker-strip.on{display:flex;}
+.emo-btn{font-size:22px;cursor:pointer;padding:3px;border:none;background:transparent;border-radius:6px;transition:transform .12s;line-height:1;}
+.emo-btn:hover{transform:scale(1.35);}
+.stk{font-size:34px;cursor:pointer;padding:5px 7px;border-radius:10px;background:var(--s2);border:1.5px solid transparent;transition:all .15s;line-height:1.15;}
+.stk:hover{transform:scale(1.15);border-color:var(--acc);}
+
+.input-row{display:flex;align-items:flex-end;gap:7px;}
+.i-btn{
+  width:36px;height:36px;border-radius:11px;
+  background:var(--s2);border:1px solid var(--br);
+  cursor:pointer;display:flex;align-items:center;justify-content:center;
+  font-size:15px;color:var(--t2);transition:all .18s;flex-shrink:0;
+}
+.i-btn:hover,.i-btn.on{background:var(--acc2);color:var(--acc);border-color:var(--acc);}
+.msg-input{
+  flex:1;background:var(--s2);border:1.5px solid var(--br);
+  border-radius:20px;padding:9px 14px;
+  font-family:var(--fa);font-size:14px;color:var(--t0);
+  outline:none;resize:none;max-height:100px;line-height:1.5;
+  transition:all .18s;
+}
+.msg-input:focus{border-color:var(--acc);background:var(--s1);}
+.msg-input::placeholder{color:var(--t3);}
+.send-btn{
+  width:38px;height:38px;border-radius:50%;
+  background:var(--acc);border:none;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  font-size:16px;color:var(--bme-t);
+  transition:all .18s;flex-shrink:0;
+  box-shadow:0 3px 12px rgba(0,0,0,.3);
+}
+.send-btn:hover{transform:scale(1.1);}
+.send-btn:active{transform:scale(.9);}
+
+/* ═══════════════════════════════════
+   BOTTOM NAV
+═══════════════════════════════════ */
+.bot-nav{
+  display:flex;
+  background:var(--bar);
+  border-top:1px solid var(--br);
+  padding:6px 0 max(6px,env(safe-area-inset-bottom));
+  flex-shrink:0;position:relative;z-index:20;
+}
+.bot-nav::before{
+  content:'';position:absolute;top:-1px;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent,var(--acc),transparent);
+  opacity:.4;
+}
+.nav-item{
+  flex:1;display:flex;flex-direction:column;align-items:center;
+  gap:3px;cursor:pointer;padding:4px 0;
+  transition:all .18s;position:relative;
+}
+.nav-ico{font-size:21px;line-height:1;position:relative;}
+.nav-ico .nav-badge{
+  position:absolute;top:-5px;right:-9px;
+  background:var(--badge);color:#fff;font-family:var(--fe);
+  font-size:9px;font-weight:700;
+  min-width:16px;height:16px;border-radius:8px;
+  display:flex;align-items:center;justify-content:center;padding:0 3px;
+}
+.nav-lbl{font-size:10px;font-weight:600;color:var(--t3);transition:color .18s;letter-spacing:.2px;}
+.nav-item.active .nav-lbl{color:var(--acc);}
+.nav-item.active .nav-ico{animation:navPop .3s var(--spring);}
+@keyframes navPop{0%{transform:scale(.7)}60%{transform:scale(1.2)}100%{transform:scale(1)}}
+
+/* ═══════════════════════════════════
+   SCREENS
+═══════════════════════════════════ */
+.screen{flex:1;display:flex;flex-direction:column;overflow:hidden;animation:fadeUp .25s var(--ease);}
+.screen.off{display:none;}
+
+/* Friends */
+.f-item{
+  display:flex;align-items:center;gap:13px;padding:12px 16px;
+  cursor:pointer;border-bottom:1px solid var(--br);
+  transition:background .15s;
+}
+.f-item:hover{background:var(--s1);}
+.f-name{font-size:15px;font-weight:700;color:var(--t0);}
+.f-status{font-size:12px;color:var(--t2);margin-top:1px;}
+.f-acts{display:flex;gap:6px;}
+
+/* Discover */
+.disc-feed{flex:1;overflow-y:auto;}
+.disc-feed::-webkit-scrollbar{width:0;}
+.post-card{
+  background:var(--s0);
+  margin-bottom:2px;
+  border-bottom:1px solid var(--br);
+  animation:fadeUp .25s var(--ease);
+}
+.post-head{display:flex;align-items:center;gap:10px;padding:13px 14px 8px;}
+.post-author{font-size:14px;font-weight:700;color:var(--t0);}
+.post-time{font-size:11px;color:var(--t3);margin-top:1px;}
+.post-txt{padding:0 14px 12px;font-size:14px;color:var(--t1);line-height:1.65;}
+.post-img{width:100%;max-height:300px;object-fit:cover;}
+.post-acts{display:flex;border-top:1px solid var(--br);}
+.post-act{
+  flex:1;display:flex;align-items:center;justify-content:center;gap:6px;
+  padding:11px;font-size:13px;color:var(--t2);
+  cursor:pointer;background:transparent;border:none;
+  font-family:var(--fa);transition:all .15s;
+}
+.post-act:hover{background:var(--s1);}
+.post-act.liked{color:var(--badge);}
+
+.disc-fab{
+  position:absolute;bottom:75px;left:20px;
+  width:52px;height:52px;border-radius:50%;
+  background:var(--acc);color:var(--bme-t);
+  border:none;cursor:pointer;font-size:24px;
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 4px 20px rgba(0,0,0,.35);
+  transition:all .18s;z-index:15;
+}
+.disc-fab:hover{transform:scale(1.1) rotate(10deg);}
+
+/* Me / Profile */
+.profile-scroll{flex:1;overflow-y:auto;}
+.profile-scroll::-webkit-scrollbar{width:0;}
+.profile-hero{
+  background:var(--s0);
+  padding:28px 16px 0;
+  display:flex;flex-direction:column;align-items:center;
+  border-bottom:1px solid var(--br);
+  position:relative;overflow:hidden;
+}
+.profile-hero::before{
+  content:'';position:absolute;
+  width:280px;height:280px;border-radius:50%;
+  background:radial-gradient(circle,var(--acc) 0%,transparent 70%);
+  top:-140px;left:50%;transform:translateX(-50%);
+  opacity:.1;filter:blur(30px);pointer-events:none;
+}
+.pav-wrap{position:relative;cursor:pointer;margin-bottom:14px;}
+.pav-edit{
+  position:absolute;bottom:2px;right:2px;
+  width:26px;height:26px;border-radius:50%;
+  background:var(--acc);color:var(--bme-t);
+  display:flex;align-items:center;justify-content:center;
+  font-size:12px;border:2px solid var(--s0);
+}
+.pname{font-size:21px;font-weight:800;color:var(--t0);letter-spacing:-.5px;margin-bottom:4px;}
+.pphone{font-size:13px;color:var(--t3);margin-bottom:4px;}
+.pstatus{font-size:13px;color:var(--t2);margin-bottom:18px;}
+.pstats{display:flex;width:100%;border-top:1px solid var(--br);}
+.pstat{flex:1;padding:13px 0;text-align:center;cursor:pointer;transition:background .15s;}
+.pstat:hover{background:var(--s1);}
+.pstat-n{font-family:var(--fe);font-size:19px;font-weight:700;color:var(--acc);}
+.pstat-l{font-size:11px;color:var(--t3);margin-top:2px;}
+
+.menu-grp{background:var(--s0);margin-bottom:8px;}
+.menu-item{
+  display:flex;align-items:center;gap:13px;padding:14px 16px;
+  cursor:pointer;border-bottom:1px solid var(--br);
+  transition:background .15s;
+}
+.menu-item:last-child{border-bottom:none;}
+.menu-item:hover{background:var(--s1);}
+.menu-ico{
+  width:36px;height:36px;border-radius:11px;
+  display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;
+}
+.menu-lbl{flex:1;font-size:15px;color:var(--t0);font-weight:500;}
+.menu-val{font-size:13px;color:var(--t3);margin-left:6px;}
+.menu-arr{font-size:14px;color:var(--t3);}
+
+/* ═══════════════════════════════════
+   BOTTOM SHEETS
+═══════════════════════════════════ */
+.overlay{
+  position:fixed;inset:0;z-index:400;
+  display:flex;align-items:flex-end;justify-content:center;
+  background:transparent;pointer-events:none;
+  transition:background .25s;
+}
+.overlay.on{background:rgba(0,0,0,.6);pointer-events:all;backdrop-filter:blur(6px);}
+.sheet{
+  background:var(--s1);
+  border-radius:24px 24px 0 0;
+  width:100%;max-height:90vh;
+  display:flex;flex-direction:column;
+  transform:translateY(110%);
+  transition:transform .32s var(--ease);
+  overflow:hidden;
+  box-shadow:0 -6px 40px rgba(0,0,0,.5);
+  border:1px solid var(--br);border-bottom:none;
+}
+.overlay.on .sheet{transform:translateY(0);}
+.sh-handle{width:36px;height:4px;border-radius:2px;background:var(--s3);margin:12px auto 0;}
+.sh-head{
+  padding:14px 18px;
+  display:flex;align-items:center;justify-content:space-between;
+  border-bottom:1px solid var(--br);flex-shrink:0;
+}
+.sh-title{font-size:16px;font-weight:800;color:var(--t0);letter-spacing:-.3px;}
+.sh-close{
+  width:28px;height:28px;border-radius:9px;
+  background:var(--s2);border:1px solid var(--br);
+  cursor:pointer;display:flex;align-items:center;justify-content:center;
+  font-size:13px;color:var(--t2);transition:all .15s;
+}
+.sh-close:hover{background:var(--s3);}
+.sh-body{padding:18px;overflow-y:auto;flex:1;}
+.sh-body::-webkit-scrollbar{width:0;}
+
+/* sheet tabs */
+.sh-tabs{display:flex;border-bottom:1px solid var(--br);margin:-18px -18px 18px;}
+.sh-tab{flex:1;padding:13px;text-align:center;font-size:13px;font-weight:700;color:var(--t3);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .18s;}
+.sh-tab.on{color:var(--acc);border-bottom-color:var(--acc);}
+
+/* form fields */
+.field{margin-bottom:16px;}
+.f-lbl{font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.9px;margin-bottom:7px;}
+.f-in{width:100%;padding:12px 14px;background:var(--s2);border:1.5px solid var(--br);border-radius:13px;font-family:var(--fa);font-size:14px;color:var(--t0);outline:none;transition:all .18s;}
+.f-in:focus{border-color:var(--acc);background:var(--s0);}
+.f-in::placeholder{color:var(--t3);}
+
+.color-row{display:flex;gap:9px;flex-wrap:wrap;margin-top:4px;}
+.c-dot{width:28px;height:28px;border-radius:50%;cursor:pointer;border:3px solid transparent;transition:all .15s;}
+.c-dot.on{border-color:var(--t0);transform:scale(1.15);}
+
+.sh-btn{
+  width:100%;padding:13px;background:var(--acc);color:var(--bme-t);
+  border:none;border-radius:13px;font-family:var(--fa);font-size:15px;font-weight:700;
+  cursor:pointer;transition:all .18s;margin-top:4px;letter-spacing:.3px;
+}
+.sh-btn:hover{opacity:.9;transform:translateY(-1px);}
+.sh-btn:active{transform:scale(.97);}
+.sh-btn.sec{background:var(--s2);color:var(--t1);border:1px solid var(--br);margin-top:9px;}
+.sh-btn.danger{background:transparent;color:#EF4444;border:1.5px solid #EF4444;margin-top:9px;}
+
+/* QR */
+.qr-wrap{display:flex;flex-direction:column;align-items:center;gap:12px;padding:10px 0;}
+.qr-lbl{font-size:12px;color:var(--t3);text-align:center;max-width:200px;line-height:1.6;}
+.qr-wrap canvas{border-radius:14px;}
+
+/* Scan */
+.scan-area{display:flex;flex-direction:column;align-items:center;gap:16px;padding:8px 0;}
+.scan-frame{width:220px;height:220px;border-radius:18px;overflow:hidden;position:relative;background:#000;box-shadow:0 6px 30px rgba(0,0,0,.6);}
+.scan-frame video{width:100%;height:100%;object-fit:cover;}
+.scan-corners{position:absolute;inset:0;pointer-events:none;}
+.scan-corners::before,.scan-corners::after,.sc-tl,.sc-br{content:'';position:absolute;width:30px;height:30px;border-color:var(--acc);border-style:solid;}
+.scan-corners::before{top:12px;right:12px;border-width:3px 3px 0 0;border-radius:0 8px 0 0;}
+.scan-corners::after{top:12px;left:12px;border-width:3px 0 0 3px;border-radius:8px 0 0 0;}
+.sc-tl{bottom:12px;right:12px;border-width:0 3px 3px 0;border-radius:0 0 8px 0;}
+.sc-br{bottom:12px;left:12px;border-width:0 0 3px 3px;border-radius:0 0 0 8px;}
+.scan-line{position:absolute;left:16px;right:16px;height:2px;background:var(--acc);box-shadow:0 0 10px var(--acc);animation:scanMove 2s ease-in-out infinite;}
+@keyframes scanMove{0%,100%{top:16px}50%{top:calc(100% - 16px)}}
+
+/* post compose */
+.compose-ta{width:100%;border:none;background:transparent;font-family:var(--fa);font-size:15px;color:var(--t0);resize:none;outline:none;min-height:110px;line-height:1.65;}
+.compose-ta::placeholder{color:var(--t3);}
+.compose-img{width:100%;max-height:200px;object-fit:cover;border-radius:13px;margin:12px 0;display:none;}
+.img-attach{display:flex;align-items:center;gap:8px;padding:12px 0;border-top:1px solid var(--br);border-bottom:1px solid var(--br);font-size:14px;color:var(--t2);cursor:pointer;margin-bottom:12px;}
+
+/* theme picker */
+.theme-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px;}
+.t-opt{border-radius:14px;padding:14px 12px;cursor:pointer;border:2px solid transparent;text-align:center;transition:all .2s;background:var(--s2);}
+.t-opt:hover{transform:scale(1.03);}
+.t-opt.on{border-color:var(--acc);}
+.t-prev{display:flex;gap:6px;justify-content:center;margin-bottom:9px;}
+.t-swatch{width:14px;height:14px;border-radius:50%;}
+.t-name{font-size:13px;font-weight:700;color:var(--t0);}
+.lang-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px;}
+.lang-btn{padding:8px 16px;border-radius:10px;cursor:pointer;font-size:13px;font-weight:600;border:1.5px solid var(--br);background:var(--s2);color:var(--t2);transition:all .18s;}
+.lang-btn.on{background:var(--acc);color:var(--bme-t);border-color:var(--acc);}
+
+/* edit profile */
+.ep-av{
+  display:flex;flex-direction:column;align-items:center;
+  margin-bottom:22px;cursor:pointer;
+}
+.ep-hint{font-size:12px;color:var(--t3);margin-top:8px;}
+
+/* Call log */
+.cl-item{display:flex;align-items:center;gap:13px;padding:12px 16px;border-bottom:1px solid var(--br);cursor:pointer;transition:background .15s;}
+.cl-item:hover{background:var(--s1);}
+.cl-name{font-size:15px;font-weight:700;}
+.cl-meta{font-size:12px;color:var(--t2);margin-top:2px;}
+
+/* Friend requests */
+.freq-card{
+  background:var(--s1);border:1.5px solid var(--br);
+  border-radius:18px;padding:16px;margin:10px 14px;
+  animation:fadeUp .25s var(--ease);
+}
+.freq-head{display:flex;align-items:center;gap:12px;margin-bottom:14px;}
+.freq-name{font-size:15px;font-weight:800;color:var(--t0);}
+.freq-sub{font-size:12px;color:var(--t2);margin-top:2px;}
+.freq-row{display:flex;gap:8px;margin-bottom:8px;}
+.freq-btn{
+  flex:1;padding:10px 8px;border-radius:11px;font-family:var(--fa);
+  font-size:13px;font-weight:700;cursor:pointer;border:none;
+  transition:all .18s;
+}
+.freq-btn.accept{background:var(--acc);color:var(--bme-t);}
+.freq-btn.decline{background:var(--s3);color:var(--t2);border:1px solid var(--br);}
+.freq-btn.block{background:transparent;color:#EF4444;border:1.5px solid rgba(239,68,68,.4);}
+.freq-toggle{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:11px 13px;background:var(--s2);border-radius:12px;
+  border:1px solid var(--br);margin-top:2px;
+}
+.freq-tlbl{font-size:13px;color:var(--t1);font-weight:500;flex:1;}
+.freq-tsub{font-size:11px;color:var(--t3);margin-top:2px;}
+.tog{
+  width:44px;height:26px;border-radius:13px;
+  background:var(--s3);cursor:pointer;position:relative;
+  transition:background .2s;border:none;flex-shrink:0;
+}
+.tog.on{background:var(--acc);}
+.tog::after{
+  content:'';position:absolute;top:3px;right:3px;
+  width:20px;height:20px;border-radius:50%;background:#fff;
+  transition:transform .2s var(--spring);
+  box-shadow:0 1px 4px rgba(0,0,0,.3);
+}
+.tog.on::after{transform:translateX(-18px);}
+.sbadge{
+  font-size:10px;font-weight:700;padding:2px 8px;
+  border-radius:10px;display:inline-block;
+}
+.sbadge.pending{background:rgba(245,158,11,.15);color:#D97706;}
+.sbadge.blocked{background:rgba(239,68,68,.12);color:#EF4444;}
+.req-sep{
+  display:flex;align-items:center;gap:10px;padding:8px 14px;
+  font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.8px;
+}
+.req-sep::before,.req-sep::after{content:'';flex:1;height:1px;background:var(--br);}
+
+/* Toast */
+.toast{
+  position:fixed;top:18px;left:50%;
+  transform:translateX(-50%) translateY(-80px);
+  background:var(--s2);color:var(--t0);
+  padding:10px 20px;border-radius:30px;
+  font-size:13px;font-weight:600;
+  border:1px solid var(--br);box-shadow:var(--shlg);
+  z-index:9999;pointer-events:none;
+  transition:transform .28s var(--spring);white-space:nowrap;
+}
+.toast.show{transform:translateX(-50%) translateY(0);}
+
+/* Swipe hint */
+.swipe-hint{
+  position:fixed;bottom:80px;left:50%;
+  transform:translateX(-50%) translateY(20px);
+  background:rgba(0,0,0,.75);color:#fff;
+  font-size:12px;padding:8px 18px;border-radius:20px;
+  pointer-events:none;opacity:0;transition:all .3s;
+  white-space:nowrap;z-index:50;
+}
+.swipe-hint.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+/* Avatar color palette */
+.A{background:#EF4444;} .B{background:#3B82F6;} .C{background:#10B981;}
+.D{background:#8B5CF6;} .E{background:#F59E0B;} .F{background:#EC4899;}
+.G{background:#06B6D4;} .H{background:#6366F1;} .I{background:#F97316;}
+
+/* Country picker */
+.lf-row{position:relative;}
+.country-item{
+  display:flex;align-items:center;gap:10px;
+  padding:10px 14px;cursor:pointer;
+  transition:background .13s;border-bottom:1px solid var(--br);
+}
+.country-item:last-child{border-bottom:none;}
+.country-item:hover{background:var(--s2);}
+.country-item.selected{background:var(--acc3);}
+.ci-flag{font-size:20px;flex-shrink:0;}
+.ci-name{font-size:13px;color:var(--t1);flex:1;}
+.ci-dial{font-family:var(--fe);font-size:12px;color:var(--t3);font-weight:600;}
+#countryDropdown.open{display:flex!important;}
+</style>
+</head>
+<body data-theme="gold">
+
+<div id="toast" class="toast"></div>
+<div class="swipe-hint" id="swipeHint">← اسحب للعودة</div>
+
+<!-- ══════ LOGIN ══════ -->
+<div id="loginScreen">
+  <div class="login-bg"></div>
+  <div class="login-content">
+    <div class="login-mark">💬</div>
+    <div class="login-brand">Pulse</div>
+    <div class="login-tagline" id="loginTagline">تواصل بلا حدود</div>
+
+    <div class="login-card">
+      <div class="lf">
+        <div class="lf-label" id="lLblCountry">الدولة</div>
+        <div style="position:relative;">
+          <div id="countryDisplay" style="
+            display:flex;align-items:center;gap:10px;
+            background:var(--s2);border:1.5px solid var(--br);
+            border-radius:14px;padding:12px 14px;cursor:pointer;
+            transition:border-color .2s;user-select:none;
+          ">
+            <span id="selFlag" style="font-size:22px;line-height:1;">🇪🇬</span>
+            <div style="flex:1;">
+              <div id="selName" style="font-size:14px;font-weight:600;color:var(--t0);">مصر</div>
+              <div id="selCode" style="font-size:12px;color:var(--t3);">+20</div>
+            </div>
+            <span id="dropArrow" style="font-size:11px;color:var(--t3);transition:transform .2s;">▼</span>
+          </div>
+          <!-- DROPDOWN -->
+          <div id="countryDropdown" style="
+            display:none;position:fixed;left:50%;transform:translateX(-50%);
+            z-index:9000;background:var(--s1);
+            border:1.5px solid var(--br);border-radius:18px;
+            box-shadow:0 12px 40px rgba(0,0,0,.6);
+            width:min(360px,92vw);max-height:60vh;
+            flex-direction:column;overflow:hidden;
+          ">
+            <div style="padding:12px 12px 8px;border-bottom:1px solid var(--br);flex-shrink:0;">
+              <div style="display:flex;align-items:center;gap:8px;background:var(--s2);border-radius:11px;padding:9px 13px;">
+                <span style="font-size:14px;">🔍</span>
+                <input id="countrySearch" type="text" placeholder="ابحث عن دولة أو كود..." style="border:none;background:transparent;font-family:var(--fa);font-size:14px;color:var(--t0);outline:none;flex:1;min-width:0;direction:rtl;">
+              </div>
+            </div>
+            <div id="countryList" style="overflow-y:auto;flex:1;"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="lf">
+        <div class="lf-label" id="lLblPhone">رقم الهاتف</div>
+        <div class="lf-row">
+          <span id="inlineCode" class="lf-prefix">+20</span>
+          <input class="lf-input" id="lPhone" type="tel" placeholder="1X XXXX XXXX" maxlength="13">
+        </div>
+      </div>
+      <div class="lf">
+        <div class="lf-label" id="lLblName">الاسم</div>
+        <input class="lf-solo" id="lName" type="text" placeholder="اكتب اسمك" maxlength="30">
+      </div>
+      <div class="lf">
+        <div class="lf-label" id="lLblColor">لون الأفاتار</div>
+        <div class="color-pick" id="lColorPick"></div>
+      </div>
+      <button class="login-btn" id="lBtn">دخول ←</button>
+      <div class="login-terms" id="loginTerms">بالمتابعة توافق على شروط الاستخدام</div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════ MAIN ══════ -->
+<div id="shell">
+<div id="mainWrap">
+
+  <div style="flex:1;display:flex;flex-direction:column;overflow:hidden;position:relative;">
+
+    <!-- SLIDE WRAP -->
+    <div class="slide-wrap" id="sw">
+
+      <!-- LIST PANEL -->
+      <div class="panel" id="pList">
+
+        <!-- CHATS -->
+        <div class="screen" id="sChats">
+          <div class="topbar">
+            <div class="tb-title" id="tbTitleChats">Pulse</div>
+            <div class="tb-acts">
+              <button class="tb-btn" id="btnTheme" title="الثيم">🎨</button>
+              <button class="tb-btn" id="btnAdd" title="إضافة">✏️</button>
+            </div>
+          </div>
+          <div class="search-wrap">
+            <div class="search-inner">
+              <span style="font-size:13px;color:var(--t3)">🔍</span>
+              <input type="text" id="searchInput" placeholder="بحث...">
+            </div>
+          </div>
+          <div class="chat-list" id="chatList"></div>
+        </div>
+
+        <!-- FRIENDS -->
+        <div class="screen off" id="sFriends">
+          <div class="topbar">
+            <div class="tb-title" id="tbTitleFriends">الأصدقاء</div>
+            <div class="tb-acts">
+              <button class="tb-btn" id="btnDemoReq" title="طلب تجريبي">📨</button>
+              <button class="tb-btn" id="btnAddF">➕</button>
+            </div>
+          </div>
+          <div class="chat-list" id="friendsList"></div>
+        </div>
+
+        <!-- DISCOVER -->
+        <div class="screen off" id="sDiscover">
+          <div class="topbar">
+            <div class="tb-title" id="tbTitleDiscover">اكتشف</div>
+          </div>
+          <div class="disc-feed" id="discoverFeed"></div>
+          <button class="disc-fab" id="btnNewPost">＋</button>
+        </div>
+
+        <!-- ME -->
+        <div class="screen off" id="sMe">
+          <div class="profile-scroll" id="profileScroll"></div>
+        </div>
+
+      </div><!-- /pList -->
+
+      <!-- CHAT PANEL -->
+      <div class="panel" id="pChat">
+        <div class="chat-view" id="chatView">
+          <div class="empty-state">
+            <div class="empty-ico">💬</div>
+            <div class="empty-txt" id="chatPanelHint">اختر محادثة للبدء</div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /sw -->
+
+    <!-- BOTTOM NAV -->
+    <nav class="bot-nav" id="botNav">
+      <div class="nav-item active" data-tab="chats">
+        <div class="nav-ico">💬<span class="nav-badge" id="totBadge" style="display:none"></span></div>
+        <div class="nav-lbl">دردشة</div>
+      </div>
+      <div class="nav-item" data-tab="friends">
+        <div class="nav-ico" style="position:relative;">👥<span id="friendsReqDot" style="display:none;position:absolute;top:-3px;right:-5px;width:9px;height:9px;border-radius:50%;background:var(--badge);border:2px solid var(--bar);"></span></div>
+        <div class="nav-lbl">أصدقاء</div>
+      </div>
+      <div class="nav-item" data-tab="discover">
+        <div class="nav-ico">🌐</div>
+        <div class="nav-lbl">اكتشف</div>
+      </div>
+      <div class="nav-item" data-tab="me">
+        <div class="nav-ico" id="navMeIco">👤</div>
+        <div class="nav-lbl">أنا</div>
+      </div>
+    </nav>
+
+  </div>
+</div>
+</div><!-- /shell -->
+
+<!-- ══════ SHEETS ══════ -->
+
+<!-- Add Contact -->
+<div class="overlay" id="ovAdd">
+  <div class="sheet">
+    <div class="sh-handle"></div>
+    <div class="sh-head">
+      <div class="sh-title" id="shTitleAdd">إضافة جهة اتصال</div>
+      <button class="sh-close" data-close="ovAdd">✕</button>
+    </div>
+    <div class="sh-body">
+      <div class="sh-tabs">
+        <div class="sh-tab on" id="stManual">📝 يدوي</div>
+        <div class="sh-tab" id="stScan">📷 Scan QR</div>
+      </div>
+      <div id="addBody"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Profile Sheet -->
+<div class="overlay" id="ovProfile">
+  <div class="sheet">
+    <div class="sh-handle"></div>
+    <div class="sh-head">
+      <div class="sh-title" id="profileShTitle">الملف الشخصي</div>
+      <button class="sh-close" data-close="ovProfile">✕</button>
+    </div>
+    <div class="sh-body" id="profileShBody"></div>
+  </div>
+</div>
+
+<!-- Theme -->
+<div class="overlay" id="ovTheme">
+  <div class="sheet">
+    <div class="sh-handle"></div>
+    <div class="sh-head">
+      <div class="sh-title" id="shTitleTheme">المظهر واللغة</div>
+      <button class="sh-close" data-close="ovTheme">✕</button>
+    </div>
+    <div class="sh-body" id="themeBody"></div>
+  </div>
+</div>
+
+<!-- New Post -->
+<div class="overlay" id="ovPost">
+  <div class="sheet">
+    <div class="sh-handle"></div>
+    <div class="sh-head">
+      <div class="sh-title" id="shTitlePost">منشور جديد</div>
+      <button class="sh-close" data-close="ovPost">✕</button>
+    </div>
+    <div class="sh-body">
+      <textarea class="compose-ta" id="postTa" placeholder="شارك ما يدور في ذهنك..."></textarea>
+      <img class="compose-img" id="postImgPrev">
+      <label class="img-attach">
+        <span id="postImgLabel">🖼️ إضافة صورة</span>
+        <input type="file" accept="image/*" id="postImgIn" style="display:none">
+      </label>
+      <button class="sh-btn" id="postSubmit">نشر ✓</button>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Profile -->
+<div class="overlay" id="ovEdit">
+  <div class="sheet">
+    <div class="sh-handle"></div>
+    <div class="sh-head">
+      <div class="sh-title" id="shTitleEdit">تعديل الملف</div>
+      <button class="sh-close" data-close="ovEdit">✕</button>
+    </div>
+      <div class="sh-body">
+        <!-- Avatar picker -->
+        <div style="display:flex;flex-direction:column;align-items:center;margin-bottom:22px;">
+          <div style="position:relative;cursor:pointer;" id="epAvTap">
+            <div id="epAvEl" class="av av-l" style="margin:0 auto;border:3px solid var(--br);transition:all .2s;"></div>
+            <div style="
+              position:absolute;inset:0;border-radius:50%;
+              background:rgba(0,0,0,0.45);
+              display:flex;flex-direction:column;align-items:center;justify-content:center;
+              gap:3px;opacity:0;transition:opacity .2s;border-radius:50%;
+            " id="epAvOverlay">
+              <span style="font-size:22px;">🖼️</span>
+              <span style="font-size:10px;color:#fff;font-weight:700;">تغيير</span>
+            </div>
+          </div>
+          <div id="epHint" style="font-size:12px;color:var(--t3);margin-top:10px;">اضغط على الصورة لتغييرها</div>
+          <input type="file" accept="image/*" capture="user" id="epImgIn" style="display:none">
+        </div>
+        <div class="field"><div class="f-lbl" id="epLblName">الاسم</div><input class="f-in" id="epName" placeholder="اسمك" maxlength="30"></div>
+        <div class="field"><div class="f-lbl" id="epLblStatus">الحالة</div><input class="f-in" id="epStatus" placeholder="مرحباً! أستخدم Pulse 👋" maxlength="70"></div>
+        <div class="field"><div class="f-lbl" id="epLblColor">اللون</div><div class="color-row" id="epColorRow"></div></div>
+        <button class="sh-btn" id="epSave">حفظ ✓</button>
+      </div>
+  </div>
+</div>
+
+<!-- Easy Mode Sheet -->
+<div class="overlay" id="ovEasyMode">
+  <div class="sheet">
+    <div class="sh-handle"></div>
+    <div class="sh-head">
+      <div class="sh-title" id="shTitleEasy">الوضع البسيط</div>
+      <button class="sh-close" data-close="ovEasyMode">✕</button>
+    </div>
+    <div class="sh-body" id="easyBody"></div>
+  </div>
+</div>
+
+<!-- Translate Sheet -->
+<div class="overlay" id="ovTranslate">
+  <div class="sheet">
+    <div class="sh-handle"></div>
+    <div class="sh-head">
+      <div class="sh-title" id="shTitleTranslate">الترجمة</div>
+      <button class="sh-close" data-close="ovTranslate">✕</button>
+    </div>
+    <div class="sh-body" id="translateBody"></div>
+  </div>
+</div>
+
+<!-- Message Context Menu (portal) -->
+<div id="msgCtxMenu" class="msg-ctx" style="display:none;"></div>
+
+<script>
+// ═══════════════════════════════════
+// DATA & STATE
+// ═══════════════════════════════════
+const AVCOLS={A:'#EF4444',B:'#3B82F6',C:'#10B981',D:'#8B5CF6',E:'#F59E0B',F:'#EC4899',G:'#06B6D4',H:'#6366F1',I:'#F97316'};
+const AVKEYS=Object.keys(AVCOLS);
+const EMOJIS=['😊','😂','❤️','👍','🙏','😍','🤩','😎','🥰','😄','😅','🤣','😇','🥳','🤔','😮','😱','🎉','🔥','✨','💯','🌟','💪','🙌','👏','💖','😜','🤪','😏','🤗','😬','🥺'];
+const STICKERS=['🐻','🐱','🐶','🦊','🐼','🐨','🐸','🦁','🐯','🌸','🌈','⚡','🌺','🎵','🎯','🎮','🏆','🎁','🎂','🍕','☕','🚀','🎭','🦋','🌙','⭐'];
+const THEMES=[
+  {id:'gold',name:'ذهبي',swatches:['#13120E','#D4A843','#1A1914']},
+  {id:'midnight',name:'ليلي',swatches:['#0D0D14','#7C6FFF','#1A1A28']},
+  {id:'aurora',name:'أورورا',swatches:['#0A1A12','#34D399','#152B20']},
+  {id:'rose',name:'فاتح',swatches:['#FFFFFF','#C2410C','#F2F0ED']},
+];
+const LANGS={
+  ar:{n:'العربية',f:'🇸🇦',d:'rtl',t:{
+    appTagline:'تواصل بلا حدود',
+    phone:'رقم الهاتف',country:'الدولة',name:'الاسم',
+    namePh:'اكتب اسمك',avatarColor:'لون الأفاتار',
+    login:'دخول ←',terms:'بالمتابعة توافق على شروط الاستخدام',
+    chats:'دردشة',friends:'أصدقاء',discover:'اكتشف',me:'أنا',
+    search:'بحث...',noChats:'لا توجد محادثات',noChatsHint:'اضغط ✏️ لإضافة شخص',
+    noFriends:'لا يوجد أصدقاء',noFriendsHint:'اضغط ➕ لإضافة شخص',
+    noPosts:'لا توجد منشورات بعد',noPostsHint:'اضغط ＋ لأول منشور',
+    online:'متصل الآن',offline:'غير متصل',typing:'يكتب...',
+    addContact:'إضافة جهة اتصال',manual:'📝 يدوي',scanQR:'📷 Scan QR',
+    cName:'الاسم *',cPhone:'رقم الهاتف',cStatus:'الحالة',cColor:'اللون',
+    cNamePh:'اسم جهة الاتصال',cPhonePh:'+20 1X XXXX XXXX',cStatusPh:'مرحباً 👋',
+    addBtn:'➕ إضافة',msgBtn:'💬 مراسلة',callBtn:'📞 اتصال',delBtn:'🗑️ حذف',
+    send:'➤',msgPh:'رسالة...',
+    profile:'الملف الشخصي',editProfile:'تعديل الملف الشخصي',
+    myQR:'QR Code الخاص بي',qrHint:'اطلب من أصدقائك مسح الكود لإضافتك',
+    appearance:'المظهر واللغة',theme:'الثيم',language:'اللغة',done:'تم ✓',
+    posts:'منشوراتي',calls:'سجل المكالمات',noCalls:'لا توجد مكالمات',
+    newPost:'منشور جديد',postPh:'شارك ما يدور في ذهنك...',addPhoto:'🖼️ إضافة صورة',
+    publish:'نشر ✓',
+    missed:'فائتة',outgoing:'صادرة',incoming:'واردة',
+    calling:'جاري الاتصال...',
+    saveProfile:'حفظ ✓',nameLbl:'الاسم',statusLbl:'الحالة',colorLbl:'اللون',
+    statusPh:'مرحباً! أستخدم Pulse 👋',
+    tapChange:'اضغط على الصورة لتغييرها',
+    saved:'✅ تم حفظ الملف',photoSelected:'✅ تم اختيار الصورة',
+    added:'✅ تمت الإضافة: ',deleted:'🗑️ تم حذف ',published:'✅ تم النشر!',
+    enterName:'⚠️ أدخل الاسم',enterYourName:'⚠️ أدخل اسمك',
+    validPhone:'⚠️ أدخل رقم صحيح',addTextOrPhoto:'⚠️ أضف نصاً أو صورة',
+    friends:'أصدقاء',postsCount:'منشورات',callsCount:'مكالمات',
+    today:'اليوم',swipeBack:'← اسحب للعودة',
+    searchCountry:'ابحث عن دولة أو كود...',noResults:'لا نتائج',
+    cameraStart:'📷 تشغيل',cameraOn:'🔍 وجّه نحو QR Code',cameraErr:'❌ تعذّر الوصول للكاميرا',
+    startCamera:'📷 تشغيل الكاميرا',opening:'⏳ فتح الكاميرا...',
+    themeGold:'ذهبي',themeMidnight:'ليلي',themeAurora:'أورورا',themeRose:'فاتح',
+    friendReqTitle:'طلب صداقة',sendReq:'➕ إرسال طلب صداقة',
+    pending:'⏳ في الانتظار',accept:'✅ قبول',decline:'❌ رفض',block:'🚫 حظر',
+    seePosts:'رؤية المنشورات',seePostsHint:'السماح برؤية منشوراتك',
+    reqSent:'📨 تم إرسال الطلب',reqAccepted:'✅ تم القبول!',reqDeclined:'❌ تم الرفض',
+    blocked:'🚫 محظور',friendRequests:'طلبات الصداقة',
+    noRequests:'لا توجد طلبات',incomingReq:'طلبات واردة',
+    // easy mode + translate + msg menu + profile
+    easyMode:'الوضع البسيط',easyModeDesc:'خط أكبر، ألوان أوضح، أزرار أكبر',
+    largeFont:'خط كبير',largeFontDesc:'حجم خط أكبر وأزرار أكبر',
+    listenMsgs:'الاستماع للرسائل',listenMsgsDesc:'اضغط على الرسالة لسماعها',
+    silentMode:'الوضع الصامت',silentModeDesc:'بدون تشغيل صوت',
+    disableEasy:'تعطيل الوضع البسيط',
+    translate:'الترجمة',translateTo:'ترجمة النصوص إلى',
+    autoTranslate:'ترجمة تلقائية للرسائل',autoTranslateDesc:'تترجم رسائل الدردشة تلقائياً',
+    translatedBy:'تمت الترجمة',
+    copy:'نسخ',forward:'تحويل',favorite:'المفضلة',delete:'حذف',select:'تحديد',
+    quote:'اقتباس',reminder:'تذكير',cancelTr:'إلغاء',search:'بحث',
+    msgDeleted:'🗑️ تم حذف الرسالة',msgCopied:'📋 تم النسخ',msgFavorited:'⭐ أضيف للمفضلة',
+    gender:'الجنس',region:'المنطقة',pulseId:'Pulse ID',
+    ringtone:'نغمة الرنين',myAddress:'عنواني',whatsUp:'ما الجديد',
+    notSet:'غير محدد',male:'ذكر',female:'أنثى',other:'أخرى',
+    settingsMenu:'الإعدادات',easyModeMenu:'الوضع البسيط',translateMenu:'الترجمة',
+  }},
+  en:{n:'English',f:'🇬🇧',d:'ltr',t:{
+    appTagline:'Connect without limits',
+    phone:'Phone Number',country:'Country',name:'Name',
+    namePh:'Enter your name',avatarColor:'Avatar Color',
+    login:'Sign In →',terms:'By continuing you agree to the Terms of Use',
+    chats:'Chats',friends:'Friends',discover:'Discover',me:'Me',
+    search:'Search...',noChats:'No chats yet',noChatsHint:'Tap ✏️ to add someone',
+    noFriends:'No friends yet',noFriendsHint:'Tap ➕ to add someone',
+    noPosts:'No posts yet',noPostsHint:'Tap ＋ to create a post',
+    online:'Online',offline:'Offline',typing:'is typing...',
+    addContact:'Add Contact',manual:'📝 Manual',scanQR:'📷 Scan QR',
+    cName:'Name *',cPhone:'Phone',cStatus:'Status',cColor:'Color',
+    cNamePh:'Contact name',cPhonePh:'+1 XXX XXX XXXX',cStatusPh:'Hey there 👋',
+    addBtn:'➕ Add',msgBtn:'💬 Message',callBtn:'📞 Call',delBtn:'🗑️ Delete',
+    send:'➤',msgPh:'Message...',
+    profile:'Profile',editProfile:'Edit Profile',
+    myQR:'My QR Code',qrHint:'Ask friends to scan to add you',
+    appearance:'Appearance & Language',theme:'Theme',language:'Language',done:'Done ✓',
+    posts:'My Posts',calls:'Call Log',noCalls:'No calls yet',
+    newPost:'New Post',postPh:'What\'s on your mind?',addPhoto:'🖼️ Add Photo',
+    publish:'Post ✓',
+    missed:'Missed',outgoing:'Outgoing',incoming:'Incoming',
+    calling:'Calling...',
+    saveProfile:'Save ✓',nameLbl:'Name',statusLbl:'Status',colorLbl:'Color',
+    statusPh:'Hey! I\'m using Pulse 👋',
+    tapChange:'Tap photo to change',
+    saved:'✅ Profile saved',photoSelected:'✅ Photo selected',
+    added:'✅ Added: ',deleted:'🗑️ Deleted ',published:'✅ Published!',
+    enterName:'⚠️ Enter a name',enterYourName:'⚠️ Enter your name',
+    validPhone:'⚠️ Enter a valid number',addTextOrPhoto:'⚠️ Add text or photo',
+    friends:'Friends',postsCount:'Posts',callsCount:'Calls',
+    today:'Today',swipeBack:'Swipe to go back →',
+    searchCountry:'Search country or code...',noResults:'No results',
+    cameraStart:'📷 Start',cameraOn:'🔍 Point at QR Code',cameraErr:'❌ Camera access denied',
+    startCamera:'📷 Start Camera',opening:'⏳ Opening camera...',
+    themeGold:'Gold',themeMidnight:'Midnight',themeAurora:'Aurora',themeRose:'Light',
+    friendReqTitle:'Friend Request',sendReq:'➕ Send Friend Request',
+    pending:'⏳ Pending',accept:'✅ Accept',decline:'❌ Decline',block:'🚫 Block',
+    seePosts:'See posts',seePostsHint:'Allow them to see your posts',
+    reqSent:'📨 Request sent',reqAccepted:'✅ Accepted!',reqDeclined:'❌ Declined',
+    blocked:'🚫 Blocked',friendRequests:'Friend Requests',
+    noRequests:'No requests',incomingReq:'Incoming requests',
+    easyMode:'Easy Mode',easyModeDesc:'Larger font, sharper colors, bigger buttons',
+    largeFont:'Large Font',largeFontDesc:'Larger font size and bigger buttons',
+    listenMsgs:'Listen to Messages',listenMsgsDesc:'Tap a message to hear it read aloud',
+    silentMode:'Silent Mode',silentModeDesc:'No audio will be played',
+    disableEasy:'Disable Easy Mode',
+    translate:'Translate',translateTo:'Translate text to',
+    autoTranslate:'Auto-translate messages',autoTranslateDesc:'Automatically translate incoming chat messages',
+    translatedBy:'Translated by',
+    copy:'Copy',forward:'Forward',favorite:'Favorite',delete:'Delete',select:'Select',
+    quote:'Quote',reminder:'Reminder',cancelTr:'Cancel',search:'Search',
+    msgDeleted:'🗑️ Message deleted',msgCopied:'📋 Copied',msgFavorited:'⭐ Added to favorites',
+    gender:'Gender',region:'Region',pulseId:'Pulse ID',
+    ringtone:'Ringtone',myAddress:'My Address',whatsUp:"What's Up",
+    notSet:'Not Set',male:'Male',female:'Female',other:'Other',
+    settingsMenu:'Settings',easyModeMenu:'Easy Mode',translateMenu:'Translate',
+  }},
+  fr:{n:'Français',f:'🇫🇷',d:'ltr',t:{
+    appTagline:'Communiquez sans limites',
+    phone:'Numéro de téléphone',country:'Pays',name:'Nom',
+    namePh:'Entrez votre nom',avatarColor:'Couleur avatar',
+    login:'Connexion →',terms:'En continuant, vous acceptez les CGU',
+    chats:'Discussions',friends:'Amis',discover:'Découvrir',me:'Moi',
+    search:'Rechercher...',noChats:'Aucune discussion',noChatsHint:'Appuyez ✏️ pour ajouter',
+    noFriends:'Aucun ami',noFriendsHint:'Appuyez ➕ pour ajouter',
+    noPosts:'Aucune publication',noPostsHint:'Appuyez ＋ pour créer',
+    online:'En ligne',offline:'Hors ligne',typing:'écrit...',
+    addContact:'Ajouter un contact',manual:'📝 Manuel',scanQR:'📷 Scanner QR',
+    cName:'Nom *',cPhone:'Téléphone',cStatus:'Statut',cColor:'Couleur',
+    cNamePh:'Nom du contact',cPhonePh:'+33 6X XX XX XX',cStatusPh:'Salut 👋',
+    addBtn:'➕ Ajouter',msgBtn:'💬 Message',callBtn:'📞 Appeler',delBtn:'🗑️ Supprimer',
+    send:'➤',msgPh:'Message...',
+    profile:'Profil',editProfile:'Modifier le profil',
+    myQR:'Mon QR Code',qrHint:'Demandez à vos amis de scanner',
+    appearance:'Apparence & Langue',theme:'Thème',language:'Langue',done:'Terminé ✓',
+    posts:'Mes publications',calls:'Journal d\'appels',noCalls:'Aucun appel',
+    newPost:'Nouvelle publication',postPh:'Quoi de neuf ?',addPhoto:'🖼️ Ajouter photo',
+    publish:'Publier ✓',
+    missed:'Manqué',outgoing:'Sortant',incoming:'Entrant',
+    calling:'Appel en cours...',
+    saveProfile:'Enregistrer ✓',nameLbl:'Nom',statusLbl:'Statut',colorLbl:'Couleur',
+    statusPh:'Salut ! J\'utilise Pulse 👋',
+    tapChange:'Appuyez pour changer',
+    saved:'✅ Profil enregistré',photoSelected:'✅ Photo sélectionnée',
+    added:'✅ Ajouté : ',deleted:'🗑️ Supprimé ',published:'✅ Publié !',
+    enterName:'⚠️ Entrez un nom',enterYourName:'⚠️ Entrez votre nom',
+    validPhone:'⚠️ Numéro invalide',addTextOrPhoto:'⚠️ Ajoutez du texte ou une photo',
+    friends:'Amis',postsCount:'Publications',callsCount:'Appels',
+    today:'Aujourd\'hui',swipeBack:'Glisser pour retourner →',
+    searchCountry:'Rechercher pays ou code...',noResults:'Aucun résultat',
+    cameraStart:'📷 Démarrer',cameraOn:'🔍 Pointez vers le QR',cameraErr:'❌ Caméra refusée',
+    startCamera:'📷 Démarrer la caméra',opening:'⏳ Ouverture...',
+    themeGold:'Doré',themeMidnight:'Minuit',themeAurora:'Aurore',themeRose:'Clair',
+    friendReqTitle:'Demande d\'ami',sendReq:'➕ Envoyer une demande',
+    pending:'⏳ En attente',accept:'✅ Accepter',decline:'❌ Refuser',block:'🚫 Bloquer',
+    seePosts:'Voir les publications',seePostsHint:'Autoriser à voir vos publications',
+    reqSent:'📨 Demande envoyée',reqAccepted:'✅ Accepté !',reqDeclined:'❌ Refusé',
+    blocked:'🚫 Bloqué',friendRequests:'Demandes d\'amitié',
+    noRequests:'Pas de demandes',incomingReq:'Demandes reçues',
+    easyMode:'Mode Facile',easyModeDesc:'Police plus grande, couleurs vives, grands boutons',
+    largeFont:'Grande Police',largeFontDesc:'Taille de police plus grande',
+    listenMsgs:'Écouter les messages',listenMsgsDesc:'Appuyez sur un message pour l\'écouter',
+    silentMode:'Mode Silencieux',silentModeDesc:'Aucun son ne sera joué',
+    disableEasy:'Désactiver le mode facile',
+    translate:'Traduire',translateTo:'Traduire le texte en',
+    autoTranslate:'Traduction auto des messages',autoTranslateDesc:'Traduit automatiquement les messages entrants',
+    translatedBy:'Traduit par',
+    copy:'Copier',forward:'Transférer',favorite:'Favoris',delete:'Supprimer',select:'Sélectionner',
+    quote:'Citer',reminder:'Rappel',cancelTr:'Annuler',search:'Rechercher',
+    msgDeleted:'🗑️ Message supprimé',msgCopied:'📋 Copié',msgFavorited:'⭐ Ajouté aux favoris',
+    gender:'Genre',region:'Région',pulseId:'Pulse ID',
+    ringtone:'Sonnerie',myAddress:'Mon adresse',whatsUp:'Quoi de neuf',
+    notSet:'Non défini',male:'Homme',female:'Femme',other:'Autre',
+    settingsMenu:'Paramètres',easyModeMenu:'Mode Facile',translateMenu:'Traduction',
+  }},
+  es:{n:'Español',f:'🇪🇸',d:'ltr',t:{
+    appTagline:'Comunícate sin límites',
+    phone:'Número de teléfono',country:'País',name:'Nombre',
+    namePh:'Escribe tu nombre',avatarColor:'Color de avatar',
+    login:'Entrar →',terms:'Al continuar aceptas los Términos de uso',
+    chats:'Chats',friends:'Amigos',discover:'Descubrir',me:'Yo',
+    search:'Buscar...',noChats:'Sin chats',noChatsHint:'Toca ✏️ para agregar',
+    noFriends:'Sin amigos',noFriendsHint:'Toca ➕ para agregar',
+    noPosts:'Sin publicaciones',noPostsHint:'Toca ＋ para crear',
+    online:'En línea',offline:'Desconectado',typing:'está escribiendo...',
+    addContact:'Agregar contacto',manual:'📝 Manual',scanQR:'📷 Escanear QR',
+    cName:'Nombre *',cPhone:'Teléfono',cStatus:'Estado',cColor:'Color',
+    cNamePh:'Nombre del contacto',cPhonePh:'+34 6XX XXX XXX',cStatusPh:'¡Hola 👋',
+    addBtn:'➕ Agregar',msgBtn:'💬 Mensaje',callBtn:'📞 Llamar',delBtn:'🗑️ Eliminar',
+    send:'➤',msgPh:'Mensaje...',
+    profile:'Perfil',editProfile:'Editar perfil',
+    myQR:'Mi código QR',qrHint:'Pide a tus amigos que escaneen',
+    appearance:'Apariencia e idioma',theme:'Tema',language:'Idioma',done:'Listo ✓',
+    posts:'Mis publicaciones',calls:'Registro de llamadas',noCalls:'Sin llamadas',
+    newPost:'Nueva publicación',postPh:'¿Qué estás pensando?',addPhoto:'🖼️ Agregar foto',
+    publish:'Publicar ✓',
+    missed:'Perdida',outgoing:'Saliente',incoming:'Entrante',
+    calling:'Llamando...',
+    saveProfile:'Guardar ✓',nameLbl:'Nombre',statusLbl:'Estado',colorLbl:'Color',
+    statusPh:'¡Hola! Estoy usando Pulse 👋',
+    tapChange:'Toca para cambiar',
+    saved:'✅ Perfil guardado',photoSelected:'✅ Foto seleccionada',
+    added:'✅ Agregado: ',deleted:'🗑️ Eliminado ',published:'✅ ¡Publicado!',
+    enterName:'⚠️ Ingresa un nombre',enterYourName:'⚠️ Ingresa tu nombre',
+    validPhone:'⚠️ Número inválido',addTextOrPhoto:'⚠️ Agrega texto o foto',
+    friends:'Amigos',postsCount:'Publicaciones',callsCount:'Llamadas',
+    today:'Hoy',swipeBack:'Desliza para volver →',
+    searchCountry:'Buscar país o código...',noResults:'Sin resultados',
+    cameraStart:'📷 Iniciar',cameraOn:'🔍 Apunta al código QR',cameraErr:'❌ Cámara denegada',
+    startCamera:'📷 Iniciar cámara',opening:'⏳ Abriendo...',
+    themeGold:'Dorado',themeMidnight:'Medianoche',themeAurora:'Aurora',themeRose:'Claro',
+    friendReqTitle:'Pedido de amizade',sendReq:'➕ Enviar pedido',
+    pending:'⏳ Pendente',accept:'✅ Aceitar',decline:'❌ Recusar',block:'🚫 Bloquear',
+    seePosts:'Ver publicações',seePostsHint:'Permitir ver suas publicações',
+    reqSent:'📨 Pedido enviado',reqAccepted:'✅ Aceito!',reqDeclined:'❌ Recusado',
+    blocked:'🚫 Bloqueado',friendRequests:'Pedidos de amizade',
+    noRequests:'Sem pedidos',incomingReq:'Pedidos recebidos',
+    easyMode:'Modo Fácil',easyModeDesc:'Fonte maior, cores mais vivas, botões maiores',
+    largeFont:'Fonte Grande',largeFontDesc:'Tamanho de fonte e botões maiores',
+    listenMsgs:'Ouvir mensagens',listenMsgsDesc:'Toque em uma mensagem para ouvi-la',
+    silentMode:'Modo Silencioso',silentModeDesc:'Nenhum áudio será reproduzido',
+    disableEasy:'Desativar modo fácil',
+    translate:'Traduzir',translateTo:'Traduzir texto para',
+    autoTranslate:'Tradução automática',autoTranslateDesc:'Traduz automaticamente as mensagens recebidas',
+    translatedBy:'Traduzido por',
+    copy:'Copiar',forward:'Encaminhar',favorite:'Favorito',delete:'Excluir',select:'Selecionar',
+    quote:'Citar',reminder:'Lembrete',cancelTr:'Cancelar',search:'Pesquisar',
+    msgDeleted:'🗑️ Mensagem excluída',msgCopied:'📋 Copiado',msgFavorited:'⭐ Adicionado aos favoritos',
+    gender:'Gênero',region:'Região',pulseId:'Pulse ID',
+    ringtone:'Toque',myAddress:'Meu endereço',whatsUp:'O que há de novo',
+    notSet:'Não definido',male:'Masculino',female:'Feminino',other:'Outro',
+    settingsMenu:'Configurações',easyModeMenu:'Modo Fácil',translateMenu:'Tradução',
+    friendReqTitle:'Solicitud de amistad',sendReq:'➕ Enviar solicitud',
+    pending:'⏳ Pendiente',accept:'✅ Aceptar',decline:'❌ Rechazar',block:'🚫 Bloquear',
+    seePosts:'Ver publicaciones',seePostsHint:'Permitir ver tus publicaciones',
+    reqSent:'📨 Solicitud enviada',reqAccepted:'✅ ¡Aceptada!',reqDeclined:'❌ Rechazada',
+    blocked:'🚫 Bloqueado',friendRequests:'Solicitudes de amistad',
+    noRequests:'Sin solicitudes',incomingReq:'Solicitudes recibidas',
+    easyMode:'Modo Fácil',easyModeDesc:'Fuente más grande, colores vivos, botones grandes',
+    largeFont:'Fuente Grande',largeFontDesc:'Fuente más grande y botones más grandes',
+    listenMsgs:'Escuchar mensajes',listenMsgsDesc:'Toca un mensaje para escucharlo',
+    silentMode:'Modo Silencioso',silentModeDesc:'No se reproducirá ningún audio',
+    disableEasy:'Desactivar modo fácil',
+    translate:'Traducir',translateTo:'Traducir texto a',
+    autoTranslate:'Traducción automática',autoTranslateDesc:'Traduce automáticamente los mensajes entrantes',
+    translatedBy:'Traducido por',
+    copy:'Copiar',forward:'Reenviar',favorite:'Favorito',delete:'Eliminar',select:'Seleccionar',
+    quote:'Citar',reminder:'Recordatorio',cancelTr:'Cancelar',search:'Buscar',
+    msgDeleted:'🗑️ Mensaje eliminado',msgCopied:'📋 Copiado',msgFavorited:'⭐ Añadido a favoritos',
+    gender:'Género',region:'Región',pulseId:'Pulse ID',
+    ringtone:'Tono de llamada',myAddress:'Mi dirección',whatsUp:'¿Qué hay de nuevo?',
+    notSet:'No definido',male:'Masculino',female:'Femenino',other:'Otro',
+    settingsMenu:'Ajustes',easyModeMenu:'Modo Fácil',translateMenu:'Traducción',
+  }},
+  de:{n:'Deutsch',f:'🇩🇪',d:'ltr',t:{
+    appTagline:'Verbinde dich ohne Grenzen',
+    phone:'Telefonnummer',country:'Land',name:'Name',
+    namePh:'Gib deinen Namen ein',avatarColor:'Avatar-Farbe',
+    login:'Anmelden →',terms:'Mit der Fortsetzung stimmst du den Nutzungsbedingungen zu',
+    chats:'Chats',friends:'Freunde',discover:'Entdecken',me:'Ich',
+    search:'Suchen...',noChats:'Keine Chats',noChatsHint:'Tippe ✏️ zum Hinzufügen',
+    noFriends:'Keine Freunde',noFriendsHint:'Tippe ➕ zum Hinzufügen',
+    noPosts:'Keine Beiträge',noPostsHint:'Tippe ＋ um zu erstellen',
+    online:'Online',offline:'Offline',typing:'schreibt...',
+    addContact:'Kontakt hinzufügen',manual:'📝 Manuell',scanQR:'📷 QR scannen',
+    cName:'Name *',cPhone:'Telefon',cStatus:'Status',cColor:'Farbe',
+    cNamePh:'Kontaktname',cPhonePh:'+49 1XX XXXXXXX',cStatusPh:'Hallo 👋',
+    addBtn:'➕ Hinzufügen',msgBtn:'💬 Nachricht',callBtn:'📞 Anrufen',delBtn:'🗑️ Löschen',
+    send:'➤',msgPh:'Nachricht...',
+    profile:'Profil',editProfile:'Profil bearbeiten',
+    myQR:'Mein QR-Code',qrHint:'Bitte Freunde, den Code zu scannen',
+    appearance:'Aussehen & Sprache',theme:'Thema',language:'Sprache',done:'Fertig ✓',
+    posts:'Meine Beiträge',calls:'Anrufprotokoll',noCalls:'Keine Anrufe',
+    newPost:'Neuer Beitrag',postPh:'Was denkst du?',addPhoto:'🖼️ Foto hinzufügen',
+    publish:'Veröffentlichen ✓',
+    missed:'Verpasst',outgoing:'Ausgehend',incoming:'Eingehend',
+    calling:'Anruf läuft...',
+    saveProfile:'Speichern ✓',nameLbl:'Name',statusLbl:'Status',colorLbl:'Farbe',
+    statusPh:'Hallo! Ich benutze Pulse 👋',
+    tapChange:'Tippe zum Ändern',
+    saved:'✅ Profil gespeichert',photoSelected:'✅ Foto ausgewählt',
+    added:'✅ Hinzugefügt: ',deleted:'🗑️ Gelöscht ',published:'✅ Veröffentlicht!',
+    enterName:'⚠️ Name eingeben',enterYourName:'⚠️ Gib deinen Namen ein',
+    validPhone:'⚠️ Ungültige Nummer',addTextOrPhoto:'⚠️ Text oder Foto hinzufügen',
+    friends:'Freunde',postsCount:'Beiträge',callsCount:'Anrufe',
+    today:'Heute',swipeBack:'Wischen zum Zurückgehen →',
+    searchCountry:'Land oder Code suchen...',noResults:'Keine Ergebnisse',
+    cameraStart:'📷 Starten',cameraOn:'🔍 Auf QR-Code richten',cameraErr:'❌ Kamera verweigert',
+    startCamera:'📷 Kamera starten',opening:'⏳ Öffne...',
+    themeGold:'Gold',themeMidnight:'Mitternacht',themeAurora:'Aurora',themeRose:'Hell',
+    friendReqTitle:'Freundschaftsanfrage',sendReq:'➕ Anfrage senden',
+    pending:'⏳ Ausstehend',accept:'✅ Annehmen',decline:'❌ Ablehnen',block:'🚫 Blockieren',
+    seePosts:'Beiträge sehen',seePostsHint:'Beiträge sehen erlauben',
+    reqSent:'📨 Anfrage gesendet',reqAccepted:'✅ Angenommen!',reqDeclined:'❌ Abgelehnt',
+    blocked:'🚫 Blockiert',friendRequests:'Freundschaftsanfragen',
+    noRequests:'Keine Anfragen',incomingReq:'Eingehende Anfragen',
+    easyMode:'Einfacher Modus',easyModeDesc:'Größere Schrift, klarere Farben, größere Tasten',
+    largeFont:'Große Schrift',largeFontDesc:'Größere Schriftgröße und größere Schaltflächen',
+    listenMsgs:'Nachrichten anhören',listenMsgsDesc:'Tippen Sie auf eine Nachricht, um sie zu hören',
+    silentMode:'Stummschalter',silentModeDesc:'Es wird kein Audio abgespielt',
+    disableEasy:'Einfachen Modus deaktivieren',
+    translate:'Übersetzen',translateTo:'Text übersetzen in',
+    autoTranslate:'Automatische Übersetzung',autoTranslateDesc:'Eingehende Nachrichten automatisch übersetzen',
+    translatedBy:'Übersetzt von',
+    copy:'Kopieren',forward:'Weiterleiten',favorite:'Favorit',delete:'Löschen',select:'Auswählen',
+    quote:'Zitieren',reminder:'Erinnerung',cancelTr:'Abbrechen',search:'Suchen',
+    msgDeleted:'🗑️ Nachricht gelöscht',msgCopied:'📋 Kopiert',msgFavorited:'⭐ Zu Favoriten hinzugefügt',
+    gender:'Geschlecht',region:'Region',pulseId:'Pulse ID',
+    ringtone:'Klingelton',myAddress:'Meine Adresse',whatsUp:'Was gibt es Neues',
+    notSet:'Nicht festgelegt',male:'Männlich',female:'Weiblich',other:'Andere',
+    settingsMenu:'Einstellungen',easyModeMenu:'Einfacher Modus',translateMenu:'Übersetzung',
+  }},
+  tr:{n:'Türkçe',f:'🇹🇷',d:'ltr',t:{
+    appTagline:'Sınırsız bağlantı',
+    phone:'Telefon numarası',country:'Ülke',name:'Ad',
+    namePh:'Adınızı girin',avatarColor:'Avatar rengi',
+    login:'Giriş →',terms:'Devam ederek Kullanım Şartlarını kabul edersiniz',
+    chats:'Sohbetler',friends:'Arkadaşlar',discover:'Keşfet',me:'Ben',
+    search:'Ara...',noChats:'Henüz sohbet yok',noChatsHint:'Eklemek için ✏️ dokunun',
+    noFriends:'Henüz arkadaş yok',noFriendsHint:'Eklemek için ➕ dokunun',
+    noPosts:'Henüz gönderi yok',noPostsHint:'Oluşturmak için ＋ dokunun',
+    online:'Çevrimiçi',offline:'Çevrimdışı',typing:'yazıyor...',
+    addContact:'Kişi ekle',manual:'📝 Manuel',scanQR:'📷 QR Tara',
+    cName:'Ad *',cPhone:'Telefon',cStatus:'Durum',cColor:'Renk',
+    cNamePh:'Kişi adı',cPhonePh:'+90 5XX XXX XXXX',cStatusPh:'Merhaba 👋',
+    addBtn:'➕ Ekle',msgBtn:'💬 Mesaj',callBtn:'📞 Ara',delBtn:'🗑️ Sil',
+    send:'➤',msgPh:'Mesaj...',
+    profile:'Profil',editProfile:'Profili düzenle',
+    myQR:'QR Kodum',qrHint:'Arkadaşlarınızdan kodu taramasını isteyin',
+    appearance:'Görünüm & Dil',theme:'Tema',language:'Dil',done:'Tamam ✓',
+    posts:'Gönderilerim',calls:'Arama geçmişi',noCalls:'Arama yok',
+    newPost:'Yeni gönderi',postPh:'Ne düşünüyorsunuz?',addPhoto:'🖼️ Fotoğraf ekle',
+    publish:'Paylaş ✓',
+    missed:'Cevapsız',outgoing:'Giden',incoming:'Gelen',
+    calling:'Aranıyor...',
+    saveProfile:'Kaydet ✓',nameLbl:'Ad',statusLbl:'Durum',colorLbl:'Renk',
+    statusPh:'Merhaba! Pulse kullanıyorum 👋',
+    tapChange:'Değiştirmek için dokunun',
+    saved:'✅ Profil kaydedildi',photoSelected:'✅ Fotoğraf seçildi',
+    added:'✅ Eklendi: ',deleted:'🗑️ Silindi ',published:'✅ Paylaşıldı!',
+    enterName:'⚠️ Ad girin',enterYourName:'⚠️ Adınızı girin',
+    validPhone:'⚠️ Geçersiz numara',addTextOrPhoto:'⚠️ Metin veya fotoğraf ekleyin',
+    friends:'Arkadaşlar',postsCount:'Gönderiler',callsCount:'Aramalar',
+    today:'Bugün',swipeBack:'Geri gitmek için kaydırın →',
+    searchCountry:'Ülke veya kod ara...',noResults:'Sonuç yok',
+    cameraStart:'📷 Başlat',cameraOn:'🔍 QR Koda yöneltin',cameraErr:'❌ Kamera reddedildi',
+    startCamera:'📷 Kamerayı başlat',opening:'⏳ Açılıyor...',
+    themeGold:'Altın',themeMidnight:'Gece yarısı',themeAurora:'Aurora',themeRose:'Açık',
+    friendReqTitle:'Arkadaşlık İsteği',sendReq:'➕ İstek Gönder',
+    pending:'⏳ Beklemede',accept:'✅ Kabul Et',decline:'❌ Reddet',block:'🚫 Engelle',
+    seePosts:'Gönderi gör',seePostsHint:'Gönderilerini görmesine izin ver',
+    reqSent:'📨 İstek gönderildi',reqAccepted:'✅ Kabul edildi!',reqDeclined:'❌ Reddedildi',
+    blocked:'🚫 Engellendi',friendRequests:'Arkadaşlık İstekleri',
+    noRequests:'İstek yok',incomingReq:'Gelen istekler',
+    easyMode:'Kolay Mod',easyModeDesc:'Daha büyük yazı, daha net renkler, büyük düğmeler',
+    largeFont:'Büyük Yazı',largeFontDesc:'Daha büyük yazı tipi ve düğmeler',
+    listenMsgs:'Mesajları Dinle',listenMsgsDesc:'Mesaja dokunarak sesli dinleyin',
+    silentMode:'Sessiz Mod',silentModeDesc:'Hiçbir ses çalınmayacak',
+    disableEasy:'Kolay Modu Devre Dışı Bırak',
+    translate:'Çeviri',translateTo:'Metni şuna çevir',
+    autoTranslate:'Otomatik çeviri',autoTranslateDesc:'Gelen mesajları otomatik çevirir',
+    translatedBy:'Çeviren',
+    copy:'Kopyala',forward:'İlet',favorite:'Favori',delete:'Sil',select:'Seç',
+    quote:'Alıntı',reminder:'Hatırlatıcı',cancelTr:'İptal',search:'Ara',
+    msgDeleted:'🗑️ Mesaj silindi',msgCopied:'📋 Kopyalandı',msgFavorited:'⭐ Favorilere eklendi',
+    gender:'Cinsiyet',region:'Bölge',pulseId:'Pulse ID',
+    ringtone:'Zil sesi',myAddress:'Adresim',whatsUp:'Ne var ne yok',
+    notSet:'Ayarlanmadı',male:'Erkek',female:'Kadın',other:'Diğer',
+    settingsMenu:'Ayarlar',easyModeMenu:'Kolay Mod',translateMenu:'Çeviri',
+  }},
+  zh:{n:'中文',f:'🇨🇳',d:'ltr',t:{
+    appTagline:'无限连接',
+    phone:'手机号码',country:'国家',name:'姓名',
+    namePh:'输入您的姓名',avatarColor:'头像颜色',
+    login:'登录 →',terms:'继续即表示您同意使用条款',
+    chats:'聊天',friends:'好友',discover:'发现',me:'我',
+    search:'搜索...',noChats:'暂无聊天',noChatsHint:'点击 ✏️ 添加好友',
+    noFriends:'暂无好友',noFriendsHint:'点击 ➕ 添加',
+    noPosts:'暂无动态',noPostsHint:'点击 ＋ 发布',
+    online:'在线',offline:'离线',typing:'正在输入...',
+    addContact:'添加联系人',manual:'📝 手动',scanQR:'📷 扫描二维码',
+    cName:'姓名 *',cPhone:'电话',cStatus:'状态',cColor:'颜色',
+    cNamePh:'联系人姓名',cPhonePh:'+86 1XX XXXX XXXX',cStatusPh:'你好 👋',
+    addBtn:'➕ 添加',msgBtn:'💬 发消息',callBtn:'📞 拨打',delBtn:'🗑️ 删除',
+    send:'➤',msgPh:'消息...',
+    profile:'个人资料',editProfile:'编辑资料',
+    myQR:'我的二维码',qrHint:'让好友扫描二维码添加您',
+    appearance:'外观与语言',theme:'主题',language:'语言',done:'完成 ✓',
+    posts:'我的动态',calls:'通话记录',noCalls:'暂无通话',
+    newPost:'新动态',postPh:'分享你的想法...',addPhoto:'🖼️ 添加图片',
+    publish:'发布 ✓',
+    missed:'未接',outgoing:'已拨',incoming:'已接',
+    calling:'拨打中...',
+    saveProfile:'保存 ✓',nameLbl:'姓名',statusLbl:'状态',colorLbl:'颜色',
+    statusPh:'嗨！我在使用 Pulse 👋',
+    tapChange:'点击更换头像',
+    saved:'✅ 资料已保存',photoSelected:'✅ 图片已选择',
+    added:'✅ 已添加：',deleted:'🗑️ 已删除 ',published:'✅ 已发布！',
+    enterName:'⚠️ 请输入姓名',enterYourName:'⚠️ 请输入您的姓名',
+    validPhone:'⚠️ 请输入有效号码',addTextOrPhoto:'⚠️ 请添加文字或图片',
+    friends:'好友',postsCount:'动态',callsCount:'通话',
+    today:'今天',swipeBack:'右滑返回 →',
+    searchCountry:'搜索国家或区号...',noResults:'无结果',
+    cameraStart:'📷 启动',cameraOn:'🔍 对准二维码',cameraErr:'❌ 摄像头被拒绝',
+    startCamera:'📷 启动摄像头',opening:'⏳ 正在打开...',
+    themeGold:'金色',themeMidnight:'午夜',themeAurora:'极光',themeRose:'浅色',
+    friendReqTitle:'好友请求',sendReq:'➕ 发送好友请求',
+    pending:'⏳ 等待中',accept:'✅ 接受',decline:'❌ 拒绝',block:'🚫 屏蔽',
+    seePosts:'查看动态',seePostsHint:'允许查看您的动态',
+    reqSent:'📨 请求已发送',reqAccepted:'✅ 已接受！',reqDeclined:'❌ 已拒绝',
+    blocked:'🚫 已屏蔽',friendRequests:'好友请求',
+    noRequests:'没有请求',incomingReq:'收到的请求',
+    easyMode:'简易模式',easyModeDesc:'更大字体、更鲜明颜色、更大按钮',
+    largeFont:'大字体',largeFontDesc:'更大的字体大小和按钮',
+    listenMsgs:'听取消息',listenMsgsDesc:'点击消息即可朗读',
+    silentMode:'静音模式',silentModeDesc:'不播放任何音频',
+    disableEasy:'关闭简易模式',
+    translate:'翻译',translateTo:'将文字翻译为',
+    autoTranslate:'自动翻译消息',autoTranslateDesc:'自动翻译收到的聊天消息',
+    translatedBy:'翻译来自',
+    copy:'复制',forward:'转发',favorite:'收藏',delete:'删除',select:'选择',
+    quote:'引用',reminder:'提醒',cancelTr:'取消',search:'搜索',
+    msgDeleted:'🗑️ 消息已删除',msgCopied:'📋 已复制',msgFavorited:'⭐ 已收藏',
+    gender:'性别',region:'地区',pulseId:'Pulse ID',
+    ringtone:'来电铃声',myAddress:'我的地址',whatsUp:'心情',
+    notSet:'未设置',male:'男',female:'女',other:'其他',
+    settingsMenu:'设置',easyModeMenu:'简易模式',translateMenu:'翻译',
+  }},
+  ru:{n:'Русский',f:'🇷🇺',d:'ltr',t:{
+    appTagline:'Общайтесь без границ',
+    phone:'Номер телефона',country:'Страна',name:'Имя',
+    namePh:'Введите ваше имя',avatarColor:'Цвет аватара',
+    login:'Войти →',terms:'Продолжая, вы соглашаетесь с условиями использования',
+    chats:'Чаты',friends:'Друзья',discover:'Открытия',me:'Я',
+    search:'Поиск...',noChats:'Нет чатов',noChatsHint:'Нажмите ✏️ чтобы добавить',
+    noFriends:'Нет друзей',noFriendsHint:'Нажмите ➕ чтобы добавить',
+    noPosts:'Нет постов',noPostsHint:'Нажмите ＋ чтобы создать',
+    online:'В сети',offline:'Не в сети',typing:'пишет...',
+    addContact:'Добавить контакт',manual:'📝 Вручную',scanQR:'📷 Сканировать QR',
+    cName:'Имя *',cPhone:'Телефон',cStatus:'Статус',cColor:'Цвет',
+    cNamePh:'Имя контакта',cPhonePh:'+7 9XX XXX XXXX',cStatusPh:'Привет 👋',
+    addBtn:'➕ Добавить',msgBtn:'💬 Сообщение',callBtn:'📞 Позвонить',delBtn:'🗑️ Удалить',
+    send:'➤',msgPh:'Сообщение...',
+    profile:'Профиль',editProfile:'Редактировать профиль',
+    myQR:'Мой QR-код',qrHint:'Попросите друзей отсканировать код',
+    appearance:'Внешний вид и язык',theme:'Тема',language:'Язык',done:'Готово ✓',
+    posts:'Мои посты',calls:'Журнал звонков',noCalls:'Нет звонков',
+    newPost:'Новый пост',postPh:'Что у вас нового?',addPhoto:'🖼️ Добавить фото',
+    publish:'Опубликовать ✓',
+    missed:'Пропущен',outgoing:'Исходящий',incoming:'Входящий',
+    calling:'Звонок...',
+    saveProfile:'Сохранить ✓',nameLbl:'Имя',statusLbl:'Статус',colorLbl:'Цвет',
+    statusPh:'Привет! Я использую Pulse 👋',
+    tapChange:'Нажмите для изменения',
+    saved:'✅ Профиль сохранён',photoSelected:'✅ Фото выбрано',
+    added:'✅ Добавлено: ',deleted:'🗑️ Удалено ',published:'✅ Опубликовано!',
+    enterName:'⚠️ Введите имя',enterYourName:'⚠️ Введите ваше имя',
+    validPhone:'⚠️ Неверный номер',addTextOrPhoto:'⚠️ Добавьте текст или фото',
+    friends:'Друзья',postsCount:'Посты',callsCount:'Звонки',
+    today:'Сегодня',swipeBack:'Смахните назад →',
+    searchCountry:'Поиск страны или кода...',noResults:'Нет результатов',
+    cameraStart:'📷 Запустить',cameraOn:'🔍 Наведите на QR',cameraErr:'❌ Камера недоступна',
+    startCamera:'📷 Запустить камеру',opening:'⏳ Открытие...',
+    themeGold:'Золото',themeMidnight:'Полночь',themeAurora:'Аврора',themeRose:'Светлый',
+    friendReqTitle:'Запрос в друзья',sendReq:'➕ Отправить запрос',
+    pending:'⏳ Ожидание',accept:'✅ Принять',decline:'❌ Отклонить',block:'🚫 Заблокировать',
+    seePosts:'Видеть посты',seePostsHint:'Разрешить видеть ваши посты',
+    reqSent:'📨 Запрос отправлен',reqAccepted:'✅ Принято!',reqDeclined:'❌ Отклонено',
+    blocked:'🚫 Заблокирован',friendRequests:'Запросы в друзья',
+    noRequests:'Нет запросов',incomingReq:'Входящие запросы',
+    easyMode:'Простой режим',easyModeDesc:'Крупный шрифт, яркие цвета, большие кнопки',
+    largeFont:'Крупный шрифт',largeFontDesc:'Больший размер шрифта и кнопок',
+    listenMsgs:'Прослушать сообщения',listenMsgsDesc:'Нажмите на сообщение для прослушивания',
+    silentMode:'Тихий режим',silentModeDesc:'Звук не будет воспроизводиться',
+    disableEasy:'Отключить простой режим',
+    translate:'Перевод',translateTo:'Перевести текст на',
+    autoTranslate:'Автоперевод сообщений',autoTranslateDesc:'Автоматически переводить входящие сообщения',
+    translatedBy:'Переведено',
+    copy:'Копировать',forward:'Переслать',favorite:'В избранное',delete:'Удалить',select:'Выбрать',
+    quote:'Цитата',reminder:'Напоминание',cancelTr:'Отмена',search:'Поиск',
+    msgDeleted:'🗑️ Сообщение удалено',msgCopied:'📋 Скопировано',msgFavorited:'⭐ Добавлено в избранное',
+    gender:'Пол',region:'Регион',pulseId:'Pulse ID',
+    ringtone:'Рингтон',myAddress:'Мой адрес',whatsUp:'Как дела',
+    notSet:'Не задано',male:'Мужской',female:'Женский',other:'Другое',
+    settingsMenu:'Настройки',easyModeMenu:'Простой режим',translateMenu:'Перевод',
+  }},
+  pt:{n:'Português',f:'🇧🇷',d:'ltr',t:{
+    appTagline:'Conecte-se sem limites',
+    phone:'Número de telefone',country:'País',name:'Nome',
+    namePh:'Digite seu nome',avatarColor:'Cor do avatar',
+    login:'Entrar →',terms:'Ao continuar, você concorda com os Termos de uso',
+    chats:'Conversas',friends:'Amigos',discover:'Descobrir',me:'Eu',
+    search:'Pesquisar...',noChats:'Sem conversas',noChatsHint:'Toque ✏️ para adicionar',
+    noFriends:'Sem amigos',noFriendsHint:'Toque ➕ para adicionar',
+    noPosts:'Sem publicações',noPostsHint:'Toque ＋ para criar',
+    online:'Online',offline:'Offline',typing:'está digitando...',
+    addContact:'Adicionar contato',manual:'📝 Manual',scanQR:'📷 Escanear QR',
+    cName:'Nome *',cPhone:'Telefone',cStatus:'Status',cColor:'Cor',
+    cNamePh:'Nome do contato',cPhonePh:'+55 XX XXXXX XXXX',cStatusPh:'Olá 👋',
+    addBtn:'➕ Adicionar',msgBtn:'💬 Mensagem',callBtn:'📞 Ligar',delBtn:'🗑️ Excluir',
+    send:'➤',msgPh:'Mensagem...',
+    profile:'Perfil',editProfile:'Editar perfil',
+    myQR:'Meu QR Code',qrHint:'Peça aos amigos para escanear',
+    appearance:'Aparência & Idioma',theme:'Tema',language:'Idioma',done:'Pronto ✓',
+    posts:'Minhas publicações',calls:'Registro de chamadas',noCalls:'Sem chamadas',
+    newPost:'Nova publicação',postPh:'O que você está pensando?',addPhoto:'🖼️ Adicionar foto',
+    publish:'Publicar ✓',
+    missed:'Perdida',outgoing:'Saída',incoming:'Entrada',
+    calling:'Ligando...',
+    saveProfile:'Salvar ✓',nameLbl:'Nome',statusLbl:'Status',colorLbl:'Cor',
+    statusPh:'Oi! Estou usando Pulse 👋',
+    tapChange:'Toque para alterar',
+    saved:'✅ Perfil salvo',photoSelected:'✅ Foto selecionada',
+    added:'✅ Adicionado: ',deleted:'🗑️ Excluído ',published:'✅ Publicado!',
+    enterName:'⚠️ Digite um nome',enterYourName:'⚠️ Digite seu nome',
+    validPhone:'⚠️ Número inválido',addTextOrPhoto:'⚠️ Adicione texto ou foto',
+    friends:'Amigos',postsCount:'Publicações',callsCount:'Chamadas',
+    today:'Hoje',swipeBack:'Deslize para voltar →',
+    searchCountry:'Buscar país ou código...',noResults:'Sem resultados',
+    cameraStart:'📷 Iniciar',cameraOn:'🔍 Aponte para o QR',cameraErr:'❌ Câmera negada',
+    startCamera:'📷 Iniciar câmera',opening:'⏳ Abrindo...',
+    themeGold:'Dourado',themeMidnight:'Meia-noite',themeAurora:'Aurora',themeRose:'Claro',
+  }},
+  id:{n:'Indonesia',f:'🇮🇩',d:'ltr',t:{
+    appTagline:'Terhubung tanpa batas',
+    phone:'Nomor telepon',country:'Negara',name:'Nama',
+    namePh:'Masukkan nama Anda',avatarColor:'Warna avatar',
+    login:'Masuk →',terms:'Dengan melanjutkan Anda menyetujui Syarat Penggunaan',
+    chats:'Obrolan',friends:'Teman',discover:'Temukan',me:'Saya',
+    search:'Cari...',noChats:'Belum ada obrolan',noChatsHint:'Ketuk ✏️ untuk menambah',
+    noFriends:'Belum ada teman',noFriendsHint:'Ketuk ➕ untuk menambah',
+    noPosts:'Belum ada postingan',noPostsHint:'Ketuk ＋ untuk membuat',
+    online:'Online',offline:'Offline',typing:'sedang mengetik...',
+    addContact:'Tambah kontak',manual:'📝 Manual',scanQR:'📷 Pindai QR',
+    cName:'Nama *',cPhone:'Telepon',cStatus:'Status',cColor:'Warna',
+    cNamePh:'Nama kontak',cPhonePh:'+62 8XX XXXX XXXX',cStatusPh:'Halo 👋',
+    addBtn:'➕ Tambah',msgBtn:'💬 Pesan',callBtn:'📞 Telepon',delBtn:'🗑️ Hapus',
+    send:'➤',msgPh:'Pesan...',
+    profile:'Profil',editProfile:'Edit profil',
+    myQR:'Kode QR saya',qrHint:'Minta teman memindai kode Anda',
+    appearance:'Tampilan & Bahasa',theme:'Tema',language:'Bahasa',done:'Selesai ✓',
+    posts:'Postingan saya',calls:'Riwayat panggilan',noCalls:'Tidak ada panggilan',
+    newPost:'Postingan baru',postPh:'Apa yang Anda pikirkan?',addPhoto:'🖼️ Tambah foto',
+    publish:'Posting ✓',
+    missed:'Tidak terjawab',outgoing:'Keluar',incoming:'Masuk',
+    calling:'Memanggil...',
+    saveProfile:'Simpan ✓',nameLbl:'Nama',statusLbl:'Status',colorLbl:'Warna',
+    statusPh:'Halo! Saya menggunakan Pulse 👋',
+    tapChange:'Ketuk untuk mengubah',
+    saved:'✅ Profil disimpan',photoSelected:'✅ Foto dipilih',
+    added:'✅ Ditambahkan: ',deleted:'🗑️ Dihapus ',published:'✅ Diposting!',
+    enterName:'⚠️ Masukkan nama',enterYourName:'⚠️ Masukkan nama Anda',
+    validPhone:'⚠️ Nomor tidak valid',addTextOrPhoto:'⚠️ Tambah teks atau foto',
+    friends:'Teman',postsCount:'Postingan',callsCount:'Panggilan',
+    today:'Hari ini',swipeBack:'Geser untuk kembali →',
+    searchCountry:'Cari negara atau kode...',noResults:'Tidak ada hasil',
+    cameraStart:'📷 Mulai',cameraOn:'🔍 Arahkan ke QR',cameraErr:'❌ Kamera ditolak',
+    startCamera:'📷 Mulai kamera',opening:'⏳ Membuka...',
+    themeGold:'Emas',themeMidnight:'Tengah malam',themeAurora:'Aurora',themeRose:'Terang',
+    // friend requests
+    friendReqTitle:'Permintaan Pertemanan',sendReq:'➕ Kirim Permintaan',
+    pending:'⏳ Menunggu',accept:'✅ Terima',decline:'❌ Tolak',block:'🚫 Blokir',
+    seePosts:'Lihat postingan',seePostsHint:'Izinkan melihat postingan Anda',
+    reqSent:'📨 Permintaan terkirim',reqAccepted:'✅ Diterima!',reqDeclined:'❌ Ditolak',
+    blocked:'🚫 Diblokir',friendRequests:'Permintaan Pertemanan',
+    noRequests:'Tidak ada permintaan',incomingReq:'Permintaan masuk',
+    easyMode:'Mode Mudah',easyModeDesc:'Font lebih besar, warna lebih cerah, tombol lebih besar',
+    largeFont:'Font Besar',largeFontDesc:'Ukuran font dan tombol yang lebih besar',
+    listenMsgs:'Dengarkan Pesan',listenMsgsDesc:'Ketuk pesan untuk mendengarkannya',
+    silentMode:'Mode Senyap',silentModeDesc:'Tidak ada audio yang diputar',
+    disableEasy:'Nonaktifkan Mode Mudah',
+    translate:'Terjemahkan',translateTo:'Terjemahkan teks ke',
+    autoTranslate:'Terjemahan otomatis',autoTranslateDesc:'Menerjemahkan pesan masuk secara otomatis',
+    translatedBy:'Diterjemahkan oleh',
+    copy:'Salin',forward:'Teruskan',favorite:'Favorit',delete:'Hapus',select:'Pilih',
+    quote:'Kutip',reminder:'Pengingat',cancelTr:'Batal',search:'Cari',
+    msgDeleted:'🗑️ Pesan dihapus',msgCopied:'📋 Disalin',msgFavorited:'⭐ Ditambahkan ke favorit',
+    gender:'Jenis Kelamin',region:'Wilayah',pulseId:'Pulse ID',
+    ringtone:'Nada Dering',myAddress:'Alamat Saya',whatsUp:'Apa kabar',
+    notSet:'Belum Diatur',male:'Laki-laki',female:'Perempuan',other:'Lainnya',
+    settingsMenu:'Pengaturan',easyModeMenu:'Mode Mudah',translateMenu:'Terjemahan',
+  }},
+  ko:{n:'한국어',f:'🇰🇷',d:'ltr',t:{
+    appTagline:'한계 없는 연결',
+    phone:'전화번호',country:'국가',name:'이름',
+    namePh:'이름을 입력하세요',avatarColor:'아바타 색상',
+    login:'로그인 →',terms:'계속하면 이용약관에 동의하는 것입니다',
+    chats:'채팅',friends:'친구',discover:'탐색',me:'나',
+    search:'검색...',noChats:'채팅이 없습니다',noChatsHint:'✏️ 을 눌러 추가하세요',
+    noFriends:'친구가 없습니다',noFriendsHint:'➕ 를 눌러 추가하세요',
+    noPosts:'게시물이 없습니다',noPostsHint:'＋ 를 눌러 만드세요',
+    online:'온라인',offline:'오프라인',typing:'입력 중...',
+    addContact:'연락처 추가',manual:'📝 직접 입력',scanQR:'📷 QR 스캔',
+    cName:'이름 *',cPhone:'전화',cStatus:'상태',cColor:'색상',
+    cNamePh:'연락처 이름',cPhonePh:'+82 1X XXXX XXXX',cStatusPh:'안녕하세요 👋',
+    addBtn:'➕ 추가',msgBtn:'💬 메시지',callBtn:'📞 전화',delBtn:'🗑️ 삭제',
+    send:'➤',msgPh:'메시지...',
+    profile:'프로필',editProfile:'프로필 편집',
+    myQR:'내 QR 코드',qrHint:'친구들에게 스캔을 요청하세요',
+    appearance:'테마 & 언어',theme:'테마',language:'언어',done:'완료 ✓',
+    posts:'내 게시물',calls:'통화 기록',noCalls:'통화가 없습니다',
+    newPost:'새 게시물',postPh:'무슨 생각을 하고 계세요?',addPhoto:'🖼️ 사진 추가',
+    publish:'게시 ✓',
+    missed:'부재중',outgoing:'발신',incoming:'수신',
+    calling:'전화 중...',
+    saveProfile:'저장 ✓',nameLbl:'이름',statusLbl:'상태',colorLbl:'색상',
+    statusPh:'안녕하세요! Pulse를 사용하고 있어요 👋',
+    tapChange:'사진을 눌러 변경',
+    saved:'✅ 프로필 저장됨',photoSelected:'✅ 사진 선택됨',
+    added:'✅ 추가됨: ',deleted:'🗑️ 삭제됨 ',published:'✅ 게시됨!',
+    enterName:'⚠️ 이름을 입력하세요',enterYourName:'⚠️ 이름을 입력하세요',
+    validPhone:'⚠️ 유효한 번호를 입력하세요',addTextOrPhoto:'⚠️ 텍스트 또는 사진을 추가하세요',
+    friends:'친구',postsCount:'게시물',callsCount:'통화',
+    today:'오늘',swipeBack:'뒤로 스와이프 →',
+    searchCountry:'국가 또는 코드 검색...',noResults:'결과 없음',
+    cameraStart:'📷 시작',cameraOn:'🔍 QR 코드를 향하세요',cameraErr:'❌ 카메라 접근 거부',
+    startCamera:'📷 카메라 시작',opening:'⏳ 열기...',
+    themeGold:'골드',themeMidnight:'미드나잇',themeAurora:'오로라',themeRose:'라이트',
+    // friend requests
+    friendReqTitle:'친구 요청',sendReq:'➕ 친구 요청 보내기',
+    pending:'⏳ 대기 중',accept:'✅ 수락',decline:'❌ 거절',block:'🚫 차단',
+    seePosts:'게시물 보기',seePostsHint:'내 게시물을 볼 수 있도록 허용',
+    reqSent:'📨 요청을 보냈습니다',reqAccepted:'✅ 수락됨!',reqDeclined:'❌ 거절됨',
+    blocked:'🚫 차단됨',friendRequests:'친구 요청',
+    noRequests:'요청이 없습니다',incomingReq:'받은 요청',
+    easyMode:'쉬운 모드',easyModeDesc:'더 큰 글꼴, 선명한 색상, 큰 버튼',
+    largeFont:'큰 글꼴',largeFontDesc:'더 큰 글꼴 크기와 버튼',
+    listenMsgs:'메시지 듣기',listenMsgsDesc:'메시지를 탭하여 들을 수 있습니다',
+    silentMode:'무음 모드',silentModeDesc:'오디오가 재생되지 않습니다',
+    disableEasy:'쉬운 모드 비활성화',
+    translate:'번역',translateTo:'텍스트 번역 대상',
+    autoTranslate:'자동 번역',autoTranslateDesc:'받은 메시지를 자동으로 번역합니다',
+    translatedBy:'번역됨',
+    copy:'복사',forward:'전달',favorite:'즐겨찾기',delete:'삭제',select:'선택',
+    quote:'인용',reminder:'알림',cancelTr:'취소',search:'검색',
+    msgDeleted:'🗑️ 메시지 삭제됨',msgCopied:'📋 복사됨',msgFavorited:'⭐ 즐겨찾기에 추가됨',
+    gender:'성별',region:'지역',pulseId:'Pulse ID',
+    ringtone:'벨소리',myAddress:'내 주소',whatsUp:'근황',
+    notSet:'미설정',male:'남성',female:'여성',other:'기타',
+    settingsMenu:'설정',easyModeMenu:'쉬운 모드',translateMenu:'번역',
+  }},
+};
+
+let me=null; // {name,phone,color,avatar,status,gender,region,pulseId,whatsUp,ringtone}
+let contacts=[];   // {id,name,phone,status,color,avatar,online,unread,lastMsg,lastTime,seePosts,friendStatus}
+let friendReqs=[]; // {id,fromName,fromPhone,fromColor,fromAvatar,fromStatus,time} — incoming requests
+let convos={};
+let posts=[];
+let favorites=[]; // favorited messages
+
+// Settings state
+let easyLargeFont = false;
+let easyListenMsgs = false;
+let easySilent = false;
+let autoTranslate = false;
+let translateLang = 'ar'; // target language for auto-translation
+let quotedMsg = null; // {text, from} — message being quoted
+let callLog=[];
+let activeChat=null;
+let curTab='chats';
+let curTheme='gold';
+let curLang='ar';
+
+// ── i18n helper ──
+function t(key){ return (LANGS[curLang]?.t||LANGS.ar.t)[key]||key; }
+
+function applyLang(code){
+  const lang=LANGS[code];
+  if(!lang)return;
+  curLang=code;
+  document.documentElement.setAttribute('lang',code);
+  document.documentElement.setAttribute('dir',lang.d);
+
+  // Login
+  _setText('loginTagline',t('appTagline'));
+  _setText('lLblCountry',t('country'));
+  _setText('lLblPhone',t('phone'));
+  _setText('lLblName',t('name'));
+  _setText('lLblColor',t('avatarColor'));
+  _setAttr('lName','placeholder',t('namePh'));
+  _setText('lBtn',t('login'));
+  _setText('loginTerms',t('terms'));
+  _setAttr('countrySearch','placeholder',t('searchCountry'));
+
+  // Nav
+  document.querySelectorAll('.nav-item').forEach((el,i)=>{
+    const lbl=el.querySelector('.nav-lbl');
+    const keys=['chats','friends','discover','me'];
+    if(lbl&&keys[i]) lbl.textContent=t(keys[i]);
+  });
+
+  // Static elements
+  _setAttr('searchInput','placeholder',t('search'));
+  _setText('tbTitleChats',t('chats'));
+  _setText('tbTitleFriends',t('friends'));
+  _setText('tbTitleDiscover',t('discover'));
+  _setText('swipeHint',t('swipeBack'));
+  _setText('shTitleAdd',t('addContact'));
+  _setText('shTitleTheme',t('appearance'));
+  _setText('shTitlePost',t('newPost'));
+  _setText('shTitleEdit',t('editProfile'));
+  _setText('stManual',t('manual'));
+  _setText('stScan',t('scanQR'));
+  _setAttr('postTa','placeholder',t('postPh'));
+  _setText('postImgLabel',t('addPhoto'));
+  _setText('postSubmit',t('publish'));
+  _setText('epHint',t('tapChange'));
+  _setText('epLblName',t('nameLbl'));
+  _setText('epLblStatus',t('statusLbl'));
+  _setText('epLblColor',t('colorLbl'));
+  _setAttr('epName','placeholder',t('namePh'));
+  _setAttr('epStatus','placeholder',t('statusPh'));
+  _setText('epSave',t('saveProfile'));
+
+  // Re-render all dynamic screens
+  if(me){
+    renderChatList();
+    renderFriends();
+    renderDiscover();
+    renderProfile();
+  }
+}
+
+function _setText(id,val){ const el=document.getElementById(id); if(el) el.textContent=val; }
+function _setAttr(id,attr,val){ const el=document.getElementById(id); if(el) el.setAttribute(attr,val); }
+let emoOpen=false,stkOpen=false;
+let addMode='manual',addColor='B';
+let epColor='A';
+let scanStream=null;
+
+// ═══════════════════════════════════
+// COUNTRIES (world + Egypt first)
+// ═══════════════════════════════════
+const COUNTRIES = [
+  {f:'🇪🇬',n:'مصر',e:'Egypt',d:'+20',ph:'1X XXXX XXXX'},
+  {f:'🇸🇦',n:'السعودية',e:'Saudi Arabia',d:'+966',ph:'5X XXX XXXX'},
+  {f:'🇦🇪',n:'الإمارات',e:'UAE',d:'+971',ph:'5X XXX XXXX'},
+  {f:'🇰🇼',n:'الكويت',e:'Kuwait',d:'+965',ph:'XXXX XXXX'},
+  {f:'🇶🇦',n:'قطر',e:'Qatar',d:'+974',ph:'XXXX XXXX'},
+  {f:'🇧🇭',n:'البحرين',e:'Bahrain',d:'+973',ph:'XXXX XXXX'},
+  {f:'🇴🇲',n:'عُمان',e:'Oman',d:'+968',ph:'XXXX XXXX'},
+  {f:'🇾🇪',n:'اليمن',e:'Yemen',d:'+967',ph:'7XX XXX XXX'},
+  {f:'🇯🇴',n:'الأردن',e:'Jordan',d:'+962',ph:'7X XXX XXXX'},
+  {f:'🇸🇾',n:'سوريا',e:'Syria',d:'+963',ph:'9XX XXX XXX'},
+  {f:'🇱🇧',n:'لبنان',e:'Lebanon',d:'+961',ph:'XX XXX XXX'},
+  {f:'🇮🇶',n:'العراق',e:'Iraq',d:'+964',ph:'7XX XXX XXXX'},
+  {f:'🇵🇸',n:'فلسطين',e:'Palestine',d:'+970',ph:'5X XXX XXXX'},
+  {f:'🇱🇾',n:'ليبيا',e:'Libya',d:'+218',ph:'9X XXX XXXX'},
+  {f:'🇹🇳',n:'تونس',e:'Tunisia',d:'+216',ph:'XX XXX XXX'},
+  {f:'🇩🇿',n:'الجزائر',e:'Algeria',d:'+213',ph:'7XX XXX XXX'},
+  {f:'🇲🇦',n:'المغرب',e:'Morocco',d:'+212',ph:'6XX XXX XXX'},
+  {f:'🇸🇩',n:'السودان',e:'Sudan',d:'+249',ph:'9X XXX XXXX'},
+  {f:'🇸🇴',n:'الصومال',e:'Somalia',d:'+252',ph:'6X XXX XXX'},
+  {f:'🇩🇯',n:'جيبوتي',e:'Djibouti',d:'+253',ph:'XX XX XX XX'},
+  {f:'🇰🇲',n:'جزر القمر',e:'Comoros',d:'+269',ph:'XXX XXXX'},
+  {f:'🇲🇷',n:'موريتانيا',e:'Mauritania',d:'+222',ph:'XX XX XX XX'},
+  {f:'🇺🇸',n:'الولايات المتحدة',e:'United States',d:'+1',ph:'XXX XXX XXXX'},
+  {f:'🇬🇧',n:'المملكة المتحدة',e:'United Kingdom',d:'+44',ph:'7XXX XXX XXX'},
+  {f:'🇩🇪',n:'ألمانيا',e:'Germany',d:'+49',ph:'1XX XXXXXXX'},
+  {f:'🇫🇷',n:'فرنسا',e:'France',d:'+33',ph:'6X XX XX XX XX'},
+  {f:'🇮🇹',n:'إيطاليا',e:'Italy',d:'+39',ph:'3XX XXX XXXX'},
+  {f:'🇪🇸',n:'إسبانيا',e:'Spain',d:'+34',ph:'6XX XXX XXX'},
+  {f:'🇵🇹',n:'البرتغال',e:'Portugal',d:'+351',ph:'9XX XXX XXX'},
+  {f:'🇳🇱',n:'هولندا',e:'Netherlands',d:'+31',ph:'6 XXXX XXXX'},
+  {f:'🇧🇪',n:'بلجيكا',e:'Belgium',d:'+32',ph:'4XX XX XX XX'},
+  {f:'🇨🇭',n:'سويسرا',e:'Switzerland',d:'+41',ph:'7X XXX XX XX'},
+  {f:'🇦🇹',n:'النمسا',e:'Austria',d:'+43',ph:'6XX XXXXXXX'},
+  {f:'🇸🇪',n:'السويد',e:'Sweden',d:'+46',ph:'7X XXX XXXX'},
+  {f:'🇳🇴',n:'النرويج',e:'Norway',d:'+47',ph:'XXX XX XXX'},
+  {f:'🇩🇰',n:'الدنمارك',e:'Denmark',d:'+45',ph:'XX XX XX XX'},
+  {f:'🇫🇮',n:'فنلندا',e:'Finland',d:'+358',ph:'5X XXX XXXX'},
+  {f:'🇵🇱',n:'بولندا',e:'Poland',d:'+48',ph:'XXX XXX XXX'},
+  {f:'🇨🇿',n:'التشيك',e:'Czech Republic',d:'+420',ph:'XXX XXX XXX'},
+  {f:'🇭🇺',n:'المجر',e:'Hungary',d:'+36',ph:'XX XXX XXXX'},
+  {f:'🇷🇴',n:'رومانيا',e:'Romania',d:'+40',ph:'7XX XXX XXX'},
+  {f:'🇧🇬',n:'بلغاريا',e:'Bulgaria',d:'+359',ph:'XX XXX XXXX'},
+  {f:'🇬🇷',n:'اليونان',e:'Greece',d:'+30',ph:'69X XXX XXXX'},
+  {f:'🇹🇷',n:'تركيا',e:'Turkey',d:'+90',ph:'5XX XXX XXXX'},
+  {f:'🇷🇺',n:'روسيا',e:'Russia',d:'+7',ph:'9XX XXX XXXX'},
+  {f:'🇺🇦',n:'أوكرانيا',e:'Ukraine',d:'+380',ph:'9X XXX XXXX'},
+  {f:'🇮🇱',n:'إسرائيل',e:'Israel',d:'+972',ph:'5X XXX XXXX'},
+  {f:'🇮🇷',n:'إيران',e:'Iran',d:'+98',ph:'9XX XXX XXXX'},
+  {f:'🇵🇰',n:'باكستان',e:'Pakistan',d:'+92',ph:'3XX XXXXXXX'},
+  {f:'🇮🇳',n:'الهند',e:'India',d:'+91',ph:'XXXXX XXXXX'},
+  {f:'🇧🇩',n:'بنغلاديش',e:'Bangladesh',d:'+880',ph:'1XXX XXXXXX'},
+  {f:'🇱🇰',n:'سريلانكا',e:'Sri Lanka',d:'+94',ph:'7X XXX XXXX'},
+  {f:'🇳🇵',n:'نيبال',e:'Nepal',d:'+977',ph:'98X XXX XXXX'},
+  {f:'🇦🇫',n:'أفغانستان',e:'Afghanistan',d:'+93',ph:'7X XXX XXXX'},
+  {f:'🇨🇳',n:'الصين',e:'China',d:'+86',ph:'1XX XXXX XXXX'},
+  {f:'🇯🇵',n:'اليابان',e:'Japan',d:'+81',ph:'7X XXXX XXXX'},
+  {f:'🇰🇷',n:'كوريا الجنوبية',e:'South Korea',d:'+82',ph:'1X XXXX XXXX'},
+  {f:'🇻🇳',n:'فيتنام',e:'Vietnam',d:'+84',ph:'9X XXX XXXX'},
+  {f:'🇹🇭',n:'تايلاند',e:'Thailand',d:'+66',ph:'8X XXX XXXX'},
+  {f:'🇲🇾',n:'ماليزيا',e:'Malaysia',d:'+60',ph:'1X XXXX XXXX'},
+  {f:'🇸🇬',n:'سنغافورة',e:'Singapore',d:'+65',ph:'XXXX XXXX'},
+  {f:'🇮🇩',n:'إندونيسيا',e:'Indonesia',d:'+62',ph:'8XX XXXX XXXX'},
+  {f:'🇵🇭',n:'الفلبين',e:'Philippines',d:'+63',ph:'9XX XXX XXXX'},
+  {f:'🇦🇺',n:'أستراليا',e:'Australia',d:'+61',ph:'4XX XXX XXX'},
+  {f:'🇳🇿',n:'نيوزيلندا',e:'New Zealand',d:'+64',ph:'2X XXX XXXX'},
+  {f:'🇨🇦',n:'كندا',e:'Canada',d:'+1',ph:'XXX XXX XXXX'},
+  {f:'🇲🇽',n:'المكسيك',e:'Mexico',d:'+52',ph:'1 XXX XXX XXXX'},
+  {f:'🇧🇷',n:'البرازيل',e:'Brazil',d:'+55',ph:'XX XXXXX XXXX'},
+  {f:'🇦🇷',n:'الأرجنتين',e:'Argentina',d:'+54',ph:'9 XXX XXX XXXX'},
+  {f:'🇨🇱',n:'تشيلي',e:'Chile',d:'+56',ph:'9 XXXX XXXX'},
+  {f:'🇨🇴',n:'كولومبيا',e:'Colombia',d:'+57',ph:'3XX XXX XXXX'},
+  {f:'🇵🇪',n:'بيرو',e:'Peru',d:'+51',ph:'9XX XXX XXX'},
+  {f:'🇿🇦',n:'جنوب أفريقيا',e:'South Africa',d:'+27',ph:'8X XXX XXXX'},
+  {f:'🇳🇬',n:'نيجيريا',e:'Nigeria',d:'+234',ph:'8XX XXX XXXX'},
+  {f:'🇰🇪',n:'كينيا',e:'Kenya',d:'+254',ph:'7XX XXX XXX'},
+  {f:'🇪🇹',n:'إثيوبيا',e:'Ethiopia',d:'+251',ph:'9X XXX XXXX'},
+  {f:'🇹🇿',n:'تنزانيا',e:'Tanzania',d:'+255',ph:'7XX XXX XXX'},
+  {f:'🇬🇭',n:'غانا',e:'Ghana',d:'+233',ph:'XX XXX XXXX'},
+  {f:'🇸🇳',n:'السنغال',e:'Senegal',d:'+221',ph:'7X XXX XXXX'},
+  {f:'🇨🇮',n:'كوت ديفوار',e:"Côte d'Ivoire",d:'+225',ph:'XX XX XX XX'},
+  {f:'🇲🇱',n:'مالي',e:'Mali',d:'+223',ph:'XX XX XX XX'},
+  {f:'🇨🇲',n:'الكاميرون',e:'Cameroon',d:'+237',ph:'6XX XX XX XX'},
+  {f:'🇺🇬',n:'أوغندا',e:'Uganda',d:'+256',ph:'7XX XXX XXX'},
+  {f:'🇿🇼',n:'زيمبابوي',e:'Zimbabwe',d:'+263',ph:'7X XXX XXXX'},
+  {f:'🇿🇲',n:'زامبيا',e:'Zambia',d:'+260',ph:'9X XXX XXXX'},
+  {f:'🇲🇿',n:'موزمبيق',e:'Mozambique',d:'+258',ph:'8X XXX XXXX'},
+  {f:'🇦🇴',n:'أنغولا',e:'Angola',d:'+244',ph:'9XX XXX XXX'},
+  {f:'🇨🇩',n:'الكونغو',e:'DR Congo',d:'+243',ph:'8X XXX XXXX'},
+  {f:'🇷🇼',n:'رواندا',e:'Rwanda',d:'+250',ph:'7XX XXX XXX'},
+  {f:'🇲🇬',n:'مدغشقر',e:'Madagascar',d:'+261',ph:'XX XX XXX XX'},
+  {f:'🇮🇸',n:'آيسلندا',e:'Iceland',d:'+354',ph:'XXX XXXX'},
+  {f:'🇮🇪',n:'أيرلندا',e:'Ireland',d:'+353',ph:'8X XXX XXXX'},
+  {f:'🇸🇰',n:'سلوفاكيا',e:'Slovakia',d:'+421',ph:'9XX XXX XXX'},
+  {f:'🇸🇮',n:'سلوفينيا',e:'Slovenia',d:'+386',ph:'XX XXX XXX'},
+  {f:'🇭🇷',n:'كرواتيا',e:'Croatia',d:'+385',ph:'9X XXX XXXX'},
+  {f:'🇧🇦',n:'البوسنة',e:'Bosnia',d:'+387',ph:'6X XXX XXX'},
+  {f:'🇷🇸',n:'صربيا',e:'Serbia',d:'+381',ph:'6X XXX XXXX'},
+  {f:'🇲🇰',n:'شمال مقدونيا',e:'N. Macedonia',d:'+389',ph:'7X XXX XXX'},
+  {f:'🇦🇱',n:'ألبانيا',e:'Albania',d:'+355',ph:'6X XXX XXXX'},
+  {f:'🇲🇪',n:'الجبل الأسود',e:'Montenegro',d:'+382',ph:'6X XXX XXX'},
+  {f:'🇱🇻',n:'لاتفيا',e:'Latvia',d:'+371',ph:'XX XXX XXX'},
+  {f:'🇱🇹',n:'ليتوانيا',e:'Lithuania',d:'+370',ph:'6X XXX XXX'},
+  {f:'🇪🇪',n:'إستونيا',e:'Estonia',d:'+372',ph:'XXXX XXXX'},
+  {f:'🇧🇾',n:'بيلاروس',e:'Belarus',d:'+375',ph:'XX XXX XXXX'},
+  {f:'🇲🇩',n:'مولدوفا',e:'Moldova',d:'+373',ph:'XX XXX XXX'},
+  {f:'🇦🇲',n:'أرمينيا',e:'Armenia',d:'+374',ph:'XX XXX XXX'},
+  {f:'🇬🇪',n:'جورجيا',e:'Georgia',d:'+995',ph:'5XX XX XX XX'},
+  {f:'🇦🇿',n:'أذربيجان',e:'Azerbaijan',d:'+994',ph:'5X XXX XXXX'},
+  {f:'🇰🇿',n:'كازاخستان',e:'Kazakhstan',d:'+7',ph:'7XX XXX XXXX'},
+  {f:'🇺🇿',n:'أوزبكستان',e:'Uzbekistan',d:'+998',ph:'9X XXX XXXX'},
+  {f:'🇹🇲',n:'تركمانستان',e:'Turkmenistan',d:'+993',ph:'6X XXXXXX'},
+  {f:'🇰🇬',n:'قيرغيزستان',e:'Kyrgyzstan',d:'+996',ph:'7XX XXXXXX'},
+  {f:'🇹🇯',n:'طاجيكستان',e:'Tajikistan',d:'+992',ph:'XX XXX XXXX'},
+  {f:'🇲🇳',n:'منغوليا',e:'Mongolia',d:'+976',ph:'XXXX XXXX'},
+  {f:'🇲🇲',n:'ميانمار',e:'Myanmar',d:'+95',ph:'9X XXX XXXX'},
+  {f:'🇰🇭',n:'كمبوديا',e:'Cambodia',d:'+855',ph:'XX XXX XXX'},
+  {f:'🇱🇦',n:'لاوس',e:'Laos',d:'+856',ph:'XX XX XXXX'},
+  {f:'🇧🇳',n:'بروناي',e:'Brunei',d:'+673',ph:'XXX XXXX'},
+  {f:'🇨🇾',n:'قبرص',e:'Cyprus',d:'+357',ph:'9X XXX XXX'},
+  {f:'🇲🇹',n:'مالطا',e:'Malta',d:'+356',ph:'XXXX XXXX'},
+  {f:'🇱🇺',n:'لوكسمبورغ',e:'Luxembourg',d:'+352',ph:'XXX XXX XXX'},
+  {f:'🇦🇩',n:'أندورا',e:'Andorra',d:'+376',ph:'XXX XXX'},
+  {f:'🇬🇱',n:'غرينلاند',e:'Greenland',d:'+299',ph:'XXX XXX'},
+  {f:'🇫🇴',n:'جزر فارو',e:'Faroe Islands',d:'+298',ph:'XXX XXX'},
+  {f:'🇲🇻',n:'المالديف',e:'Maldives',d:'+960',ph:'XXX XXXX'},
+  {f:'🇧🇹',n:'بوتان',e:'Bhutan',d:'+975',ph:'17 XXX XXX'},
+  {f:'🇨🇻',n:'الرأس الأخضر',e:'Cape Verde',d:'+238',ph:'XXX XXXX'},
+  {f:'🇬🇶',n:'غينيا الاستوائية',e:'Eq. Guinea',d:'+240',ph:'XXX XXX XXX'},
+  {f:'🇬🇦',n:'الغابون',e:'Gabon',d:'+241',ph:'X XX XX XX XX'},
+  {f:'🇨🇬',n:'الكونغو',e:'Congo',d:'+242',ph:'XX XXX XXXX'},
+  {f:'🇨🇫',n:'أفريقيا الوسطى',e:'C. African Rep.',d:'+236',ph:'XX XX XX XX'},
+  {f:'🇹🇩',n:'تشاد',e:'Chad',d:'+235',ph:'XX XX XX XX'},
+  {f:'🇳🇪',n:'النيجر',e:'Niger',d:'+227',ph:'XX XX XX XX'},
+  {f:'🇧🇫',n:'بوركينا فاسو',e:'Burkina Faso',d:'+226',ph:'XX XX XX XX'},
+  {f:'🇧🇯',n:'بنين',e:'Benin',d:'+229',ph:'XX XX XX XX'},
+  {f:'🇹🇬',n:'توغو',e:'Togo',d:'+228',ph:'XX XXX XXX'},
+  {f:'🇬🇳',n:'غينيا',e:'Guinea',d:'+224',ph:'XX XXX XXXX'},
+  {f:'🇸🇱',n:'سيراليون',e:'Sierra Leone',d:'+232',ph:'XX XXX XXX'},
+  {f:'🇱🇷',n:'ليبيريا',e:'Liberia',d:'+231',ph:'XX XXX XXXX'},
+  {f:'🇬🇲',n:'غامبيا',e:'Gambia',d:'+220',ph:'XXX XXXX'},
+  {f:'🇻🇪',n:'فنزويلا',e:'Venezuela',d:'+58',ph:'4XX XXX XXXX'},
+  {f:'🇧🇴',n:'بوليفيا',e:'Bolivia',d:'+591',ph:'7XX XXXXX'},
+  {f:'🇵🇾',n:'باراغواي',e:'Paraguay',d:'+595',ph:'9XX XXX XXX'},
+  {f:'🇺🇾',n:'أوروغواي',e:'Uruguay',d:'+598',ph:'9X XXX XXX'},
+  {f:'🇪🇨',n:'الإكوادور',e:'Ecuador',d:'+593',ph:'9X XXX XXXX'},
+  {f:'🇵🇦',n:'بنما',e:'Panama',d:'+507',ph:'6XXX XXXX'},
+  {f:'🇨🇷',n:'كوستاريكا',e:'Costa Rica',d:'+506',ph:'XXXX XXXX'},
+  {f:'🇳🇮',n:'نيكاراغوا',e:'Nicaragua',d:'+505',ph:'XXXX XXXX'},
+  {f:'🇭🇳',n:'هندوراس',e:'Honduras',d:'+504',ph:'XXXX XXXX'},
+  {f:'🇸🇻',n:'السلفادور',e:'El Salvador',d:'+503',ph:'XXXX XXXX'},
+  {f:'🇬🇹',n:'غواتيمالا',e:'Guatemala',d:'+502',ph:'XXXX XXXX'},
+  {f:'🇨🇺',n:'كوبا',e:'Cuba',d:'+53',ph:'5 XXX XXXX'},
+  {f:'🇭🇹',n:'هايتي',e:'Haiti',d:'+509',ph:'XXXX XXXX'},
+  {f:'🇯🇲',n:'جامايكا',e:'Jamaica',d:'+1-876',ph:'XXX XXXX'},
+  {f:'🇹🇹',n:'ترينيداد',e:'Trinidad',d:'+1-868',ph:'XXX XXXX'},
+];
+let selCountry = COUNTRIES[0]; // Egypt default
+
+// ═══════════════════════════════════
+// LOGIN
+// ═══════════════════════════════════
+(function initLogin(){
+  // Country picker
+  const display  = document.getElementById('countryDisplay');
+  const drop     = document.getElementById('countryDropdown');
+  const listEl   = document.getElementById('countryList');
+  const searchEl = document.getElementById('countrySearch');
+  const arrow    = document.getElementById('dropArrow');
+
+  function setCountry(c) {
+    selCountry = c;
+    document.getElementById('selFlag').textContent = c.f;
+    document.getElementById('selName').textContent = c.n;
+    document.getElementById('selCode').textContent = c.d;
+    document.getElementById('inlineCode').textContent = c.d;
+    // update placeholder per country
+    document.getElementById('lPhone').placeholder = c.ph || 'XXXXXXXXXX';
+  }
+
+  function renderCountries(filter='') {
+    listEl.innerHTML = '';
+    const q = filter.trim().toLowerCase();
+    const list = q
+      ? COUNTRIES.filter(c => c.n.includes(q) || c.e.toLowerCase().includes(q) || c.d.includes(q))
+      : COUNTRIES;
+    if (!list.length) {
+      listEl.innerHTML = `<div style="text-align:center;padding:24px;font-size:13px;color:var(--t3);">لا نتائج</div>`;
+      return;
+    }
+    list.forEach(c => {
+      const el = document.createElement('div');
+      el.className = 'country-item' + (c === selCountry ? ' selected' : '');
+      el.innerHTML = `
+        <span class="ci-flag">${c.f}</span>
+        <span class="ci-name">${c.n}</span>
+        <span class="ci-dial">${c.d}</span>
+      `;
+      el.onclick = () => { setCountry(c); closeDrop(); };
+      listEl.appendChild(el);
+    });
+  }
+
+  function openDrop() {
+    // position dropdown below the display button
+    const rect = display.getBoundingClientRect();
+    drop.style.top = (rect.bottom + 6) + 'px';
+    drop.style.display = 'flex';
+    arrow.style.transform = 'rotate(180deg)';
+    searchEl.value = '';
+    renderCountries();
+    setTimeout(() => searchEl.focus(), 80);
+  }
+  function closeDrop() {
+    drop.style.display = 'none';
+    arrow.style.transform = 'rotate(0deg)';
+  }
+
+  display.onclick = e => { e.stopPropagation(); drop.style.display === 'flex' ? closeDrop() : openDrop(); };
+  searchEl.oninput = e => renderCountries(e.target.value);
+  document.addEventListener('click', e => { if (!drop.contains(e.target) && e.target !== display) closeDrop(); });
+
+  // Color picker
+  const row=document.getElementById('lColorPick');
+  let sel='B';
+  AVKEYS.forEach(k=>{
+    const d=document.createElement('div');
+    d.className='cp-dot'+(k===sel?' on':'');
+    d.style.background=AVCOLS[k];
+    d.onclick=()=>{sel=k;row.querySelectorAll('.cp-dot').forEach(x=>x.classList.remove('on'));d.classList.add('on');};
+    row.appendChild(d);
+  });
+
+  document.getElementById('lBtn').onclick=()=>{
+    const phone=document.getElementById('lPhone').value.trim();
+    const name=document.getElementById('lName').value.trim();
+    if(phone.length<7){toast(t('validPhone'));return;}
+    if(!name){toast(t('enterYourName'));return;}
+    const color=row.querySelector('.on')?.style.background
+      ?Object.keys(AVCOLS).find(k=>AVCOLS[k]===row.querySelector('.on').style.background)||'B':'B';
+    me={name,phone:selCountry.d+' '+phone,color,avatar:null,status:'مرحباً! أستخدم Pulse 👋',
+        gender:'',region:selCountry.n,pulseId:name.toLowerCase().replace(/\s+/g,'_')+'_'+Math.floor(Math.random()*90+10),
+        whatsUp:'',ringtone:'Default'};
+    const ls=document.getElementById('loginScreen');
+    ls.classList.add('out');
+    setTimeout(()=>{ls.style.display='none';launch();},380);
+  };
+})();
+
+function launch(){
+  document.getElementById('mainWrap').style.opacity='';
+  document.getElementById('mainWrap').classList.remove('hidden');
+  updateMeNav();
+  renderChatList();
+  renderFriends();
+  renderDiscover();
+  renderProfile();
+  updateFriendsBadge();
+}
+
+// ═══════════════════════════════════
+// AVATAR HTML
+// ═══════════════════════════════════
+function avHTML(c,cls='av-m'){
+  const n=parseInt(cls.replace('av-','').replace('s',''));
+  const fs=n>=80?30:n>=48?18:n>=40?15:n>=28?11:11;
+  if(c.avatar) return `<div class="av ${cls}"><img src="${c.avatar}" alt="${c.name}"></div>`;
+  return `<div class="av ${cls}" style="background:${AVCOLS[c.color]||'#888'};color:#fff;font-size:${fs}px;">${c.name.charAt(0).toUpperCase()}</div>`;
+}
+function avEl(c,cls='av-m'){
+  const el=document.createElement('div');
+  el.outerHTML; // trick
+  const wrap=document.createElement('div');
+  wrap.innerHTML=avHTML(c,cls);
+  return wrap.firstChild;
+}
+
+// ═══════════════════════════════════
+// NAV
+// ═══════════════════════════════════
+function updateMeNav(){
+  const ico=document.getElementById('navMeIco');
+  if(!me){ico.textContent='👤';return;}
+  if(me.avatar){
+    ico.innerHTML=`<div style="width:26px;height:26px;border-radius:50%;overflow:hidden;display:inline-flex;"><img src="${me.avatar}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;"></div>`;
+  } else {
+    ico.innerHTML=`<div style="width:26px;height:26px;border-radius:50%;background:${AVCOLS[me.color]||'#888'};display:inline-flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:800;">${me.name.charAt(0).toUpperCase()}</div>`;
+  }
+}
+
+document.querySelectorAll('.nav-item').forEach(item=>{
+  item.addEventListener('click',()=>switchTab(item.dataset.tab));
+});
+
+function switchTab(tab){
+  curTab=tab;slideToList();
+  document.querySelectorAll('.nav-item').forEach(i=>i.classList.toggle('active',i.dataset.tab===tab));
+  const map={chats:'sChats',friends:'sFriends',discover:'sDiscover',me:'sMe'};
+  Object.entries(map).forEach(([k,v])=>document.getElementById(v).classList.toggle('off',k!==tab));
+  if(tab==='friends')renderFriends();
+  if(tab==='discover')renderDiscover();
+  if(tab==='me')renderProfile();
+  updateTotalBadge();
+}
+
+// ═══════════════════════════════════
+// SLIDE + SWIPE
+// ═══════════════════════════════════
+function slideToChatView(){
+  const sw=document.getElementById('sw');
+  sw.classList.remove('drag');sw.classList.add('open');sw.style.transform='';
+  setTimeout(()=>{const m=document.getElementById('msgs');if(m)requestAnimationFrame(()=>requestAnimationFrame(()=>{m.scrollTop=m.scrollHeight;}));},320);
+}
+function slideToList(){
+  const sw=document.getElementById('sw');
+  sw.classList.remove('drag','open');sw.style.transform='';
+}
+function goBack(){slideToList();activeChat=null;renderChatList();}
+
+function showHint(){const h=document.getElementById('swipeHint');h.classList.add('show');setTimeout(()=>h.classList.remove('show'),2000);}
+
+(function drag(){
+  const sw=document.getElementById('sw');
+  let sx=0,sy=0,cx=0,drag=false,locked=false,dirLock=false;
+  const T=60,EDGE=40;
+  function start(x,y){
+    const open=sw.classList.contains('open');
+    if(!open&&x<sw.parentElement.offsetWidth-EDGE)return;
+    sx=x;sy=y;cx=x;drag=false;locked=false;dirLock=false;
+  }
+  function move(x,y){
+    if(!sx&&!sy)return;
+    const dx=x-sx,dy=y-sy;
+    if(!dirLock&&(Math.abs(dx)>5||Math.abs(dy)>5)){dirLock=true;if(Math.abs(dy)>Math.abs(dx))locked=true;}
+    if(locked)return;
+    drag=true;cx=x;
+    const open=sw.classList.contains('open');
+    const W=sw.parentElement.offsetWidth;
+    let nX=(open?W:0)+dx;nX=Math.max(0,Math.min(W,nX));
+    sw.classList.add('drag');sw.style.transform=`translateX(${nX}px)`;
+  }
+  function end(){
+    if(!drag){sx=0;sy=0;return;}
+    drag=false;const dx=cx-sx;sw.classList.remove('drag');sw.style.transform='';
+    const open=sw.classList.contains('open');
+    if(open){dx<-T?slideToList():slideToChatView();}
+    else if(activeChat&&dx>T)slideToChatView();
+    sx=0;sy=0;
+  }
+  sw.addEventListener('touchstart',e=>start(e.touches[0].clientX,e.touches[0].clientY),{passive:true});
+  sw.addEventListener('touchmove',e=>move(e.touches[0].clientX,e.touches[0].clientY),{passive:true});
+  sw.addEventListener('touchend',end,{passive:true});
+  sw.addEventListener('mousedown',e=>{
+    start(e.clientX,e.clientY);
+    const mm=ev=>move(ev.clientX,ev.clientY);
+    const mu=()=>{end();document.removeEventListener('mousemove',mm);document.removeEventListener('mouseup',mu);};
+    document.addEventListener('mousemove',mm);document.addEventListener('mouseup',mu);
+  });
+})();
+
+// ═══════════════════════════════════
+// CHAT LIST
+// ═══════════════════════════════════
+function renderChatList(filter=''){
+  const list=document.getElementById('chatList');
+  const items=contacts.filter(c=>c.name.includes(filter)||(c.phone||'').includes(filter));
+  if(!items.length){
+    list.innerHTML=`<div class="empty-state"><div class="empty-ico">💬</div><div class="empty-txt">${t('noChats')}<br><small style="opacity:.6">${t('noChatsHint')}</small></div></div>`;
+    return;
+  }
+  list.innerHTML='';
+  items.forEach(c=>{
+    const el=document.createElement('div');
+    el.className='chat-item'+(activeChat?.id===c.id?' active':'');
+    const avStr=avHTML(c,'av-m');
+    el.innerHTML=`
+      ${avStr}
+      ${c.online?`<div class="online-ring" style="position:absolute;right:${16+48-12}px;"></div>`:''}
+      <div class="ci-info">
+        <div class="ci-row"><span class="ci-name">${c.name}</span><span class="ci-time">${c.lastTime||''}</span></div>
+        <div class="ci-prev">${c.lastMsg||''}</div>
+      </div>
+      ${c.unread>0?`<div class="badge">${c.unread}</div>`:''}
+    `;
+    el.style.position='relative';
+    el.onclick=()=>openChat(c);
+    list.appendChild(el);
+  });
+  updateTotalBadge();
+}
+document.getElementById('searchInput').addEventListener('input',e=>renderChatList(e.target.value));
+
+function updateTotalBadge(){
+  const t=contacts.reduce((a,c)=>a+(c.unread||0),0);
+  const b=document.getElementById('totBadge');
+  b.style.display=t?'flex':'none';b.textContent=t;
+}
+
+// ═══════════════════════════════════
+// OPEN CHAT
+// ═══════════════════════════════════
+function openChat(contact){
+  activeChat=contact;contact.unread=0;
+  renderChatList();
+  if(!convos[contact.id])convos[contact.id]=[];
+  const view=document.getElementById('chatView');
+  view.innerHTML=`
+    <div class="chat-topbar">
+      <button class="back-btn" id="btnBack">‹</button>
+      ${avHTML(contact,'av-s')}
+      <div class="ctb-info">
+        <div class="ctb-name">${contact.name}</div>
+        <div class="ctb-sub">${contact.online?'🟢 '+t('online'):'⚫ '+t('offline')}</div>
+      </div>
+      <div class="ctb-acts">
+        <button class="tb-btn" id="ctbCall">📞</button>
+        <button class="tb-btn" id="ctbProf">👤</button>
+      </div>
+    </div>
+    <div class="messages" id="msgs"></div>
+    <div class="typing-row" id="typRow">
+      <div class="dots"><span></span><span></span><span></span></div>
+      <span>${contact.name} ${t('typing')}</span>
+    </div>
+    <div class="input-area">
+      <div class="emoji-strip" id="emoStrip"></div>
+      <div class="sticker-strip" id="stkStrip"></div>
+      <div class="input-row">
+        <button class="i-btn" id="emoBtn">😊</button>
+        <button class="i-btn" id="stkBtn">🎭</button>
+        <textarea class="msg-input" id="msgIn" placeholder="${t('msgPh')}" rows="1"></textarea>
+        <button class="send-btn" id="sendBtn">➤</button>
+      </div>
+    </div>
+  `;
+  document.getElementById('btnBack').onclick=goBack;
+  document.getElementById('ctbCall').onclick=()=>{logCall(contact.id,'out');toast('📞 '+t('calling'));};
+  document.getElementById('ctbProf').onclick=()=>openProfileSheet(contact.id);
+  document.getElementById('emoBtn').onclick=toggleEmo;
+  document.getElementById('stkBtn').onclick=toggleStk;
+  document.getElementById('sendBtn').onclick=sendMsg;
+  const inp=document.getElementById('msgIn');
+  inp.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMsg();}});
+  inp.addEventListener('input',function(){this.style.height='auto';this.style.height=Math.min(this.scrollHeight,100)+'px';});
+  const es=document.getElementById('emoStrip');
+  EMOJIS.forEach(e=>{const b=document.createElement('button');b.className='emo-btn';b.textContent=e;b.onclick=()=>{inp.value+=e;inp.focus();};es.appendChild(b);});
+  const ss=document.getElementById('stkStrip');
+  STICKERS.forEach(s=>{const d=document.createElement('div');d.className='stk';d.textContent=s;d.onclick=()=>sendStk(s);ss.appendChild(d);});
+  emoOpen=false;stkOpen=false;
+  renderMsgs(contact.id);
+  slideToChatView();
+  setTimeout(showHint,600);
+}
+
+function renderMsgs(cid){
+  const msgs=convos[cid]||[];
+  const c=document.getElementById('msgs');if(!c)return;
+  c.innerHTML=`<div class="date-chip"><span>${t('today')}</span></div>`;
+
+  msgs.forEach((m,idx)=>{
+    const row=document.createElement('div');
+    row.className=`msg-row ${m.from}`;
+    const isEmo=/^\p{Emoji}+$/u.test(m.text)&&m.text.length<=4;
+    let avStr='';
+    if(m.from==='other'){
+      const sender=contacts.find(x=>x.id===activeChat?.id);
+      if(sender){
+        if(sender.avatar) avStr=`<div class="msg-av"><img src="${sender.avatar}"></div>`;
+        else avStr=`<div class="msg-av" style="background:${AVCOLS[sender.color]||'#888'};border-radius:50%;width:26px;height:26px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:10px;font-weight:800;">${sender.name.charAt(0)}</div>`;
+      }
+    }
+
+    // Quote bar
+    const quoteHTML = m.quote
+      ? `<div class="msg-quote">❝ ${m.quote.from}: ${m.quote.text}</div>`
+      : '';
+
+    row.innerHTML=`${avStr}<div class="msg-col">
+      ${quoteHTML}
+      <div class="msg-bw"><div class="bub${isEmo?' emo':''}">${m.text}</div><div class="msg-time">${m.time}</div></div>
+      ${m.from==='me'?`<div class="msg-read">✓✓</div>`:''}
+      ${m.trans?`<div class="msg-trans"><div class="msg-trans-txt">${m.trans}</div><div class="msg-trans-by">✓ ${t('translatedBy')} Pulse</div></div>`:''}
+    </div>`;
+
+    // Long-press / right-click to show context menu
+    const bub = row.querySelector('.bub');
+    let pressTimer;
+    bub.addEventListener('mousedown', e=>{pressTimer=setTimeout(()=>showMsgCtx(m,idx,cid,bub),500);});
+    bub.addEventListener('mouseup',   ()=>clearTimeout(pressTimer));
+    bub.addEventListener('mousemove', ()=>clearTimeout(pressTimer));
+    bub.addEventListener('touchstart',e=>{pressTimer=setTimeout(()=>{showMsgCtx(m,idx,cid,bub);},500);},{passive:true});
+    bub.addEventListener('touchend',  ()=>clearTimeout(pressTimer));
+    bub.addEventListener('touchmove', ()=>clearTimeout(pressTimer));
+    bub.addEventListener('contextmenu',e=>{e.preventDefault();showMsgCtx(m,idx,cid,bub);});
+
+    // Listen to text (Easy Mode)
+    if(easyListenMsgs){
+      bub.style.cursor='pointer';
+      bub.title='🔊 اضغط للاستماع';
+      bub.addEventListener('click',e=>{
+        if(pressTimer) return; // was long press
+        if(!easySilent && 'speechSynthesis' in window){
+          const utt=new SpeechSynthesisUtterance(m.text);
+          speechSynthesis.speak(utt);
+        }
+      });
+    }
+
+    c.appendChild(row);
+  });
+
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{c.scrollTop=c.scrollHeight;}));
+}
+
+
+function sendMsg(){
+  const inp=document.getElementById('msgIn');
+  if(!inp||!inp.value.trim()||!activeChat)return;
+  const text=inp.value.trim();inp.value='';inp.style.height='auto';
+  const ts=now();
+  const msgObj={from:'me',text,time:ts};
+  if(quotedMsg){ msgObj.quote=quotedMsg; }
+  convos[activeChat.id].push(msgObj);
+  activeChat.lastMsg=text;activeChat.lastTime='الآن';
+  quotedMsg=null;renderQuoteBar();
+  renderChatList();renderMsgs(activeChat.id);
+  if(activeChat.online){
+    setTimeout(()=>{const tr=document.getElementById('typRow');if(tr)tr.classList.add('show');},700);
+    setTimeout(()=>{
+      const tr=document.getElementById('typRow');if(tr)tr.classList.remove('show');
+      const reps=['👍','😊 حسناً','تمام!','💯','🙌','ماشي!','واو 🎉','ممتاز!','👌'];
+      const rep=reps[Math.floor(Math.random()*reps.length)];
+      const incoming={from:'other',text:rep,time:now()};
+      // auto-translate if enabled
+      if(autoTranslate){
+        incoming.trans = `[${LANGS[translateLang]?.n||translateLang}] ${rep}`;
+      }
+      convos[activeChat.id].push(incoming);
+      activeChat.lastMsg=rep;renderChatList();renderMsgs(activeChat.id);
+    },2600);
+  }
+}
+function sendStk(s){
+  if(!activeChat)return;
+  convos[activeChat.id].push({from:'me',text:s,time:now()});
+  activeChat.lastMsg=s;renderChatList();renderMsgs(activeChat.id);toggleStk();
+}
+function toggleEmo(){emoOpen=!emoOpen;stkOpen=false;document.getElementById('emoStrip')?.classList.toggle('on',emoOpen);document.getElementById('stkStrip')?.classList.remove('on');document.getElementById('emoBtn')?.classList.toggle('on',emoOpen);document.getElementById('stkBtn')?.classList.remove('on');}
+function toggleStk(){stkOpen=!stkOpen;emoOpen=false;document.getElementById('stkStrip')?.classList.toggle('on',stkOpen);document.getElementById('emoStrip')?.classList.remove('on');document.getElementById('stkBtn')?.classList.toggle('on',stkOpen);document.getElementById('emoBtn')?.classList.remove('on');}
+function now(){return new Date().toLocaleTimeString('ar-SA',{hour:'2-digit',minute:'2-digit'});}
+
+// ═══════════════════════════════════
+// FRIENDS
+// ═══════════════════════════════════
+function renderFriends(){
+  const list = document.getElementById('friendsList');
+  list.innerHTML = '';
+
+  // ── Incoming requests section ──
+  if(friendReqs.length > 0){
+    const sep = document.createElement('div');
+    sep.className = 'req-sep';
+    sep.textContent = t('incomingReq') + ' (' + friendReqs.length + ')';
+    list.appendChild(sep);
+
+    friendReqs.forEach(req => {
+      const card = document.createElement('div');
+      card.className = 'freq-card';
+
+      // Pending seePosts toggle state per req
+      if(req.seePosts === undefined) req.seePosts = true;
+
+      card.innerHTML = `
+        <div class="freq-head">
+          ${req.avatar
+            ? `<div class="av av-m"><img src="${req.avatar}"></div>`
+            : `<div class="av av-m" style="background:${AVCOLS[req.color]||'#888'};color:#fff;font-size:18px;font-weight:800;">${req.name.charAt(0)}</div>`}
+          <div>
+            <div class="freq-name">${req.name}</div>
+            <div class="freq-sub">${req.status||req.phone||''}</div>
+          </div>
+        </div>
+        <div class="freq-toggle">
+          <div>
+            <div class="freq-tlbl">${t('seePosts')}</div>
+            <div class="freq-tsub">${t('seePostsHint')}</div>
+          </div>
+          <button class="tog${req.seePosts?' on':''}" data-rid="${req.rid}" id="tog_${req.rid}"></button>
+        </div>
+        <div class="freq-row" style="margin-top:10px;">
+          <button class="freq-btn accept" data-rid="${req.rid}" data-act="accept">${t('accept')}</button>
+          <button class="freq-btn decline" data-rid="${req.rid}" data-act="decline">${t('decline')}</button>
+          <button class="freq-btn block" data-rid="${req.rid}" data-act="block">${t('block')}</button>
+        </div>
+      `;
+
+      // Toggle seePosts
+      card.querySelector(`#tog_${req.rid}`).onclick = e => {
+        e.stopPropagation();
+        req.seePosts = !req.seePosts;
+        e.currentTarget.classList.toggle('on', req.seePosts);
+      };
+
+      // Accept
+      card.querySelector('[data-act="accept"]').onclick = e => {
+        e.stopPropagation();
+        acceptRequest(req.rid, req.seePosts);
+      };
+      // Decline
+      card.querySelector('[data-act="decline"]').onclick = e => {
+        e.stopPropagation();
+        declineRequest(req.rid);
+      };
+      // Block
+      card.querySelector('[data-act="block"]').onclick = e => {
+        e.stopPropagation();
+        blockRequest(req.rid);
+      };
+
+      list.appendChild(card);
+    });
+  }
+
+  // ── Accepted contacts ──
+  const accepted = contacts.filter(c => c.friendStatus === 'accepted' || !c.friendStatus);
+  const pending  = contacts.filter(c => c.friendStatus === 'pending');
+  const blocked  = contacts.filter(c => c.friendStatus === 'blocked');
+
+  if(!accepted.length && !pending.length && !friendReqs.length){
+    list.innerHTML = `<div class="empty-state"><div class="empty-ico">👥</div><div class="empty-txt">${t('noFriends')}<br><small style="opacity:.6">${t('noFriendsHint')}</small></div></div>`;
+    return;
+  }
+
+  if(accepted.length){
+    if(friendReqs.length||pending.length||blocked.length){
+      const sep2 = document.createElement('div');
+      sep2.className = 'req-sep';
+      sep2.textContent = t('friends');
+      list.appendChild(sep2);
+    }
+    [...accepted].sort((a,b)=>a.name.localeCompare(b.name)).forEach(c=>{
+      const el = document.createElement('div');
+      el.className = 'f-item';
+      el.style.position = 'relative';
+      const postsIcon = c.seePosts === false
+        ? '<span title="no posts" style="font-size:13px;color:var(--t3);">🚫📝</span>'
+        : '';
+      el.innerHTML = `
+        ${avHTML(c,'av-m')}
+        ${c.online?`<div class="online-ring" style="position:absolute;right:${16+48-12}px;"></div>`:''}
+        <div style="flex:1;min-width:0;">
+          <div class="f-name">${c.name} ${postsIcon}</div>
+          <div class="f-status">${c.status||''}</div>
+        </div>
+        <div class="f-acts">
+          <button class="tb-btn" data-act="msg">💬</button>
+          <button class="tb-btn" data-act="call">📞</button>
+        </div>
+      `;
+      el.querySelector('[data-act="msg"]').onclick=e=>{e.stopPropagation();switchTab('chats');openChat(c);};
+      el.querySelector('[data-act="call"]').onclick=e=>{e.stopPropagation();logCall(c.id,'out');toast('📞 '+c.name);};
+      el.onclick=()=>openProfileSheet(c.id);
+      list.appendChild(el);
+    });
+  }
+
+  // Pending
+  if(pending.length){
+    const sep3 = document.createElement('div');
+    sep3.className = 'req-sep';
+    sep3.textContent = t('pending');
+    list.appendChild(sep3);
+    pending.forEach(c=>{
+      const el = document.createElement('div');
+      el.className = 'f-item';
+      el.innerHTML = `
+        ${avHTML(c,'av-m')}
+        <div style="flex:1;min-width:0;">
+          <div class="f-name">${c.name}</div>
+          <div><span class="sbadge pending">${t('pending')}</span></div>
+        </div>
+        <button class="tb-btn" style="font-size:12px;color:var(--badge);" data-act="cancel">✕</button>
+      `;
+      el.querySelector('[data-act="cancel"]').onclick=e=>{e.stopPropagation();deleteContact(c.id);};
+      el.onclick=()=>openProfileSheet(c.id);
+      list.appendChild(el);
+    });
+  }
+
+  // Blocked
+  if(blocked.length){
+    const sep4 = document.createElement('div');
+    sep4.className = 'req-sep';
+    sep4.textContent = t('block');
+    list.appendChild(sep4);
+    blocked.forEach(c=>{
+      const el = document.createElement('div');
+      el.className = 'f-item';
+      el.innerHTML = `
+        ${avHTML(c,'av-m')}
+        <div style="flex:1;min-width:0;">
+          <div class="f-name">${c.name}</div>
+          <div><span class="sbadge blocked">${t('blocked')}</span></div>
+        </div>
+        <button class="tb-btn" style="font-size:12px;" data-act="del">🗑️</button>
+      `;
+      el.querySelector('[data-act="del"]').onclick=e=>{e.stopPropagation();deleteContact(c.id);};
+      list.appendChild(el);
+    });
+  }
+}
+
+// ═══════════════════════════════════
+// DISCOVER
+// ═══════════════════════════════════
+function renderDiscover(){
+  const feed=document.getElementById('discoverFeed');feed.innerHTML='';
+  // Only show posts from me + accepted contacts with seePosts=true
+  const visiblePosts = posts.filter(p => {
+    if(p.uid === 'me') return true;
+    const c = contacts.find(x=>x.id===p.uid);
+    return c && (c.friendStatus==='accepted'||!c.friendStatus) && c.seePosts!==false;
+  });
+  if(!visiblePosts.length){feed.innerHTML=`<div class="empty-state"><div class="empty-ico">🌐</div><div class="empty-txt">${t('noPosts')}<br><small style="opacity:.6">${t('noPostsHint')}</small></div></div>`;return;}
+  [...visiblePosts].reverse().forEach((p)=>{
+    const author=p.uid==='me'?me:contacts.find(c=>c.id===p.uid);
+    if(!author)return;
+    const realIdx=posts.indexOf(p);
+    const el=document.createElement('div');el.className='post-card';
+    el.innerHTML=`
+      <div class="post-head">
+        ${avHTML(author,'av-s')}
+        <div><div class="post-author">${author.name}</div><div class="post-time">${p.time}</div></div>
+      </div>
+      ${p.text?`<div class="post-txt">${p.text}</div>`:''}
+      ${p.img?`<img class="post-img" src="${p.img}">`:''}
+      <div class="post-acts">
+        <button class="post-act ${p.liked?'liked':''}" data-i="${realIdx}">${p.liked?'❤️':'🤍'} ${p.likes}</button>
+        <button class="post-act">💬 ${p.cmts||0}</button>
+        <button class="post-act">↗️</button>
+      </div>
+    `;
+    el.querySelector('[data-i]').onclick=()=>{posts[realIdx].liked=!posts[realIdx].liked;posts[realIdx].likes+=posts[realIdx].liked?1:-1;renderDiscover();};
+    feed.appendChild(el);
+  });
+}
+
+// ═══════════════════════════════════
+// PROFILE SCREEN
+// ═══════════════════════════════════
+function renderProfile(){
+  if(!me)return;
+  const sc=document.getElementById('profileScroll');sc.innerHTML='';
+  const myPosts=posts.filter(p=>p.uid==='me').length;
+
+  // ── Hero ──
+  const hero=document.createElement('div');hero.className='profile-hero';
+  hero.innerHTML=`
+    <div class="pav-wrap" id="profileAvWrap">
+      ${avHTML(me,'av-l')}
+      <div class="pav-edit">📷</div>
+    </div>
+    <div class="pname">${me.name}</div>
+    <div class="pphone">${me.phone}</div>
+    <div class="pstatus">${me.status||''}</div>
+    <div class="pstats">
+      <div class="pstat"><div class="pstat-n">${contacts.filter(c=>c.friendStatus==='accepted'||!c.friendStatus).length}</div><div class="pstat-l">${t('friends')}</div></div>
+      <div class="pstat" style="border-right:1px solid var(--br);border-left:1px solid var(--br);"><div class="pstat-n">${myPosts}</div><div class="pstat-l">${t('postsCount')}</div></div>
+      <div class="pstat"><div class="pstat-n">${callLog.length}</div><div class="pstat-l">${t('callsCount')}</div></div>
+    </div>
+  `;
+  hero.querySelector('#profileAvWrap').onclick=openEditProfile;
+  sc.appendChild(hero);
+
+  // ── Profile Info (WeChat style) ──
+  const infoData=[
+    {key:t('nameLbl'),    val:me.name,       fn:openEditProfile},
+    {key:t('gender'),     val:me.gender||t('notSet'), fn:()=>openPickerModal('gender')},
+    {key:t('region'),     val:me.region||t('notSet'), fn:()=>openPickerModal('region')},
+    {key:'📞 '+t('phone'), val:me.phone,      fn:null},
+    {key:t('pulseId'),    val:me.pulseId||'—', fn:null},
+    {key:t('myQR'),       val:'⊞',            fn:openMyQR},
+    {key:t('whatsUp'),    val:me.whatsUp||t('notSet'), fn:()=>openPickerModal('whatsup')},
+    {key:t('ringtone'),   val:me.ringtone||'Default', fn:()=>openPickerModal('ringtone')},
+  ];
+  const infoGrp=document.createElement('div');infoGrp.className='pinfo-grp';
+  infoData.forEach(row=>{
+    const el=document.createElement('div');el.className='pinfo-row';
+    el.innerHTML=`<div class="pinfo-key">${row.key}</div><div class="pinfo-val">${row.val}</div>${row.fn?'<div class="pinfo-arr">›</div>':''}`;
+    if(row.fn) el.onclick=row.fn;
+    infoGrp.appendChild(el);
+  });
+  sc.appendChild(infoGrp);
+
+  // ── Action groups ──
+  const groups=[
+    [
+      {ico:'✏️',bg:'var(--acc2)',          lbl:t('editProfile'),    val:'',fn:openEditProfile},
+      {ico:'🎨',bg:'rgba(100,100,255,.12)',lbl:t('appearance'),     val:'',fn:openThemeSheet},
+    ],
+    [
+      {ico:'♿',bg:'rgba(255,180,0,.14)',  lbl:t('easyModeMenu'),   val:easyLargeFont?'✅':'',fn:openEasyModeSheet},
+      {ico:'🌐',bg:'rgba(0,180,120,.14)', lbl:t('translateMenu'),  val:autoTranslate?'✅':'',fn:openTranslateSheet},
+    ],
+    [
+      {ico:'📝',bg:'rgba(50,180,255,.12)',lbl:t('posts'),  val:`${myPosts}`,fn:()=>switchTab('discover')},
+      {ico:'📞',bg:'rgba(100,220,100,.12)',lbl:t('calls'), val:`${callLog.length}`,fn:showCallLog},
+      {ico:'⭐',bg:'rgba(255,200,50,.12)',lbl:'المفضلة',   val:`${favorites.length}`,fn:showFavorites},
+    ]
+  ];
+  groups.forEach(grp=>{
+    const div=document.createElement('div');div.className='menu-grp';div.style.marginTop='8px';
+    grp.forEach(item=>{
+      const el=document.createElement('div');el.className='menu-item';
+      el.innerHTML=`<div class="menu-ico" style="background:${item.bg};">${item.ico}</div><div class="menu-lbl">${item.lbl}</div>${item.val?`<div class="menu-val">${item.val}</div>`:''}<div class="menu-arr">›</div>`;
+      el.onclick=item.fn;div.appendChild(el);
+    });
+    sc.appendChild(div);
+  });
+
+  const foot=document.createElement('div');foot.style.cssText='text-align:center;padding:24px;font-size:11px;color:var(--t3);';foot.textContent='Pulse v4 · ❤️';sc.appendChild(foot);
+}
+
+// ═══════════════════════════════════
+// EDIT PROFILE
+// ═══════════════════════════════════
+function openEditProfile(){
+  document.getElementById('epName').value = me.name;
+  document.getElementById('epStatus').value = me.status || '';
+  epColor = me.color;
+
+  // Render avatar preview
+  const prev = document.getElementById('epAvEl');
+  const overlay = document.getElementById('epAvOverlay');
+
+  function refreshAvPreview() {
+    if (me.avatar) {
+      prev.innerHTML = `<img src="${me.avatar}" style="width:80px;height:80px;object-fit:cover;border-radius:50%;">`;
+      prev.style.background = 'transparent';
+    } else {
+      prev.innerHTML = me.name.charAt(0).toUpperCase();
+      prev.style.cssText = `background:${AVCOLS[me.color]||'#888'};color:#fff;font-size:30px;font-weight:800;display:flex;align-items:center;justify-content:center;margin:0 auto;`;
+    }
+  }
+  refreshAvPreview();
+
+  // Show/hide overlay on hover/touch
+  const tap = document.getElementById('epAvTap');
+  tap.onmouseenter = () => { overlay.style.opacity = '1'; };
+  tap.onmouseleave = () => { overlay.style.opacity = '0'; };
+
+  // Tap to open file picker
+  tap.onclick = () => {
+    overlay.style.opacity = '1';
+    setTimeout(() => overlay.style.opacity = '0', 600);
+    document.getElementById('epImgIn').click();
+  };
+
+  // File selected
+  document.getElementById('epImgIn').onchange = e => {
+    const f = e.target.files[0];
+    if (!f) return;
+    // validate it's an image
+    if (!f.type.startsWith('image/')) { toast('⚠️ اختر صورة صحيحة'); return; }
+    const reader = new FileReader();
+    reader.onload = ev => {
+      me.avatar = ev.target.result;
+      refreshAvPreview();
+      toast(t('photoSelected'));
+    };
+    reader.readAsDataURL(f);
+    // reset so same file can be picked again
+    e.target.value = '';
+  };
+
+  // Color row
+  const cr = document.getElementById('epColorRow'); cr.innerHTML = '';
+  AVKEYS.forEach(k => {
+    const d = document.createElement('div');
+    d.className = 'c-dot' + (k === epColor ? ' on' : '');
+    d.style.background = AVCOLS[k];
+    d.onclick = () => {
+      epColor = k;
+      cr.querySelectorAll('.c-dot').forEach(x => x.classList.remove('on'));
+      d.classList.add('on');
+      if (!me.avatar) {
+        prev.style.background = AVCOLS[k];
+        prev.textContent = me.name.charAt(0).toUpperCase();
+      }
+    };
+    cr.appendChild(d);
+  });
+
+  // Save
+  document.getElementById('epSave').onclick = () => {
+    const n = document.getElementById('epName').value.trim();
+    if (!n) { toast(t('enterYourName')); return; }
+    me.name = n;
+    me.status = document.getElementById('epStatus').value.trim();
+    me.color = epColor;
+    closeOv('ovEdit');
+    renderProfile();
+    updateMeNav();
+    renderChatList();
+    renderFriends();
+    toast(t('saved'));
+  };
+
+  openOv('ovEdit');
+}
+
+// ═══════════════════════════════════
+// ADD CONTACT
+// ═══════════════════════════════════
+function openAddModal(){
+  addMode='manual';addColor=AVKEYS[Math.floor(Math.random()*AVKEYS.length)];
+  document.getElementById('stManual').classList.add('on');document.getElementById('stScan').classList.remove('on');
+  renderAddManual();openOv('ovAdd');
+}
+document.getElementById('stManual').onclick=()=>{addMode='manual';document.getElementById('stManual').classList.add('on');document.getElementById('stScan').classList.remove('on');stopScan();renderAddManual();};
+document.getElementById('stScan').onclick=()=>{addMode='scan';document.getElementById('stScan').classList.add('on');document.getElementById('stManual').classList.remove('on');renderAddScan();};
+
+function renderAddManual(){
+  const b=document.getElementById('addBody');
+  b.innerHTML=`
+    <div class="field"><div class="f-lbl">${t('cName')}</div><input class="f-in" id="acName" placeholder="${t('cNamePh')}" maxlength="30"></div>
+    <div class="field"><div class="f-lbl">${t('cPhone')}</div><input class="f-in" id="acPhone" placeholder="+966 5X XXX XXXX" type="tel"></div>
+    <div class="field"><div class="f-lbl">${t('cStatus')}</div><input class="f-in" id="acStatus" placeholder="${t('cStatusPh')}" maxlength="70"></div>
+    <div class="field"><div class="f-lbl">${t('cColor')}</div><div class="color-row" id="acColorRow"></div></div>
+    <button class="sh-btn" id="acSubmit">${t('addBtn')}</button>
+  `;
+  const cr=document.getElementById('acColorRow');
+  AVKEYS.forEach(k=>{
+    const d=document.createElement('div');d.className='c-dot'+(k===addColor?' on':'');
+    d.style.background=AVCOLS[k];
+    d.onclick=()=>{addColor=k;cr.querySelectorAll('.c-dot').forEach(x=>x.classList.remove('on'));d.classList.add('on');};
+    cr.appendChild(d);
+  });
+  document.getElementById('acSubmit').onclick=()=>{
+    const name=document.getElementById('acName').value.trim();
+    if(!name){toast(t('enterName'));return;}
+    addContact({name,phone:document.getElementById('acPhone').value.trim(),status:document.getElementById('acStatus').value.trim()||'مرحباً! 👋',color:addColor});
+    closeOv('ovAdd');
+  };
+}
+
+// ═══════════════════════════════════
+// FRIEND REQUEST SYSTEM
+// ═══════════════════════════════════
+
+// Send a friend request (from Add Contact form)
+function sendFriendRequest(data){
+  const id = Date.now();
+  // Add as pending contact
+  contacts.push({
+    id, name:data.name, phone:data.phone||'', status:data.status||'',
+    color:data.color||'B', avatar:data.avatar||null,
+    online:false, unread:0, lastMsg:'', lastTime:'',
+    friendStatus:'pending',   // 'pending' | 'accepted' | 'blocked'
+    seePosts:true,            // will be set on accept
+  });
+  convos[id]=[];
+  renderChatList(); renderFriends(); renderProfile();
+  toast(t('reqSent'));
+}
+
+// Simulate an incoming request (for demo — called when someone "scans your QR")
+function simulateIncomingRequest(data){
+  const rid = Date.now();
+  friendReqs.push({
+    rid, name:data.name, phone:data.phone||'', color:data.color||'C',
+    avatar:data.avatar||null, status:data.status||'',
+    seePosts:true, // default accept with posts
+  });
+  updateFriendsBadge();
+  renderFriends();
+  toast('📨 '+data.name+(curLang==='ar'?' أرسل طلب صداقة':' sent a friend request'));
+}
+
+function acceptRequest(rid, allowPosts){
+  const req = friendReqs.find(r=>r.rid===rid);
+  if(!req) return;
+  friendReqs = friendReqs.filter(r=>r.rid!==rid);
+  const id = Date.now();
+  contacts.push({
+    id, name:req.name, phone:req.phone, status:req.status,
+    color:req.color, avatar:req.avatar,
+    online:true, unread:0, lastMsg:'', lastTime:'',
+    friendStatus:'accepted', seePosts:allowPosts,
+  });
+  convos[id]=[];
+  updateFriendsBadge();
+  renderChatList(); renderFriends(); renderProfile();
+  toast(t('reqAccepted'));
+}
+
+function declineRequest(rid){
+  friendReqs = friendReqs.filter(r=>r.rid!==rid);
+  updateFriendsBadge();
+  renderFriends();
+  toast(t('reqDeclined'));
+}
+
+function blockRequest(rid){
+  friendReqs = friendReqs.filter(r=>r.rid!==rid);
+  updateFriendsBadge();
+  renderFriends();
+  toast(t('blocked'));
+}
+
+function toggleContactSeePosts(cid){
+  const c = contacts.find(x=>x.id===cid);
+  if(c){ c.seePosts = !c.seePosts; renderDiscover(); }
+}
+
+function updateFriendsBadge(){
+  const dot = document.getElementById('friendsReqDot');
+  if(dot) dot.style.display = friendReqs.length ? 'block' : 'none';
+}
+
+function addContact(data){
+  sendFriendRequest(data);
+}
+
+function deleteContact(id){
+  const idx=contacts.findIndex(c=>c.id===id); if(idx===-1)return;
+  const name=contacts[idx].name; contacts.splice(idx,1); delete convos[id];
+  if(activeChat?.id===id) goBack();
+  closeOv('ovProfile'); renderChatList(); renderFriends(); renderProfile();
+  toast(t('deleted')+name);
+}
+
+// ═══════════════════════════════════
+// QR CODE
+// ═══════════════════════════════════
+function drawQR(canvas,text,size=180){
+  const ctx=canvas.getContext('2d');canvas.width=size;canvas.height=size;
+  const M=25,cell=Math.floor(size/M),pad=Math.floor((size-cell*M)/2);
+  function hash(s){let h=0x811c9dc5;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=(h*0x01000193)>>>0;}return h;}
+  const mod=[];for(let r=0;r<M;r++){mod[r]=[];for(let c=0;c<M;c++){mod[r][c]=(hash(text+r*31+c*97)&1)===0;}}
+  function finder(r,c){for(let i=0;i<7;i++)for(let j=0;j<7;j++)mod[r+i][c+j]=(i===0||i===6||j===0||j===6||(i>=2&&i<=4&&j>=2&&j<=4));}
+  finder(0,0);finder(0,18);finder(18,0);
+  for(let i=8;i<17;i++){mod[6][i]=(i%2===0);mod[i][6]=(i%2===0);}
+  const isDark=!['rose'].includes(curTheme);
+  ctx.fillStyle=isDark?'#13120E':'#fff';ctx.fillRect(0,0,size,size);
+  const fg=isDark?'#F5F0E8':'#1C1917';
+  const acc=getComputedStyle(document.body).getPropertyValue('--acc').trim()||'#D4A843';
+  for(let r=0;r<M;r++)for(let c=0;c<M;c++){
+    if(mod[r][c]){
+      const inF=(r<8&&c<8)||(r<8&&c>16)||(r>16&&c<8);
+      ctx.fillStyle=inF?acc:fg;
+      ctx.beginPath();ctx.roundRect(pad+c*cell+1,pad+r*cell+1,cell-2,cell-2,2);ctx.fill();
+    }
+  }
+  const cx2=size/2,cy2=size/2,cr2=cell*1.8;
+  ctx.fillStyle=isDark?'#13120E':'#fff';ctx.beginPath();ctx.arc(cx2,cy2,cr2+2,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle=acc;ctx.beginPath();ctx.arc(cx2,cy2,cr2,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#fff';ctx.font=`bold ${Math.floor(cr2*1.1)}px sans-serif`;
+  ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('💬',cx2,cy2+1);
+}
+function qrData(c){return `pulse://add?name=${encodeURIComponent(c.name)}&phone=${encodeURIComponent(c.phone||'')}&status=${encodeURIComponent(c.status||'')}&color=${c.color}`;}
+
+function openMyQR(){
+  const b=document.getElementById('profileShBody');
+  document.getElementById('profileShTitle').textContent=t('myQR');
+  b.innerHTML='';
+  const wrap=document.createElement('div');wrap.className='qr-wrap';
+  const canvas=document.createElement('canvas');
+  const lbl=document.createElement('div');lbl.className='qr-lbl';lbl.textContent=t('qrHint');
+  wrap.appendChild(canvas);wrap.appendChild(lbl);b.appendChild(wrap);
+  setTimeout(()=>drawQR(canvas,qrData({name:me.name,phone:me.phone||'',status:me.status||'',color:me.color}),180),50);
+  openOv('ovProfile');
+}
+
+// ═══════════════════════════════════
+// PROFILE SHEET (contact)
+// ═══════════════════════════════════
+function openProfileSheet(cid){
+  const c=contacts.find(x=>x.id===cid);if(!c)return;
+  const b=document.getElementById('profileShBody');
+  document.getElementById('profileShTitle').textContent=t('profile');
+  const isAccepted = c.friendStatus==='accepted'||!c.friendStatus;
+
+  b.innerHTML=`
+    <div style="display:flex;flex-direction:column;align-items:center;margin-bottom:18px;">
+      ${avHTML(c,'av-l')}
+      <div style="font-size:21px;font-weight:800;color:var(--t0);margin-top:12px;letter-spacing:-.5px;">${c.name}</div>
+      <div style="font-size:13px;color:var(--t2);margin-top:3px;">${c.status||''}</div>
+      ${c.phone?`<div style="font-size:13px;color:var(--t3);margin-top:2px;">📞 ${c.phone}</div>`:''}
+      ${c.friendStatus==='pending'?`<span class="sbadge pending" style="margin-top:8px;">${t('pending')}</span>`:''}
+    </div>
+    <div class="qr-wrap" id="cQrWrap"><div class="qr-lbl">QR Code</div></div>
+    ${isAccepted ? `
+    <div class="freq-toggle" style="margin-bottom:10px;" id="seePostsToggleWrap">
+      <div>
+        <div class="freq-tlbl">${t('seePosts')}</div>
+        <div class="freq-tsub">${t('seePostsHint')}</div>
+      </div>
+      <button class="tog${c.seePosts!==false?' on':''}" id="seePostsTog"></button>
+    </div>
+    <button class="sh-btn" id="spMsg">${t('msgBtn')}</button>
+    <button class="sh-btn sec" id="spCall">${t('callBtn')}</button>
+    ` : `
+    <button class="sh-btn" id="spMsg" disabled style="opacity:.4;">${t('msgBtn')}</button>
+    `}
+    <button class="sh-btn danger" id="spDel">${t('delBtn')}</button>
+  `;
+
+  const qw=document.getElementById('cQrWrap');
+  const canvas=document.createElement('canvas');qw.prepend(canvas);
+  setTimeout(()=>drawQR(canvas,qrData(c),150),60);
+
+  if(isAccepted){
+    // seePosts toggle
+    const tog = document.getElementById('seePostsTog');
+    if(tog) tog.onclick = () => {
+      c.seePosts = !c.seePosts;
+      tog.classList.toggle('on', c.seePosts!==false);
+      renderDiscover();
+      toast(c.seePosts!==false ? '✅ '+t('seePosts') : '🚫 '+t('seePosts'));
+    };
+    document.getElementById('spMsg').onclick=()=>{closeOv('ovProfile');switchTab('chats');openChat(c);};
+    document.getElementById('spCall').onclick=()=>{logCall(c.id,'out');closeOv('ovProfile');toast('📞 '+t('calling'));};
+  }
+  document.getElementById('spDel').onclick=()=>deleteContact(cid);
+  openOv('ovProfile');
+}
+
+// ═══════════════════════════════════
+// EASY MODE
+// ═══════════════════════════════════
+function openEasyModeSheet(){
+  document.getElementById('shTitleEasy').textContent = t('easyMode');
+  const b = document.getElementById('easyBody');
+  function renderEasy(){
+    b.innerHTML = `
+      <div style="text-align:center;padding:10px 0 18px;">
+        <div style="font-size:48px;">♿</div>
+        <div style="font-size:18px;font-weight:800;color:var(--t0);margin-top:8px;">${t('easyMode')}</div>
+        <div style="font-size:13px;color:var(--t2);margin-top:4px;">${t('easyModeDesc')}</div>
+      </div>
+      <div class="menu-grp">
+        ${settRow('largeFont','largeFontDesc','🔤',easyLargeFont,'toggleLarge')}
+        ${settRow('listenMsgs','listenMsgsDesc','🔊',easyListenMsgs,'toggleListen')}
+        ${settRow('silentMode','silentModeDesc','🔕',easySilent,'toggleSilent')}
+      </div>
+      <button class="sh-btn" style="background:var(--s3);color:var(--t2);margin-top:8px;" id="disableEasyBtn">${t('disableEasy')}</button>
+    `;
+    b.querySelectorAll('[data-tog]').forEach(btn=>{
+      btn.onclick=()=>{
+        const type=btn.dataset.tog;
+        if(type==='toggleLarge'){easyLargeFont=!easyLargeFont;document.body.classList.toggle('easy-large',easyLargeFont);}
+        else if(type==='toggleListen'){easyListenMsgs=!easyListenMsgs;}
+        else if(type==='toggleSilent'){easySilent=!easySilent;}
+        renderEasy();renderProfile();
+      };
+    });
+    b.querySelector('#disableEasyBtn').onclick=()=>{
+      easyLargeFont=false;easyListenMsgs=false;easySilent=false;
+      document.body.classList.remove('easy-large');
+      closeOv('ovEasyMode');renderProfile();
+      toast('✅ '+t('disableEasy'));
+    };
+  }
+  renderEasy();
+  openOv('ovEasyMode');
+}
+
+function settRow(lblKey,subKey,ico,isOn,togKey){
+  return `
+    <div class="sett-row">
+      <div class="sett-ico" style="background:rgba(100,160,255,.12);">${ico}</div>
+      <div class="sett-lbl-wrap">
+        <div class="sett-lbl">${t(lblKey)}</div>
+        <div class="sett-sub">${t(subKey)}</div>
+      </div>
+      <button class="tog${isOn?' on':''}" data-tog="${togKey}"></button>
+    </div>
+  `;
+}
+
+// ═══════════════════════════════════
+// TRANSLATE
+// ═══════════════════════════════════
+function openTranslateSheet(){
+  document.getElementById('shTitleTranslate').textContent = t('translate');
+  const b = document.getElementById('translateBody');
+  function renderTr(){
+    const curLangName = LANGS[translateLang]?.n || translateLang;
+    b.innerHTML = `
+      <div style="text-align:center;padding:10px 0 18px;">
+        <div style="font-size:48px;">🌐</div>
+        <div style="font-size:18px;font-weight:800;color:var(--t0);margin-top:8px;">${t('translate')}</div>
+      </div>
+      <div class="menu-grp" style="margin-bottom:12px;">
+        <div class="pinfo-row" id="trLangRow" style="cursor:pointer;">
+          <div class="pinfo-key">${t('translateTo')}</div>
+          <div class="pinfo-val">${curLangName}</div>
+          <div class="pinfo-arr">›</div>
+        </div>
+      </div>
+      <div style="font-size:12px;color:var(--t3);padding:0 4px 14px;line-height:1.6;">${t('autoTranslateDesc')}</div>
+      <div class="sett-row" style="background:var(--s1);border-radius:14px;margin-bottom:8px;">
+        <div class="sett-lbl-wrap">
+          <div class="sett-lbl">${t('autoTranslate')}</div>
+          <div class="sett-sub">${t('autoTranslateDesc')}</div>
+        </div>
+        <button class="tog${autoTranslate?' on':''}" id="autoTrTog"></button>
+      </div>
+    `;
+    b.querySelector('#autoTrTog').onclick=()=>{autoTranslate=!autoTranslate;renderTr();renderProfile();};
+    b.querySelector('#trLangRow').onclick=()=>{
+      // pick target language
+      const menu=document.createElement('div');
+      menu.style.cssText='margin-top:8px;';
+      Object.entries(LANGS).forEach(([code,l])=>{
+        const el=document.createElement('div');el.className='pinfo-row';
+        el.style.cssText='cursor:pointer;background:var(--s1);border-radius:10px;margin-bottom:6px;';
+        el.innerHTML=`<span style="font-size:20px;margin-left:10px;">${l.f}</span><div class="pinfo-key">${l.n}</div>${translateLang===code?'<div style="color:var(--acc);font-size:16px;">✓</div>':''}`;
+        el.onclick=()=>{translateLang=code;renderTr();};
+        menu.appendChild(el);
+      });
+      b.appendChild(menu);
+    };
+  }
+  renderTr();
+  openOv('ovTranslate');
+}
+
+// Fake translation (maps to current UI language name)
+function fakeTranslate(text){
+  const tl = LANGS[translateLang];
+  if(!tl) return text;
+  // Show original with translation attribution
+  return text; // In real app this would call a translation API
+}
+
+// ═══════════════════════════════════
+// PICKER MODAL (gender / region / whatsup / ringtone)
+// ═══════════════════════════════════
+function openPickerModal(field){
+  const b = document.getElementById('profileShBody');
+  const title = document.getElementById('profileShTitle');
+  const RINGTONES=['Default','Silent','Chime','Bell','Piano','Breeze','Pulse Beat'];
+  const GENDERS = [t('male'), t('female'), t('other')];
+  const WHATSUP  = ['😊 بخير','😴 مشغول','🎵 أستمع للموسيقى','🏠 في البيت','🚗 في الطريق','🍽️ أكل','💪 رياضة','📵 لا تزعجني'];
+
+  if(field==='gender'){
+    title.textContent = t('gender');
+    b.innerHTML = GENDERS.map(g=>`<div class="pinfo-row" data-val="${g}" style="cursor:pointer;"><div class="pinfo-key">${g}</div>${me.gender===g?'<div style="color:var(--acc);font-size:18px;">✓</div>':''}</div>`).join('');
+    b.querySelectorAll('[data-val]').forEach(el=>el.onclick=()=>{me.gender=el.dataset.val;closeOv('ovProfile');renderProfile();});
+  }else if(field==='region'){
+    title.textContent = t('region');
+    b.innerHTML='<div style="padding:8px 0;">' +
+      Object.values(COUNTRIES).slice(0,30).map(cn=>`<div class="pinfo-row" data-val="${cn.n}" style="cursor:pointer;"><span style="font-size:20px;margin-left:10px;">${cn.f}</span><div class="pinfo-key">${cn.n}</div>${me.region===cn.n?'<div style="color:var(--acc);">✓</div>':''}</div>`).join('') + '</div>';
+    b.querySelectorAll('[data-val]').forEach(el=>el.onclick=()=>{me.region=el.dataset.val;closeOv('ovProfile');renderProfile();});
+  }else if(field==='whatsup'){
+    title.textContent = t('whatsUp');
+    b.innerHTML = WHATSUP.map(w=>`<div class="pinfo-row" data-val="${w}" style="cursor:pointer;"><div class="pinfo-key">${w}</div>${me.whatsUp===w?'<div style="color:var(--acc);font-size:18px;">✓</div>':''}</div>`).join('');
+    b.querySelectorAll('[data-val]').forEach(el=>el.onclick=()=>{me.whatsUp=el.dataset.val;closeOv('ovProfile');renderProfile();});
+  }else if(field==='ringtone'){
+    title.textContent = t('ringtone');
+    b.innerHTML = RINGTONES.map(r=>`<div class="pinfo-row" data-val="${r}" style="cursor:pointer;"><div class="pinfo-key">🎵 ${r}</div>${me.ringtone===r?'<div style="color:var(--acc);font-size:18px;">✓</div>':''}</div>`).join('');
+    b.querySelectorAll('[data-val]').forEach(el=>el.onclick=()=>{me.ringtone=el.dataset.val;closeOv('ovProfile');renderProfile();toast('🎵 '+el.dataset.val);});
+  }
+  openOv('ovProfile');
+}
+
+// ═══════════════════════════════════
+// FAVORITES
+// ═══════════════════════════════════
+function showFavorites(){
+  const b = document.getElementById('profileShBody');
+  document.getElementById('profileShTitle').textContent = '⭐ المفضلة';
+  if(!favorites.length){
+    b.innerHTML=`<div class="empty-state" style="padding:40px 0;"><div class="empty-ico">⭐</div><div class="empty-txt">لا توجد رسائل محفوظة</div></div>`;
+  } else {
+    b.innerHTML = favorites.map((f,i)=>`
+      <div style="background:var(--s1);border-radius:14px;padding:12px 14px;margin-bottom:8px;">
+        <div style="font-size:11px;color:var(--t3);margin-bottom:4px;">${f.from==='me'?me.name:f.contact} · ${f.time}</div>
+        <div style="font-size:14px;color:var(--t0);">${f.text}</div>
+      </div>
+    `).join('');
+  }
+  openOv('ovProfile');
+}
+
+// ═══════════════════════════════════
+// MESSAGE CONTEXT MENU
+// ═══════════════════════════════════
+let ctxTarget = null; // {msgObj, msgIdx, cid, el}
+
+function showMsgCtx(msgObj, msgIdx, cid, bubEl){
+  closeCtx();
+  ctxTarget = {msgObj, msgIdx, cid, bubEl};
+  const menu = document.getElementById('msgCtxMenu');
+  const contactName = activeChat?.name || '';
+
+  const actions = [
+    {ico:'📋', lbl:t('copy'),     fn:'ctxCopy'},
+    {ico:'↗️', lbl:t('forward'),  fn:'ctxFwd'},
+    {ico:'⭐', lbl:t('favorite'), fn:'ctxFav'},
+    {ico:'🗑️', lbl:t('delete'),  fn:'ctxDel', cls:'danger'},
+    {ico:'≡',  lbl:t('select'),  fn:'ctxSel'},
+    {ico:'❝',  lbl:t('quote'),   fn:'ctxQuote'},
+    {ico:'🔔', lbl:t('reminder'),fn:'ctxRemind'},
+    {ico:'✕',  lbl:t('cancelTr'),fn:'ctxClose'},
+    {ico:'🔍', lbl:t('search'),  fn:'ctxSearch'},
+  ];
+
+  menu.innerHTML = actions.map(a=>`
+    <button class="msg-ctx-btn${a.cls?' '+a.cls:''}" data-fn="${a.fn}">
+      <span class="ctx-ico">${a.ico}</span>${a.lbl}
+    </button>
+  `).join('');
+
+  // Position near bubble
+  const rect = bubEl.getBoundingClientRect();
+  const menuW = 260, menuH = 130;
+  let top  = rect.top - menuH - 12;
+  let left = Math.max(8, Math.min(rect.left, window.innerWidth - menuW - 8));
+  if(top < 60) top = rect.bottom + 8;
+  menu.style.cssText = `display:grid;top:${top}px;left:${left}px;`;
+
+  // Wire actions
+  menu.querySelectorAll('[data-fn]').forEach(btn=>{
+    btn.onclick=()=>{
+      const fn = btn.dataset.fn;
+      if(fn==='ctxCopy'){
+        try{navigator.clipboard.writeText(msgObj.text);}catch(e){}
+        toast(t('msgCopied'));
+      } else if(fn==='ctxFav'){
+        favorites.push({text:msgObj.text,from:msgObj.from,contact:contactName,time:msgObj.time});
+        toast(t('msgFavorited'));renderProfile();
+      } else if(fn==='ctxDel'){
+        convos[cid].splice(msgIdx,1);
+        renderMsgs(cid);toast(t('msgDeleted'));
+      } else if(fn==='ctxQuote'){
+        quotedMsg={text:msgObj.text,from:msgObj.from==='me'?me.name:contactName};
+        renderQuoteBar();
+      } else if(fn==='ctxFwd'){
+        toast('↗️ Forward — قريباً');
+      } else if(fn==='ctxRemind'){
+        toast('🔔 تذكير — قريباً');
+      } else if(fn==='ctxSearch'){
+        toast('🔍 بحث — قريباً');
+      } else if(fn==='ctxSel'){
+        toast('≡ تحديد — قريباً');
+      }
+      closeCtx();
+    };
+  });
+
+  // Close on outside click
+  setTimeout(()=>document.addEventListener('click',closeCtxOutside),50);
+}
+
+function closeCtx(){
+  const menu = document.getElementById('msgCtxMenu');
+  if(menu) menu.style.display='none';
+  document.removeEventListener('click',closeCtxOutside);
+}
+function closeCtxOutside(e){
+  if(!document.getElementById('msgCtxMenu')?.contains(e.target)) closeCtx();
+}
+
+// Quote bar in chat input
+function renderQuoteBar(){
+  let qbar = document.getElementById('quoteBar');
+  const inputArea = document.querySelector('.input-area');
+  if(!inputArea) return;
+  if(!qbar){
+    qbar = document.createElement('div');
+    qbar.id = 'quoteBar';
+    qbar.style.cssText=`
+      display:flex;align-items:center;gap:8px;
+      padding:8px 12px;background:var(--s2);
+      border-bottom:1px solid var(--br);
+      font-size:12px;color:var(--t2);
+      border-right:3px solid var(--acc);
+    `;
+    inputArea.prepend(qbar);
+  }
+  if(quotedMsg){
+    qbar.innerHTML=`<div style="flex:1;overflow:hidden;"><span style="color:var(--acc);font-weight:700;">${quotedMsg.from}</span>: <span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${quotedMsg.text}</span></div><button onclick="clearQuote()" style="background:none;border:none;color:var(--t3);font-size:16px;cursor:pointer;">✕</button>`;
+    qbar.style.display='flex';
+  } else {
+    qbar.style.display='none';
+  }
+}
+function clearQuote(){quotedMsg=null;renderQuoteBar();}
+
+document.getElementById('btnNewPost').onclick=()=>{
+  document.getElementById('postTa').value='';
+  document.getElementById('postImgPrev').style.display='none';document.getElementById('postImgPrev').src='';
+  openOv('ovPost');
+};
+document.getElementById('postImgIn').onchange=e=>{
+  const f=e.target.files[0];if(!f)return;
+  const r=new FileReader();r.onload=ev=>{const p=document.getElementById('postImgPrev');p.src=ev.target.result;p.style.display='block';};r.readAsDataURL(f);
+};
+document.getElementById('postSubmit').onclick=()=>{
+  const text=document.getElementById('postTa').value.trim();
+  const pv=document.getElementById('postImgPrev');
+  const hasImg=pv.style.display!=='none'&&pv.src;
+  if(!text&&!hasImg){toast(t('addTextOrPhoto'));return;}
+  posts.push({uid:'me',text,img:hasImg?pv.src:null,time:now(),likes:0,liked:false,cmts:0});
+  closeOv('ovPost');renderDiscover();renderProfile();toast(t('published'));
+};
+
+// ═══════════════════════════════════
+// CALL LOG
+// ═══════════════════════════════════
+function logCall(cid,type,dur=''){callLog.unshift({cid,type,time:Date.now(),dur});}
+
+function showCallLog(){
+  const b=document.getElementById('profileShBody');
+  document.getElementById('profileShTitle').textContent='📞 '+t('calls');
+  b.innerHTML='';
+  if(!callLog.length){b.innerHTML=`<div class="empty-state" style="padding:30px 0;"><div class="empty-ico">📞</div><div class="empty-txt">لا توجد مكالمات</div></div>`;openOv('ovProfile');return;}
+  callLog.forEach(log=>{
+    const c=contacts.find(x=>x.id===log.cid);if(!c)return;
+    const diff=(Date.now()-log.time)/60000;
+    const tStr=diff<1?'الآن':diff<60?Math.floor(diff)+' د':diff<1440?Math.floor(diff/60)+' س':Math.floor(diff/1440)+' ي';
+    const icon=log.type==='missed'?'📵':log.type==='out'?'📤':'📥';
+    const el=document.createElement('div');el.className='cl-item';
+    el.innerHTML=`${avHTML(c,'av-s')}<div style="flex:1;"><div class="cl-name" style="color:${log.type==='missed'?'#EF4444':'var(--t0)'};">${c.name}</div><div class="cl-meta">${icon} ${log.type==='missed'?t('missed'):log.type==='out'?t('outgoing'):t('incoming')} · ${tStr}</div></div><button class="tb-btn">📞</button>`;
+    el.querySelector('.tb-btn').onclick=e=>{e.stopPropagation();logCall(c.id,'out');toast('📞 '+c.name);};
+    el.onclick=()=>{closeOv('ovProfile');switchTab('chats');openChat(c);};
+    b.appendChild(el);
+  });
+  openOv('ovProfile');
+}
+
+// ═══════════════════════════════════
+// SCAN QR
+// ═══════════════════════════════════
+function renderAddScan(){
+  const b=document.getElementById('addBody');
+  b.innerHTML=`<div class="scan-area"><div class="scan-frame"><video id="svid" autoplay playsinline muted></video><div class="scan-corners"><div class="sc-tl"></div><div class="sc-br"></div></div><div class="scan-line"></div></div><div id="scanSt" style="font-size:13px;color:var(--t2);">${t('startCamera')}</div><button class="sh-btn" id="scanStart" style="max-width:200px;">${t('cameraStart')}</button></div>`;
+  document.getElementById('scanStart').onclick=startScan;
+}
+async function startScan(){
+  const st=document.getElementById('scanSt'),btn=document.getElementById('scanStart');
+  try{st.textContent=t('opening');btn.style.display='none';
+    scanStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}});
+    const v=document.getElementById('svid');v.srcObject=scanStream;await v.play();
+    st.textContent=t('cameraOn');
+    if('BarcodeDetector'in window){
+      const det=new BarcodeDetector({formats:['qr_code']});
+      const si=setInterval(async()=>{try{const r=await det.detect(v);if(r.length){clearInterval(si);handleScan(r[0].rawValue);}}catch(e){}},500);
+    }else st.textContent=t('cameraOn')+' (no BarcodeDetector)';
+  }catch(e){st.textContent=t('cameraErr');btn.style.display='block';}
+}
+function stopScan(){if(scanStream){scanStream.getTracks().forEach(t=>t.stop());scanStream=null;}}
+function handleScan(raw){
+  stopScan();
+  try{const u=new URL(raw);if(u.protocol==='pulse:'){const p=u.searchParams;closeOv('ovAdd');addContact({name:p.get('name')||'جهة اتصال',phone:p.get('phone')||'',status:p.get('status')||'',color:p.get('color')||'B'});return;}}catch(e){}
+  closeOv('ovAdd');addContact({name:raw.slice(0,30),phone:'',status:'',color:'C'});
+}
+
+// ═══════════════════════════════════
+// THEME
+// ═══════════════════════════════════
+function openThemeSheet(){
+  const b = document.getElementById('themeBody');
+
+  // Theme names in current language
+  const themeNames = {
+    gold: t('themeGold'), midnight: t('themeMidnight'),
+    aurora: t('themeAurora'), rose: t('themeRose')
+  };
+
+  b.innerHTML = `
+    <div style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:1px;margin-bottom:12px;">${t('theme')}</div>
+    <div class="theme-grid" id="tGrid"></div>
+    <div style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:1px;margin:16px 0 12px;">${t('language')}</div>
+    <div id="lRow" style="display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:18px;"></div>
+    <button class="sh-btn" id="themeDone">${t('done')}</button>
+  `;
+
+  // Themes
+  const grid = document.getElementById('tGrid');
+  THEMES.forEach(th => {
+    const el = document.createElement('div');
+    el.className = 't-opt' + (curTheme === th.id ? ' on' : '');
+    el.innerHTML = `<div class="t-prev">${th.swatches.map(s=>`<div class="t-swatch" style="background:${s};"></div>`).join('')}</div><div class="t-name">${themeNames[th.id]||th.name}</div>`;
+    el.onclick = () => {
+      curTheme = th.id;
+      document.body.setAttribute('data-theme', th.id);
+      grid.querySelectorAll('.t-opt').forEach(x => x.classList.remove('on'));
+      el.classList.add('on');
+    };
+    grid.appendChild(el);
+  });
+
+  // Languages — grid with flag + name
+  const lr = document.getElementById('lRow');
+  Object.entries(LANGS).forEach(([code, l]) => {
+    const btn = document.createElement('button');
+    btn.style.cssText = `
+      display:flex;align-items:center;gap:9px;
+      padding:10px 13px;border-radius:13px;cursor:pointer;
+      border:2px solid ${curLang===code?'var(--acc)':'var(--br)'};
+      background:${curLang===code?'var(--acc2)':'var(--s2)'};
+      color:var(--t0);font-family:var(--fa);font-size:13px;font-weight:600;
+      transition:all .18s;text-align:right;
+    `;
+    btn.innerHTML = `<span style="font-size:20px;line-height:1;">${l.f}</span><span>${l.n}</span>`;
+    btn.onclick = () => {
+      applyLang(code);
+      lr.querySelectorAll('button').forEach(x => {
+        x.style.border = '2px solid var(--br)';
+        x.style.background = 'var(--s2)';
+      });
+      btn.style.border = '2px solid var(--acc)';
+      btn.style.background = 'var(--acc2)';
+      // update done button text
+      document.getElementById('themeDone').textContent = t('done');
+      // update sheet title
+      document.getElementById('shTitleTheme').textContent = t('appearance');
+    };
+    lr.appendChild(btn);
+  });
+
+  document.getElementById('themeDone').onclick = () => closeOv('ovTheme');
+  openOv('ovTheme');
+}
+
+// ═══════════════════════════════════
+// OVERLAY HELPERS
+// ═══════════════════════════════════
+function openOv(id){document.getElementById(id).classList.add('on');}
+function closeOv(id){document.getElementById(id).classList.remove('on');if(id==='ovAdd')stopScan();}
+
+document.querySelectorAll('.overlay').forEach(ov=>{ov.addEventListener('click',e=>{if(e.target===ov)closeOv(ov.id);});});
+document.querySelectorAll('[data-close]').forEach(btn=>{btn.addEventListener('click',()=>closeOv(btn.dataset.close));});
+
+// ═══════════════════════════════════
+// TOAST
+// ═══════════════════════════════════
+function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200);}
+
+// ═══════════════════════════════════
+// INIT
+// ═══════════════════════════════════
+document.getElementById('btnTheme').onclick=openThemeSheet;
+document.getElementById('btnAdd').onclick=openAddModal;
+document.getElementById('btnAddF').onclick=openAddModal;
+
+// Demo: simulate incoming friend request
+const DEMO_NAMES=[
+  {name:'أحمد محمد',color:'B',status:'مرحباً! 👋',phone:'+20 10 1234 5678'},
+  {name:'Sara Kim',color:'F',status:'Hello there 😊',phone:'+82 10 9876 5432'},
+  {name:'Carlos López',color:'C',status:'¡Hola! 👋',phone:'+34 611 222 333'},
+  {name:'Yuki Tanaka',color:'D',status:'よろしく！',phone:'+81 90 1234 5678'},
+  {name:'Amira Hassan',color:'E',status:'كيف الحال؟',phone:'+962 7 9876 5432'},
+];
+let demoIdx=0;
+document.getElementById('btnDemoReq').onclick=()=>{
+  const d=DEMO_NAMES[demoIdx%DEMO_NAMES.length];demoIdx++;
+  simulateIncomingRequest(d);
+  if(curTab!=='friends')switchTab('friends');
+};
+document.getElementById('mainWrap').style.display=''; // will be shown after login
+// hide mainWrap until login
+document.getElementById('mainWrap').style.opacity='0';
+</script>
+</body>
+</html>
