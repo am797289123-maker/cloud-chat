@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <title>Pulse</title>
 <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jsQR/1.4.0/jsQR.min.js"></script>
 <style>
 /* ═══════════════════════════════════
    TOKENS & THEMES
@@ -480,10 +481,11 @@ body.easy-large .sh-btn{font-size:17px!important;padding:16px!important;}
 
 .input-row{display:flex;align-items:flex-end;gap:7px;}
 .i-btn{
-  width:36px;height:36px;border-radius:11px;
+  width:36px;height:36px;border-radius:50%;
   background:var(--s2);border:1px solid var(--br);
   cursor:pointer;display:flex;align-items:center;justify-content:center;
-  font-size:15px;color:var(--t2);transition:all .18s;flex-shrink:0;
+  font-size:18px;color:var(--t2);transition:all .18s;flex-shrink:0;
+  font-weight:300;
 }
 .i-btn:hover,.i-btn.on{background:var(--acc2);color:var(--acc);border-color:var(--acc);}
 .msg-input{
@@ -504,6 +506,33 @@ body.easy-large .sh-btn{font-size:17px!important;padding:16px!important;}
   box-shadow:0 3px 12px rgba(0,0,0,.3);
 }
 .send-btn:hover{transform:scale(1.1);}
+/* attachment panel */
+.attach-panel{
+  display:none;padding:18px 14px 14px;
+  border-bottom:1px solid var(--br);
+  animation:fadeUp .2s var(--ease);
+  background:var(--s0);
+}
+.attach-panel.on{display:block;}
+.attach-grid{
+  display:grid;grid-template-columns:repeat(4,1fr);gap:14px 8px;
+}
+.attach-item{
+  display:flex;flex-direction:column;align-items:center;gap:8px;
+  cursor:pointer;
+}
+.attach-ico{
+  width:60px;height:60px;border-radius:18px;
+  display:flex;align-items:center;justify-content:center;
+  background:#fff;border:1.5px solid rgba(0,0,0,0.06);
+  transition:all .18s;
+  box-shadow:0 2px 8px rgba(0,0,0,.1);
+  padding:14px;
+}
+.attach-ico svg{width:100%;height:100%;}
+.attach-item:active .attach-ico{transform:scale(.92);}
+.attach-lbl{font-size:11px;color:var(--t1);font-weight:500;text-align:center;}
+
 .send-btn:active{transform:scale(.9);}
 
 /* ═══════════════════════════════════
@@ -1103,7 +1132,7 @@ body.easy-large .sh-btn{font-size:17px!important;padding:16px!important;}
             </div>
           </div>
           <div id="epHint" style="font-size:12px;color:var(--t3);margin-top:10px;">اضغط على الصورة لتغييرها</div>
-          <input type="file" accept="image/*" capture="user" id="epImgIn" style="display:none">
+          <input type="file" accept="image/*" id="epImgIn" style="display:none">
         </div>
         <div class="field"><div class="f-lbl" id="epLblName">الاسم</div><input class="f-in" id="epName" placeholder="اسمك" maxlength="30"></div>
         <div class="field"><div class="f-lbl" id="epLblStatus">الحالة</div><input class="f-in" id="epStatus" placeholder="مرحباً! أستخدم Pulse 👋" maxlength="70"></div>
@@ -1880,7 +1909,7 @@ function applyLang(code){
 
 function _setText(id,val){ const el=document.getElementById(id); if(el) el.textContent=val; }
 function _setAttr(id,attr,val){ const el=document.getElementById(id); if(el) el.setAttribute(attr,val); }
-let emoOpen=false,stkOpen=false;
+let emoOpen=false,stkOpen=false,attachOpen=false;
 let addMode='manual',addColor='B';
 let epColor='A';
 let scanStream=null;
@@ -2313,11 +2342,12 @@ function openChat(contact){
       <span>${contact.name} ${t('typing')}</span>
     </div>
     <div class="input-area">
+      <div class="attach-panel" id="attachPanel"></div>
       <div class="emoji-strip" id="emoStrip"></div>
       <div class="sticker-strip" id="stkStrip"></div>
       <div class="input-row">
+        <button class="i-btn" id="attachBtn" title="مرفقات">＋</button>
         <button class="i-btn" id="emoBtn">😊</button>
-        <button class="i-btn" id="stkBtn">🎭</button>
         <textarea class="msg-input" id="msgIn" placeholder="${t('msgPh')}" rows="1"></textarea>
         <button class="send-btn" id="sendBtn">➤</button>
       </div>
@@ -2326,17 +2356,22 @@ function openChat(contact){
   document.getElementById('btnBack').onclick=goBack;
   document.getElementById('ctbCall').onclick=()=>{logCall(contact.id,'out');toast('📞 '+t('calling'));};
   document.getElementById('ctbProf').onclick=()=>openProfileSheet(contact.id);
-  document.getElementById('emoBtn').onclick=toggleEmo;
-  document.getElementById('stkBtn').onclick=toggleStk;
+  document.getElementById('emoBtn').onclick=()=>{attachOpen=false;document.getElementById('attachPanel').classList.remove('on');document.getElementById('attachBtn').classList.remove('on');toggleEmo();};
+  document.getElementById('attachBtn').onclick=toggleAttach;
   document.getElementById('sendBtn').onclick=sendMsg;
   const inp=document.getElementById('msgIn');
   inp.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMsg();}});
-  inp.addEventListener('input',function(){this.style.height='auto';this.style.height=Math.min(this.scrollHeight,100)+'px';});
+  inp.addEventListener('input',function(){
+    this.style.height='auto';this.style.height=Math.min(this.scrollHeight,100)+'px';
+    // Visual: show small "sending" indicator or animate send button
+    const sendBtn=document.getElementById('sendBtn');
+    if(sendBtn) sendBtn.style.opacity=this.value.trim()?'1':'0.5';
+  });
   const es=document.getElementById('emoStrip');
   EMOJIS.forEach(e=>{const b=document.createElement('button');b.className='emo-btn';b.textContent=e;b.onclick=()=>{inp.value+=e;inp.focus();};es.appendChild(b);});
-  const ss=document.getElementById('stkStrip');
-  STICKERS.forEach(s=>{const d=document.createElement('div');d.className='stk';d.textContent=s;d.onclick=()=>sendStk(s);ss.appendChild(d);});
-  emoOpen=false;stkOpen=false;
+  // Build attachment panel
+  buildAttachPanel(contact);
+  emoOpen=false;stkOpen=false;attachOpen=false;
   renderMsgs(contact.id);
   slideToChatView();
   setTimeout(showHint,600);
@@ -2350,7 +2385,7 @@ function renderMsgs(cid){
   msgs.forEach((m,idx)=>{
     const row=document.createElement('div');
     row.className=`msg-row ${m.from}`;
-    const isEmo=/^\p{Emoji}+$/u.test(m.text)&&m.text.length<=4;
+    const isEmo=m.text&&/^\p{Emoji}+$/u.test(m.text)&&m.text.length<=4;
     let avStr='';
     if(m.from==='other'){
       const sender=contacts.find(x=>x.id===activeChat?.id);
@@ -2365,9 +2400,13 @@ function renderMsgs(cid){
       ? `<div class="msg-quote">❝ ${m.quote.from}: ${m.quote.text}</div>`
       : '';
 
+    const bubContent = m.img
+      ? `<img src="${m.img}" style="max-width:220px;border-radius:12px;display:block;cursor:pointer;" onclick="this.requestFullscreen&&this.requestFullscreen();">`
+      : m.text;
+
     row.innerHTML=`${avStr}<div class="msg-col">
       ${quoteHTML}
-      <div class="msg-bw"><div class="bub${isEmo?' emo':''}">${m.text}</div><div class="msg-time">${m.time}</div></div>
+      <div class="msg-bw"><div class="bub${isEmo?' emo':''}">${bubContent}</div><div class="msg-time">${m.time}</div></div>
       ${m.from==='me'?`<div class="msg-read">✓✓</div>`:''}
       ${m.trans?`<div class="msg-trans"><div class="msg-trans-txt">${m.trans}</div><div class="msg-trans-by">✓ ${t('translatedBy')} Pulse</div></div>`:''}
     </div>`;
@@ -2435,8 +2474,146 @@ function sendStk(s){
   convos[activeChat.id].push({from:'me',text:s,time:now()});
   activeChat.lastMsg=s;renderChatList();renderMsgs(activeChat.id);toggleStk();
 }
-function toggleEmo(){emoOpen=!emoOpen;stkOpen=false;document.getElementById('emoStrip')?.classList.toggle('on',emoOpen);document.getElementById('stkStrip')?.classList.remove('on');document.getElementById('emoBtn')?.classList.toggle('on',emoOpen);document.getElementById('stkBtn')?.classList.remove('on');}
-function toggleStk(){stkOpen=!stkOpen;emoOpen=false;document.getElementById('stkStrip')?.classList.toggle('on',stkOpen);document.getElementById('emoStrip')?.classList.remove('on');document.getElementById('stkBtn')?.classList.toggle('on',stkOpen);document.getElementById('emoBtn')?.classList.remove('on');}
+function toggleEmo(){emoOpen=!emoOpen;stkOpen=false;attachOpen=false;document.getElementById('emoStrip')?.classList.toggle('on',emoOpen);document.getElementById('stkStrip')?.classList.remove('on');document.getElementById('emoBtn')?.classList.toggle('on',emoOpen);document.getElementById('attachPanel')?.classList.remove('on');document.getElementById('attachBtn')?.classList.remove('on');}
+function toggleStk(){stkOpen=!stkOpen;emoOpen=false;attachOpen=false;document.getElementById('stkStrip')?.classList.toggle('on',stkOpen);document.getElementById('emoStrip')?.classList.remove('on');document.getElementById('stkBtn')?.classList.toggle('on',stkOpen);document.getElementById('attachPanel')?.classList.remove('on');document.getElementById('attachBtn')?.classList.remove('on');}
+
+function toggleAttach(){
+  attachOpen=!attachOpen;emoOpen=false;stkOpen=false;
+  document.getElementById('attachPanel')?.classList.toggle('on',attachOpen);
+  document.getElementById('attachBtn')?.classList.toggle('on',attachOpen);
+  document.getElementById('emoStrip')?.classList.remove('on');
+  document.getElementById('stkStrip')?.classList.remove('on');
+  document.getElementById('emoBtn')?.classList.remove('on');
+}
+
+function buildAttachPanel(contact){
+  const panel = document.getElementById('attachPanel');
+  if(!panel) return;
+
+  // Attach types matching the screenshot
+  const items = [
+    {svg:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>', bg:'#3B82F6', lbl: curLang==='ar'?'المعرض':'Gallery',   type:'gallery'},
+    {svg:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>', bg:'#EF4444', lbl: curLang==='ar'?'الكاميرا':'Camera',   type:'camera'},
+    {svg:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>', bg:'#10B981', lbl: curLang==='ar'?'الموقع':'Location',   type:'location'},
+    {svg:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>', bg:'#06B6D4', lbl: curLang==='ar'?'جهة اتصال':'Contact', type:'contact'},
+    {svg:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>', bg:'#8B5CF6', lbl: curLang==='ar'?'مستند':'Document',    type:'document'},
+    {svg:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 18v-6a9 9 0 0 1 18 0v6"/><path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3z"/><path d="M3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"/></svg>', bg:'#F97316', lbl: curLang==='ar'?'صوت':'Audio',         type:'audio'},
+    {svg:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>', bg:'#F59E0B', lbl: curLang==='ar'?'استطلاع':'Poll',      type:'poll'},
+    {svg:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>', bg:'#EC4899', lbl: curLang==='ar'?'فعالية':'Event',      type:'event'},
+
+  ];
+
+  panel.innerHTML = `<div class="attach-grid" id="attachGrid"></div>`;
+  const grid = panel.querySelector('#attachGrid');
+
+  items.forEach(item=>{
+    const el = document.createElement('div');
+    el.className = 'attach-item';
+    el.innerHTML = `
+      <div class="attach-ico" style="background:#fff;border-color:rgba(0,0,0,0.06);color:${item.bg};">
+        ${item.svg}
+      </div>
+      <div class="attach-lbl">${item.lbl}</div>
+    `;
+    el.onclick = () => handleAttach(item.type, contact);
+    grid.appendChild(el);
+  });
+}
+
+function handleAttach(type, contact){
+  toggleAttach(); // close panel
+  if(type==='gallery'||type==='camera'||type==='document'||type==='audio'){
+    // Create a temporary file input
+    const inp = document.createElement('input');
+    inp.type = 'file';
+    if(type==='gallery') inp.accept='image/*,video/*';
+    else if(type==='camera'){inp.accept='image/*';inp.capture='environment';}
+    else if(type==='document') inp.accept='.pdf,.doc,.docx,.txt,.xls,.xlsx,.ppt,.pptx';
+    else if(type==='audio') inp.accept='audio/*';
+    inp.style.display='none';
+    document.body.appendChild(inp);
+    inp.onchange=e=>{
+      const f=e.target.files[0];
+      if(!f) return;
+      if(f.type.startsWith('image/')){
+        const r=new FileReader();
+        r.onload=ev=>{
+          // Send as image message
+          const imgMsg={from:'me',text:'',img:ev.target.result,time:now(),fileName:f.name};
+          convos[contact.id].push(imgMsg);
+          contact.lastMsg='📷 '+f.name;contact.lastTime='الآن';
+          renderChatList();renderMsgs(contact.id);
+        };
+        r.readAsDataURL(f);
+      } else {
+        const fileMsg={from:'me',text:`📎 ${f.name}`,time:now()};
+        convos[contact.id].push(fileMsg);
+        contact.lastMsg='📎 '+f.name;contact.lastTime='الآن';
+        renderChatList();renderMsgs(contact.id);
+      }
+      document.body.removeChild(inp);
+    };
+    inp.click();
+  } else if(type==='location'){
+    const locMsg={from:'me',text:'📍 '+(curLang==='ar'?'الموقع الحالي':'Current Location'),time:now()};
+    convos[contact.id].push(locMsg);
+    contact.lastMsg=locMsg.text;contact.lastTime='الآن';
+    renderChatList();renderMsgs(contact.id);
+    toast('📍 '+(curLang==='ar'?'تم إرسال موقعك':'Location sent'));
+  } else if(type==='contact'){
+    // Send a contact card (demo: send me's info)
+    const cMsg={from:'me',text:`👤 ${me.name} | ${me.phone}`,time:now()};
+    convos[contact.id].push(cMsg);
+    contact.lastMsg=cMsg.text;contact.lastTime='الآن';
+    renderChatList();renderMsgs(contact.id);
+    toast('👤 '+(curLang==='ar'?'تم إرسال جهة الاتصال':'Contact sent'));
+  } else if(type==='poll'){
+    showPollComposer(contact);
+  } else if(type==='event'){
+    const eMsg={from:'me',text:`📅 `+(curLang==='ar'?'فعالية جديدة':'New Event'),time:now()};
+    convos[contact.id].push(eMsg);
+    contact.lastMsg=eMsg.text;contact.lastTime='الآن';
+    renderChatList();renderMsgs(contact.id);
+    toast('📅 '+(curLang==='ar'?'تم إرسال الفعالية':'Event sent'));
+
+}
+
+function showPollComposer(contact){
+  // Simple poll via prompt-like overlay
+  let ov=document.getElementById('pollOv');
+  if(ov) ov.remove();
+  ov=document.createElement('div');
+  ov.id='pollOv';
+  ov.style.cssText='position:fixed;inset:0;z-index:600;background:rgba(0,0,0,.6);backdrop-filter:blur(6px);display:flex;align-items:flex-end;justify-content:center;max-width:430px;margin:0 auto;';
+  ov.innerHTML=`
+    <div style="background:var(--s1);border-radius:24px 24px 0 0;width:100%;padding:20px;border:1px solid var(--br);border-bottom:none;">
+      <div style="font-size:16px;font-weight:800;color:var(--t0);margin-bottom:14px;">📊 ${curLang==='ar'?'إنشاء استطلاع':'Create Poll'}</div>
+      <input id="pollQ" class="f-in" placeholder="${curLang==='ar'?'السؤال...':'Question...'}" style="margin-bottom:8px;">
+      <input id="pollA1" class="f-in" placeholder="${curLang==='ar'?'خيار 1':'Option 1'}" style="margin-bottom:8px;">
+      <input id="pollA2" class="f-in" placeholder="${curLang==='ar'?'خيار 2':'Option 2'}" style="margin-bottom:14px;">
+      <div style="display:flex;gap:8px;">
+        <button onclick="document.getElementById('pollOv').remove();" style="flex:1;padding:12px;border-radius:12px;background:var(--s2);border:1px solid var(--br);font-family:var(--fa);font-size:14px;color:var(--t1);cursor:pointer;">${curLang==='ar'?'إلغاء':'Cancel'}</button>
+        <button id="pollSend" style="flex:2;padding:12px;border-radius:12px;background:var(--acc);border:none;font-family:var(--fa);font-size:14px;font-weight:700;color:var(--bme-t);cursor:pointer;">${curLang==='ar'?'إرسال':'Send'}</button>
+      </div>
+    </div>
+  `;
+  document.getElementById('shell').appendChild(ov);
+  ov.querySelector('#pollSend').onclick=()=>{
+    const q=ov.querySelector('#pollQ').value.trim();
+    const a1=ov.querySelector('#pollA1').value.trim();
+    const a2=ov.querySelector('#pollA2').value.trim();
+    if(!q){toast('⚠️ '+(curLang==='ar'?'أدخل السؤال':'Enter question'));return;}
+    const opts=[a1||'نعم',a2||'لا'];
+    const pollMsg={from:'me',text:`📊 ${q}\n${opts.map((o,i)=>`${i===0?'🔵':'🟡'} ${o}`).join('\n')}`,time:now()};
+    convos[contact.id].push(pollMsg);
+    contact.lastMsg='📊 '+q;contact.lastTime='الآن';
+    renderChatList();renderMsgs(contact.id);
+    ov.remove();
+    toast('📊 '+(curLang==='ar'?'تم إرسال الاستطلاع':'Poll sent'));
+  };
+}
+
+
 function now(){return new Date().toLocaleTimeString('ar-SA',{hour:'2-digit',minute:'2-digit'});}
 
 // ═══════════════════════════════════
@@ -3188,14 +3365,14 @@ function showMsgCtx(msgObj, msgIdx, cid, bubEl){
 
   const actions = [
     {ico:'📋', lbl:t('copy'),     fn:'ctxCopy'},
-    {ico:'↗️', lbl:t('forward'),  fn:'ctxFwd'},
-    {ico:'⭐', lbl:t('favorite'), fn:'ctxFav'},
     {ico:'🗑️', lbl:t('delete'),  fn:'ctxDel', cls:'danger'},
-    {ico:'≡',  lbl:t('select'),  fn:'ctxSel'},
-    {ico:'❝',  lbl:t('quote'),   fn:'ctxQuote'},
-    {ico:'🔔', lbl:t('reminder'),fn:'ctxRemind'},
-    {ico:'✕',  lbl:t('cancelTr'),fn:'ctxClose'},
+    {ico:'⭐', lbl:t('favorite'), fn:'ctxFav'},
+    {ico:'↗️', lbl:t('forward'),  fn:'ctxFwd'},
+    {ico:'📝', lbl:t('select'),  fn:'ctxSel'},
     {ico:'🔍', lbl:t('search'),  fn:'ctxSearch'},
+    {ico:'✕',  lbl:t('cancelTr'),fn:'ctxClose'},
+    {ico:'🔔', lbl:t('reminder'),fn:'ctxRemind'},
+    {ico:'❝',  lbl:t('quote'),   fn:'ctxQuote'},
   ];
 
   menu.innerHTML = actions.map(a=>`
@@ -3217,8 +3394,10 @@ function showMsgCtx(msgObj, msgIdx, cid, bubEl){
     btn.onclick=()=>{
       const fn = btn.dataset.fn;
       if(fn==='ctxCopy'){
-        try{navigator.clipboard.writeText(msgObj.text);}catch(e){}
-        toast(t('msgCopied'));
+        const text = msgObj.text;
+        if(navigator.clipboard && navigator.clipboard.writeText){
+          navigator.clipboard.writeText(text).then(()=>toast(t('msgCopied'))).catch(()=>{fallbackCopy(text);toast(t('msgCopied'));});
+        } else { fallbackCopy(text); toast(t('msgCopied')); }
       } else if(fn==='ctxFav'){
         favorites.push({text:msgObj.text,from:msgObj.from,contact:contactName,time:msgObj.time});
         toast(t('msgFavorited'));renderProfile();
@@ -3229,13 +3408,15 @@ function showMsgCtx(msgObj, msgIdx, cid, bubEl){
         quotedMsg={text:msgObj.text,from:msgObj.from==='me'?me.name:contactName};
         renderQuoteBar();
       } else if(fn==='ctxFwd'){
-        toast('↗️ Forward — قريباً');
+        showForwardSheet(msgObj.text);
       } else if(fn==='ctxRemind'){
-        toast('🔔 تذكير — قريباً');
+        toast('🔔 '+t('reminder')+' — '+msgObj.text.slice(0,20));
       } else if(fn==='ctxSearch'){
-        toast('🔍 بحث — قريباً');
+        showMsgSearch(msgObj.text, cid);
       } else if(fn==='ctxSel'){
-        toast('≡ تحديد — قريباً');
+        toast('≡ '+t('select')+' — قريباً');
+      } else if(fn==='ctxClose'){
+        // just close
       }
       closeCtx();
     };
@@ -3252,6 +3433,84 @@ function closeCtx(){
 }
 function closeCtxOutside(e){
   if(!document.getElementById('msgCtxMenu')?.contains(e.target)) closeCtx();
+}
+
+// ── Fallback copy for browsers without clipboard API ──
+function fallbackCopy(text){
+  const ta=document.createElement('textarea');
+  ta.value=text;ta.style.cssText='position:fixed;opacity:0;top:0;left:0;';
+  document.body.appendChild(ta);ta.focus();ta.select();
+  try{document.execCommand('copy');}catch(e){}
+  document.body.removeChild(ta);
+}
+
+// ── Forward message sheet ──
+function showForwardSheet(text){
+  const b=document.getElementById('profileShBody');
+  document.getElementById('profileShTitle').textContent='↗️ '+t('forward');
+  const available=contacts.filter(c=>c.friendStatus==='accepted'||!c.friendStatus);
+  if(!available.length){
+    b.innerHTML=`<div class="empty-state" style="padding:30px 0;"><div class="empty-ico">💬</div><div class="empty-txt">${t('noChats')}</div></div>`;
+    openOv('ovProfile');return;
+  }
+  b.innerHTML=`<div style="font-size:12px;color:var(--t2);padding:0 2px 12px;line-height:1.6;">اختر محادثة لتحويل الرسالة إليها:</div>`;
+  available.forEach(c=>{
+    const el=document.createElement('div');
+    el.className='cl-item';el.style.borderRadius='12px';
+    el.innerHTML=`${avHTML(c,'av-s')}<div style="flex:1;"><div class="cl-name">${c.name}</div><div class="cl-meta">${c.status||''}</div></div>`;
+    el.onclick=()=>{
+      if(!convos[c.id])convos[c.id]=[];
+      convos[c.id].push({from:'me',text:text,time:now()});
+      c.lastMsg=text;c.lastTime='الآن';
+      closeOv('ovProfile');renderChatList();
+      toast('↗️ '+t('forward')+': '+c.name);
+    };
+    b.appendChild(el);
+  });
+  openOv('ovProfile');
+}
+
+// ── Message search in conversation ──
+function showMsgSearch(initQ, cid){
+  // Create search overlay
+  let overlay=document.getElementById('msgSearchOverlay');
+  if(overlay) overlay.remove();
+  overlay=document.createElement('div');
+  overlay.id='msgSearchOverlay';
+  overlay.style.cssText=`position:fixed;inset:0;z-index:500;background:var(--bg);display:flex;flex-direction:column;max-width:430px;margin:0 auto;`;
+  overlay.innerHTML=`
+    <div style="background:var(--bar);padding:14px 14px 10px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--br);flex-shrink:0;">
+      <button id="msgSrchBack" style="width:34px;height:34px;border-radius:11px;background:var(--s2);border:1px solid var(--br);cursor:pointer;font-size:18px;color:var(--t1);display:flex;align-items:center;justify-content:center;">‹</button>
+      <div style="flex:1;display:flex;align-items:center;gap:8px;background:var(--s2);border-radius:12px;padding:9px 13px;border:1.5px solid var(--acc);">
+        <span style="font-size:14px;">🔍</span>
+        <input id="msgSrchIn" type="text" value="${initQ||''}" placeholder="${t('search')}..." style="border:none;background:transparent;font-family:var(--fa);font-size:14px;color:var(--t0);outline:none;flex:1;direction:rtl;">
+      </div>
+    </div>
+    <div id="msgSrchResults" style="flex:1;overflow-y:auto;padding:12px;"></div>
+  `;
+  document.getElementById('shell').appendChild(overlay);
+  const inp=overlay.querySelector('#msgSrchIn');
+  const res=overlay.querySelector('#msgSrchResults');
+  overlay.querySelector('#msgSrchBack').onclick=()=>overlay.remove();
+  function doSearch(q){
+    res.innerHTML='';
+    const msgs=(convos[cid]||[]);
+    if(!q.trim()){res.innerHTML=`<div style="text-align:center;padding:30px;font-size:13px;color:var(--t3);">اكتب كلمة للبحث</div>`;return;}
+    const found=msgs.map((m,i)=>({m,i})).filter(({m})=>m.text&&m.text.toLowerCase().includes(q.toLowerCase()));
+    if(!found.length){res.innerHTML=`<div style="text-align:center;padding:30px;font-size:13px;color:var(--t3);">${t('noResults')}</div>`;return;}
+    found.forEach(({m,i})=>{
+      const el=document.createElement('div');
+      el.style.cssText='background:var(--s1);border-radius:12px;padding:12px 14px;margin-bottom:8px;cursor:pointer;border:1px solid var(--br);';
+      const hi=m.text.replace(new RegExp(q,'gi'),s=>`<mark style="background:var(--acc);color:var(--bme-t);border-radius:3px;padding:0 2px;">${s}</mark>`);
+      el.innerHTML=`<div style="font-size:11px;color:var(--t3);margin-bottom:4px;">${m.from==='me'?me.name:activeChat?.name||''} · ${m.time}</div><div style="font-size:14px;color:var(--t0);">${hi}</div>`;
+      el.onclick=()=>{overlay.remove();};
+      res.appendChild(el);
+    });
+    res.insertAdjacentHTML('afterbegin',`<div style="font-size:11px;color:var(--t3);padding:0 4px 10px;">${found.length} نتيجة</div>`);
+  }
+  inp.addEventListener('input',e=>doSearch(e.target.value));
+  doSearch(initQ||'');
+  setTimeout(()=>inp.focus(),100);
 }
 
 // Quote bar in chat input
@@ -3327,26 +3586,137 @@ function showCallLog(){
 // ═══════════════════════════════════
 function renderAddScan(){
   const b=document.getElementById('addBody');
-  b.innerHTML=`<div class="scan-area"><div class="scan-frame"><video id="svid" autoplay playsinline muted></video><div class="scan-corners"><div class="sc-tl"></div><div class="sc-br"></div></div><div class="scan-line"></div></div><div id="scanSt" style="font-size:13px;color:var(--t2);">${t('startCamera')}</div><button class="sh-btn" id="scanStart" style="max-width:200px;">${t('cameraStart')}</button></div>`;
+  b.innerHTML=`
+    <div class="scan-area">
+      <div class="scan-frame" id="scanFrame">
+        <video id="svid" autoplay playsinline muted style="width:100%;height:100%;object-fit:cover;display:none;"></video>
+        <canvas id="scanCanvas" style="width:100%;height:100%;display:none;"></canvas>
+        <div id="scanPlaceholder" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:8px;background:#111;">
+          <span style="font-size:40px;">📷</span>
+          <span style="font-size:12px;color:#aaa;">${t('startCamera')}</span>
+        </div>
+        <div class="scan-corners"><div class="sc-tl"></div><div class="sc-br"></div></div>
+        <div class="scan-line" id="scanLineEl" style="display:none;"></div>
+      </div>
+      <div id="scanSt" style="font-size:13px;color:var(--t2);text-align:center;min-height:20px;"></div>
+      <button class="sh-btn" id="scanStart" style="max-width:200px;">${t('cameraStart')}</button>
+      <div style="display:flex;align-items:center;gap:10px;width:100%;max-width:260px;">
+        <div style="flex:1;height:1px;background:var(--br);"></div>
+        <span style="font-size:12px;color:var(--t3);">${curLang==='ar'?'أو':'or'}</span>
+        <div style="flex:1;height:1px;background:var(--br);"></div>
+      </div>
+      <label style="
+        display:flex;align-items:center;gap:8px;
+        padding:11px 20px;border-radius:13px;cursor:pointer;
+        background:var(--s2);border:1.5px solid var(--br);
+        font-size:13px;font-weight:600;color:var(--t1);
+        max-width:260px;width:100%;justify-content:center;
+        transition:all .18s;
+      " id="scanImgLabel">
+        🖼️ ${curLang==='ar'?'رفع صورة QR':'Upload QR Image'}
+        <input type="file" accept="image/*" id="scanImgIn" style="display:none;">
+      </label>
+    </div>
+  `;
   document.getElementById('scanStart').onclick=startScan;
+  document.getElementById('scanImgIn').onchange=e=>{
+    const f=e.target.files[0];if(!f)return;
+    const reader=new FileReader();
+    reader.onload=ev=>{
+      const img=new Image();
+      img.onload=()=>{
+        const cvs=document.createElement('canvas');
+        cvs.width=img.width;cvs.height=img.height;
+        const ctx=cvs.getContext('2d');ctx.drawImage(img,0,0);
+        const id=ctx.getImageData(0,0,cvs.width,cvs.height);
+        const result=typeof jsQR!=='undefined'?jsQR(id.data,id.width,id.height):null;
+        if(result&&result.data){
+          handleScan(result.data);
+        } else {
+          const st=document.getElementById('scanSt');
+          if(st) st.textContent='⚠️ '+(curLang==='ar'?'لم يُعثر على QR في الصورة':'No QR found in image');
+        }
+      };
+      img.src=ev.target.result;
+    };
+    reader.readAsDataURL(f);
+    e.target.value='';
+  };
 }
+
+let scanInterval=null;
+
 async function startScan(){
   const st=document.getElementById('scanSt'),btn=document.getElementById('scanStart');
-  try{st.textContent=t('opening');btn.style.display='none';
-    scanStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}});
-    const v=document.getElementById('svid');v.srcObject=scanStream;await v.play();
+  try{
+    st.textContent=t('opening');btn.style.display='none';
+    scanStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment',width:{ideal:640},height:{ideal:640}}});
+    const v=document.getElementById('svid');
+    const ph=document.getElementById('scanPlaceholder');
+    const cvs=document.getElementById('scanCanvas');
+    const scanLine=document.getElementById('scanLineEl');
+    v.srcObject=scanStream;
+    await v.play();
+    v.style.display='block';
+    if(ph) ph.style.display='none';
+    if(scanLine) scanLine.style.display='block';
     st.textContent=t('cameraOn');
-    if('BarcodeDetector'in window){
+
+    // Use BarcodeDetector if available, otherwise jsQR via canvas
+    if('BarcodeDetector' in window){
       const det=new BarcodeDetector({formats:['qr_code']});
-      const si=setInterval(async()=>{try{const r=await det.detect(v);if(r.length){clearInterval(si);handleScan(r[0].rawValue);}}catch(e){}},500);
-    }else st.textContent=t('cameraOn')+' (no BarcodeDetector)';
-  }catch(e){st.textContent=t('cameraErr');btn.style.display='block';}
+      scanInterval=setInterval(async()=>{
+        try{
+          const r=await det.detect(v);
+          if(r&&r.length){clearInterval(scanInterval);scanInterval=null;handleScan(r[0].rawValue);}
+        }catch(e){}
+      },300);
+    } else if(typeof jsQR !== 'undefined'){
+      // Use jsQR with canvas
+      cvs.width=320;cvs.height=320;
+      const ctx=cvs.getContext('2d');
+      scanInterval=setInterval(()=>{
+        if(!v.videoWidth) return;
+        ctx.drawImage(v,0,0,320,320);
+        const id=ctx.getImageData(0,0,320,320);
+        const result=jsQR(id.data,id.width,id.height,{inversionAttempts:'dontInvert'});
+        if(result&&result.data){
+          clearInterval(scanInterval);scanInterval=null;
+          // Flash success
+          if(st) st.textContent='✅ '+(curLang==='ar'?'تم المسح!':'Scanned!');
+          setTimeout(()=>handleScan(result.data),300);
+        }
+      },200);
+    } else {
+      st.textContent='⚠️ '+(curLang==='ar'?'المتصفح لا يدعم المسح التلقائي - استخدم رفع الصورة':'Auto-scan not supported — use image upload');
+      btn.style.display='block';
+    }
+  }catch(e){
+    const st=document.getElementById('scanSt'),btn=document.getElementById('scanStart');
+    if(st) st.textContent=t('cameraErr');
+    if(btn) btn.style.display='block';
+  }
 }
-function stopScan(){if(scanStream){scanStream.getTracks().forEach(t=>t.stop());scanStream=null;}}
+
+function stopScan(){
+  if(scanInterval){clearInterval(scanInterval);scanInterval=null;}
+  if(scanStream){scanStream.getTracks().forEach(t=>t.stop());scanStream=null;}
+}
+
 function handleScan(raw){
   stopScan();
-  try{const u=new URL(raw);if(u.protocol==='pulse:'){const p=u.searchParams;closeOv('ovAdd');addContact({name:p.get('name')||'جهة اتصال',phone:p.get('phone')||'',status:p.get('status')||'',color:p.get('color')||'B'});return;}}catch(e){}
-  closeOv('ovAdd');addContact({name:raw.slice(0,30),phone:'',status:'',color:'C'});
+  try{
+    const u=new URL(raw);
+    if(u.protocol==='pulse:'){
+      const p=u.searchParams;
+      closeOv('ovAdd');
+      addContact({name:p.get('name')||'جهة اتصال',phone:p.get('phone')||'',status:p.get('status')||'',color:p.get('color')||'B'});
+      return;
+    }
+  }catch(e){}
+  // Any QR content → add as contact with that data
+  closeOv('ovAdd');
+  addContact({name:raw.slice(0,30),phone:'',status:'',color:'C'});
 }
 
 // ═══════════════════════════════════
