@@ -6,331 +6,6 @@
 <title>Cloud</title>
 <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jsQR/1.4.0/jsQR.min.js">
-// ═══════════════════════════════════════════════════════════
-// FRIEND REQUEST FORM (WeChat style)
-// ═══════════════════════════════════════════════════════════
-let _freqData = null; // {name, phone, status, color, avatar}
-let _freqPerm = 'all'; // 'all' or 'chats'
-let _freqHideMyPosts = false;
-let _freqHideTheirPosts = false;
-let _freqGreetImg = null;
-
-function openFriendReqForm(data) {
-  _freqData = data;
-  _freqPerm = 'all';
-  _freqHideMyPosts = false;
-  _freqHideTheirPosts = false;
-  _freqGreetImg = null;
-
-  const sheet = document.getElementById('friendReqFormSheet');
-  const title = document.getElementById('friendReqFormTitle');
-  const sendBtn = document.getElementById('friendReqSendBtn');
-  title.textContent = t('friendReqTitle') || 'Send Friend Request';
-  sendBtn.textContent = t('sendRequest') || 'Send';
-  sheet.classList.add('on');
-  renderFreqForm();
-}
-
-function renderFreqForm() {
-  const body = document.getElementById('friendReqFormBody');
-  const greetDefault = (t('friendReqGreeting') || "I'm {name}").replace('{name}', me?.name || '');
-  body.innerHTML = `
-    <div style="padding:12px 0;">
-      <!-- Greeting -->
-      <div class="freq-section-lbl" style="padding:0 16px 6px;">${t('greetingContent') || 'Greeting content'}</div>
-      <div class="freq-field" style="margin:0 16px 4px;">
-        <textarea id="freqGreet" maxlength="200">${greetDefault}</textarea>
-      </div>
-      <label class="freq-img-btn" style="margin:0 16px 16px;background:var(--bg);border-radius:10px;cursor:pointer;">
-        🖼️ ${t('addImage') || 'Add image'}
-        <input type="file" accept="image/*" id="freqImgIn" style="display:none;">
-        <span id="freqImgLabel"></span>
-      </label>
-
-      <!-- Remark -->
-      <div class="freq-section-lbl" style="padding:0 16px 6px;">${t('remark') || 'Remark'}</div>
-      <div class="freq-field" style="margin:0 16px 16px;">
-        <input id="freqRemark" placeholder="TOP0." maxlength="100">
-      </div>
-
-      <!-- Tag & Remark rows -->
-      <div style="background:var(--bg);margin:0 0 8px;border-radius:0;">
-        <div class="freq-row" id="freqTagRow">
-          <div class="freq-row-lbl">${t('tag') || 'Tag'}</div>
-          <div class="freq-row-val" id="freqTagVal" style="color:var(--acc);">${t('addTag') || 'Add Tag'}</div>
-          <div class="freq-row-arr">›</div>
-        </div>
-        <div class="freq-row" id="freqRemarkRow">
-          <div class="freq-row-lbl">${t('remark') || 'Remark'}</div>
-          <div class="freq-row-val" id="freqRemarkVal" style="color:var(--acc);">${t('addRemark') || 'Add Remark'}</div>
-          <div class="freq-row-arr">›</div>
-        </div>
-        <div class="freq-row" id="freqPhotoRow">
-          <div class="freq-row-lbl">${t('addPhoto') || 'Photo'}</div>
-          <div class="freq-row-val" style="color:var(--acc);">${t('addImage') || 'Add Photo'}</div>
-          <div class="freq-row-arr">›</div>
-        </div>
-      </div>
-
-      <!-- Friends' Permissions -->
-      <div class="freq-section-lbl" style="padding:8px 16px 6px;">${t('friendsPerms') || "Friends' Permissions"}</div>
-      <div style="background:var(--bg);margin-bottom:0;">
-        <div class="freq-perm-opt" data-perm="all">
-          <div class="freq-perm-ico ${_freqPerm==='all'?'selected':''}">✓</div>
-          <div class="freq-perm-lbl">${t('allowAll') || 'Chats, Moments, etc.'}</div>
-        </div>
-        <div class="freq-toggle-row">
-          <div class="freq-toggle-lbl" style="padding-left:32px;">－ ${t('seePosts') || 'See my posts'}</div>
-          <label class="tog-wrap"><input type="checkbox" id="freqHideMyPosts" ${_freqHideMyPosts?'checked':''}><div class="tog ${_freqHideMyPosts?'on':''}"></div></label>
-        </div>
-        <div class="freq-toggle-row">
-          <div class="freq-toggle-lbl" style="padding-left:32px;">－ ${t('seePosts') || 'See their posts'}</div>
-          <label class="tog-wrap"><input type="checkbox" id="freqHideTheirPosts" ${_freqHideTheirPosts?'checked':''}><div class="tog ${_freqHideTheirPosts?'on':''}"></div></label>
-        </div>
-        <div class="freq-perm-opt" data-perm="chats">
-          <div class="freq-perm-ico ${_freqPerm==='chats'?'selected':''}">✓</div>
-          <div class="freq-perm-lbl">${t('chatsOnly') || 'Chats Only'}</div>
-        </div>
-      </div>
-    </div>
-  `;
-
-  // Permission radio
-  body.querySelectorAll('[data-perm]').forEach(el => {
-    el.onclick = () => {
-      _freqPerm = el.dataset.perm;
-      renderFreqForm();
-    };
-  });
-
-  // Toggles
-  body.querySelector('#freqHideMyPosts').onchange = e => { _freqHideMyPosts = e.target.checked; };
-  body.querySelector('#freqHideTheirPosts').onchange = e => { _freqHideTheirPosts = e.target.checked; };
-
-  // Image upload
-  body.querySelector('#freqImgIn').onchange = e => {
-    const f = e.target.files[0]; if(!f) return;
-    const r = new FileReader();
-    r.onload = ev => { _freqGreetImg = ev.target.result; document.getElementById('freqImgLabel').textContent = ' ✅'; };
-    r.readAsDataURL(f);
-    e.target.value = '';
-  };
-
-  // Coming soon rows
-  body.querySelector('#freqTagRow').onclick = () => toast('🔧 ' + t('comingSoon'));
-  body.querySelector('#freqRemarkRow').onclick = () => toast('🔧 ' + t('comingSoon'));
-  body.querySelector('#freqPhotoRow').onclick = () => toast('🔧 ' + t('comingSoon'));
-}
-
-document.addEventListener('DOMContentLoaded', () => {
-  document.getElementById('friendReqFormBack').onclick = () => {
-    document.getElementById('friendReqFormSheet').classList.remove('on');
-  };
-  document.getElementById('friendReqSendBtn').onclick = () => {
-    if(!_freqData) return;
-    document.getElementById('friendReqFormSheet').classList.remove('on');
-    sendFriendRequest({
-      ..._freqData,
-      seePosts: _freqPerm === 'all' && !_freqHideTheirPosts,
-    });
-  };
-});
-
-
-// Apply dynamic theme CSS vars (msg bubble colors)
-function applyThemeVars(th){
-  if(!th) th = THEMES.find(t=>t.id===curTheme)||THEMES[0];
-  const root = document.documentElement;
-  root.style.setProperty('--msg-out-bg', th.msgOut||'var(--acc)');
-  root.style.setProperty('--msg-out-t', th.msgOutTxt||'#fff');
-  root.style.setProperty('--msg-in-bg', th.msgIn||'var(--s1)');
-  root.style.setProperty('--msg-in-t', th.msgInTxt||'var(--t0)');
-}
-
-// Call on load — check storage first
-document.addEventListener('DOMContentLoaded', ()=>{
-  // Try to restore saved session
-  if (loadFromStorage()) {
-    // Restore theme + lang
-    applyLang(curLang);
-    document.body.setAttribute('data-theme', curTheme);
-    applyThemeVars(THEMES.find(th=>th.id===curTheme)||THEMES[0]);
-    // Hide login, show app
-    const ls = document.getElementById('loginScreen');
-    if (ls) ls.style.display = 'none';
-    launch();
-  } else {
-    // No saved data — show login as normal
-    applyThemeVars(THEMES.find(th=>th.id===curTheme)||THEMES[0]);
-  }
-});
-
-
-// ═══════════════════════════════════════════════════════════
-// MULTI-ACCOUNT SWITCHER
-// ═══════════════════════════════════════════════════════════
-function openAccountSwitcher(){
-  saveCurrentAccount();
-  const sheet = document.getElementById('accountSheet');
-  const body  = document.getElementById('accountSheetBody');
-  const title = document.getElementById('accountSheetTitle');
-  title.textContent = t('accounts')||'Accounts';
-  sheet.classList.add('on');
-  renderAccountList(body);
-}
-
-function closeAccountSwitcher(){
-  document.getElementById('accountSheet').classList.remove('on');
-}
-
-function renderAccountList(body){
-  let html = '';
-
-  accounts.forEach((acc, i) => {
-    const isActive = i === activeAccountIdx;
-    const av = acc.me.avatar
-      ? `<img src="${acc.me.avatar}" style="width:48px;height:48px;border-radius:50%;object-fit:cover;">`
-      : `<div style="width:48px;height:48px;border-radius:50%;background:${acc.me.color};display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;color:#fff;">${acc.me.name.charAt(0).toUpperCase()}</div>`;
-
-    html += `
-      <div onclick="loadAccount(${i})" style="
-        display:flex;align-items:center;gap:14px;
-        padding:14px 16px;border-radius:16px;cursor:pointer;
-        background:${isActive?'var(--acc2)':'var(--s1)'};
-        border:2px solid ${isActive?'var(--acc)':'transparent'};
-        margin-bottom:10px;transition:all .2s;
-      ">
-        <div style="position:relative;flex-shrink:0;">
-          ${av}
-          ${isActive?`<div style="position:absolute;bottom:0;right:0;width:14px;height:14px;border-radius:50%;background:#22c55e;border:2px solid var(--bg);"></div>`:''}
-        </div>
-        <div style="flex:1;min-width:0;">
-          <div style="font-size:15px;font-weight:700;color:var(--t0);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${acc.me.name}</div>
-          <div style="font-size:12px;color:var(--t3);margin-top:2px;">${acc.me.phone}</div>
-        </div>
-        ${isActive?`<div style="color:var(--acc);font-size:18px;font-weight:700;">✓</div>`:''}
-      </div>`;
-  });
-
-  // Add new account button (up to MAX_ACCOUNTS)
-  if(accounts.length < MAX_ACCOUNTS){
-    html += `
-      <button onclick="addNewAccount()" style="
-        width:100%;padding:16px;border-radius:16px;
-        border:2px dashed var(--br);background:transparent;
-        color:var(--acc);font-size:15px;font-weight:700;
-        cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;
-        transition:all .2s;font-family:var(--fa);
-        margin-top:4px;
-      ">
-        <span style="font-size:22px;">＋</span>
-        <span>${t('addAccount')||'Add Account'}</span>
-      </button>`;
-  } else {
-    html += `<div style="text-align:center;color:var(--t3);font-size:13px;padding:12px;">${t('maxAccounts')||'Maximum '+MAX_ACCOUNTS+' accounts'}</div>`;
-  }
-
-  body.innerHTML = html;
-}
-
-function addNewAccount(){
-  closeAccountSwitcher();
-  // Reset state for new account
-  me = null;
-  contacts = []; friendReqs = []; convos = {}; posts = [];
-  favorites = []; statuses = []; callLog = [];
-  activeAccountIdx = accounts.length;
-
-  // Show login screen
-  const shell = document.getElementById('shell');
-  const ls = document.getElementById('loginScreen');
-  document.getElementById('mainWrap').classList.add('hidden');
-  ls.style.display = '';
-  ls.classList.remove('out');
-  ls.style.opacity = '1';
-
-  // Reset login form
-  document.getElementById('loginLangStep').style.display = '';
-  document.getElementById('loginLangStep').style.opacity = '1';
-  document.getElementById('loginLangStep').style.transform = '';
-  const formStep = document.getElementById('loginFormStep');
-  formStep.style.display = 'none';
-  document.getElementById('lName').value = '';
-  document.getElementById('lPhone').value = '';
-}
-
-
-// ═══════════════════════════════════════════════════════════
-// PERSISTENT STORAGE — localStorage
-// ═══════════════════════════════════════════════════════════
-const STORAGE_KEY = 'cloud_chat_data_v1';
-
-function saveToStorage() {
-  try {
-    // Always update current account snapshot first
-    if (me) {
-      accounts[activeAccountIdx] = {
-        me, contacts, friendReqs, convos, posts,
-        favorites, statuses, callLog,
-        curLang, curTheme
-      };
-    }
-    const data = {
-      accounts,
-      activeAccountIdx,
-      curLang,
-      curTheme,
-      savedAt: Date.now()
-    };
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-  } catch(e) {
-    console.warn('Storage save failed:', e);
-  }
-}
-
-function loadFromStorage() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return false;
-    const data = JSON.parse(raw);
-    if (!data || !data.accounts || !data.accounts.length) return false;
-
-    accounts         = data.accounts;
-    activeAccountIdx = data.activeAccountIdx || 0;
-    curLang          = data.curLang || 'ar';
-    curTheme         = data.curTheme || 'gold';
-
-    // Load the active account
-    const acc = accounts[activeAccountIdx];
-    if (!acc || !acc.me) return false;
-
-    me         = acc.me;
-    contacts   = acc.contacts   || [];
-    friendReqs = acc.friendReqs || [];
-    convos     = acc.convos     || {};
-    posts      = acc.posts      || [];
-    favorites  = acc.favorites  || [];
-    statuses   = acc.statuses   || [];
-    callLog    = acc.callLog    || [];
-
-    return true;
-  } catch(e) {
-    console.warn('Storage load failed:', e);
-    return false;
-  }
-}
-
-function clearStorage() {
-  localStorage.removeItem(STORAGE_KEY);
-}
-
-// Auto-save every 30 seconds + on page hide
-setInterval(saveToStorage, 30000);
-document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'hidden') saveToStorage();
-});
-window.addEventListener('beforeunload', saveToStorage);
-
 </script>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -1927,6 +1602,331 @@ body.easy-large .sh-btn{font-size:17px!important;padding:16px!important;}
 <div id="msgCtxMenu" class="msg-ctx" style="display:none;"></div>
 
 <script>
+// ═══════════════════════════════════════════════════════════
+// FRIEND REQUEST FORM (WeChat style)
+// ═══════════════════════════════════════════════════════════
+let _freqData = null; // {name, phone, status, color, avatar}
+let _freqPerm = 'all'; // 'all' or 'chats'
+let _freqHideMyPosts = false;
+let _freqHideTheirPosts = false;
+let _freqGreetImg = null;
+
+function openFriendReqForm(data) {
+  _freqData = data;
+  _freqPerm = 'all';
+  _freqHideMyPosts = false;
+  _freqHideTheirPosts = false;
+  _freqGreetImg = null;
+
+  const sheet = document.getElementById('friendReqFormSheet');
+  const title = document.getElementById('friendReqFormTitle');
+  const sendBtn = document.getElementById('friendReqSendBtn');
+  title.textContent = t('friendReqTitle') || 'Send Friend Request';
+  sendBtn.textContent = t('sendRequest') || 'Send';
+  sheet.classList.add('on');
+  renderFreqForm();
+}
+
+function renderFreqForm() {
+  const body = document.getElementById('friendReqFormBody');
+  const greetDefault = (t('friendReqGreeting') || "I'm {name}").replace('{name}', me?.name || '');
+  body.innerHTML = `
+    <div style="padding:12px 0;">
+      <!-- Greeting -->
+      <div class="freq-section-lbl" style="padding:0 16px 6px;">${t('greetingContent') || 'Greeting content'}</div>
+      <div class="freq-field" style="margin:0 16px 4px;">
+        <textarea id="freqGreet" maxlength="200">${greetDefault}</textarea>
+      </div>
+      <label class="freq-img-btn" style="margin:0 16px 16px;background:var(--bg);border-radius:10px;cursor:pointer;">
+        🖼️ ${t('addImage') || 'Add image'}
+        <input type="file" accept="image/*" id="freqImgIn" style="display:none;">
+        <span id="freqImgLabel"></span>
+      </label>
+
+      <!-- Remark -->
+      <div class="freq-section-lbl" style="padding:0 16px 6px;">${t('remark') || 'Remark'}</div>
+      <div class="freq-field" style="margin:0 16px 16px;">
+        <input id="freqRemark" placeholder="TOP0." maxlength="100">
+      </div>
+
+      <!-- Tag & Remark rows -->
+      <div style="background:var(--bg);margin:0 0 8px;border-radius:0;">
+        <div class="freq-row" id="freqTagRow">
+          <div class="freq-row-lbl">${t('tag') || 'Tag'}</div>
+          <div class="freq-row-val" id="freqTagVal" style="color:var(--acc);">${t('addTag') || 'Add Tag'}</div>
+          <div class="freq-row-arr">›</div>
+        </div>
+        <div class="freq-row" id="freqRemarkRow">
+          <div class="freq-row-lbl">${t('remark') || 'Remark'}</div>
+          <div class="freq-row-val" id="freqRemarkVal" style="color:var(--acc);">${t('addRemark') || 'Add Remark'}</div>
+          <div class="freq-row-arr">›</div>
+        </div>
+        <div class="freq-row" id="freqPhotoRow">
+          <div class="freq-row-lbl">${t('addPhoto') || 'Photo'}</div>
+          <div class="freq-row-val" style="color:var(--acc);">${t('addImage') || 'Add Photo'}</div>
+          <div class="freq-row-arr">›</div>
+        </div>
+      </div>
+
+      <!-- Friends' Permissions -->
+      <div class="freq-section-lbl" style="padding:8px 16px 6px;">${t('friendsPerms') || "Friends' Permissions"}</div>
+      <div style="background:var(--bg);margin-bottom:0;">
+        <div class="freq-perm-opt" data-perm="all">
+          <div class="freq-perm-ico ${_freqPerm==='all'?'selected':''}">✓</div>
+          <div class="freq-perm-lbl">${t('allowAll') || 'Chats, Moments, etc.'}</div>
+        </div>
+        <div class="freq-toggle-row">
+          <div class="freq-toggle-lbl" style="padding-left:32px;">－ ${t('seePosts') || 'See my posts'}</div>
+          <label class="tog-wrap"><input type="checkbox" id="freqHideMyPosts" ${_freqHideMyPosts?'checked':''}><div class="tog ${_freqHideMyPosts?'on':''}"></div></label>
+        </div>
+        <div class="freq-toggle-row">
+          <div class="freq-toggle-lbl" style="padding-left:32px;">－ ${t('seePosts') || 'See their posts'}</div>
+          <label class="tog-wrap"><input type="checkbox" id="freqHideTheirPosts" ${_freqHideTheirPosts?'checked':''}><div class="tog ${_freqHideTheirPosts?'on':''}"></div></label>
+        </div>
+        <div class="freq-perm-opt" data-perm="chats">
+          <div class="freq-perm-ico ${_freqPerm==='chats'?'selected':''}">✓</div>
+          <div class="freq-perm-lbl">${t('chatsOnly') || 'Chats Only'}</div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  // Permission radio
+  body.querySelectorAll('[data-perm]').forEach(el => {
+    el.onclick = () => {
+      _freqPerm = el.dataset.perm;
+      renderFreqForm();
+    };
+  });
+
+  // Toggles
+  body.querySelector('#freqHideMyPosts').onchange = e => { _freqHideMyPosts = e.target.checked; };
+  body.querySelector('#freqHideTheirPosts').onchange = e => { _freqHideTheirPosts = e.target.checked; };
+
+  // Image upload
+  body.querySelector('#freqImgIn').onchange = e => {
+    const f = e.target.files[0]; if(!f) return;
+    const r = new FileReader();
+    r.onload = ev => { _freqGreetImg = ev.target.result; document.getElementById('freqImgLabel').textContent = ' ✅'; };
+    r.readAsDataURL(f);
+    e.target.value = '';
+  };
+
+  // Coming soon rows
+  body.querySelector('#freqTagRow').onclick = () => toast('🔧 ' + t('comingSoon'));
+  body.querySelector('#freqRemarkRow').onclick = () => toast('🔧 ' + t('comingSoon'));
+  body.querySelector('#freqPhotoRow').onclick = () => toast('🔧 ' + t('comingSoon'));
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('friendReqFormBack').onclick = () => {
+    document.getElementById('friendReqFormSheet').classList.remove('on');
+  };
+  document.getElementById('friendReqSendBtn').onclick = () => {
+    if(!_freqData) return;
+    document.getElementById('friendReqFormSheet').classList.remove('on');
+    sendFriendRequest({
+      ..._freqData,
+      seePosts: _freqPerm === 'all' && !_freqHideTheirPosts,
+    });
+  };
+});
+
+
+// Apply dynamic theme CSS vars (msg bubble colors)
+function applyThemeVars(th){
+  if(!th) th = THEMES.find(t=>t.id===curTheme)||THEMES[0];
+  const root = document.documentElement;
+  root.style.setProperty('--msg-out-bg', th.msgOut||'var(--acc)');
+  root.style.setProperty('--msg-out-t', th.msgOutTxt||'#fff');
+  root.style.setProperty('--msg-in-bg', th.msgIn||'var(--s1)');
+  root.style.setProperty('--msg-in-t', th.msgInTxt||'var(--t0)');
+}
+
+// Call on load — check storage first
+document.addEventListener('DOMContentLoaded', ()=>{
+  // Try to restore saved session
+  if (loadFromStorage()) {
+    // Restore theme + lang
+    applyLang(curLang);
+    document.body.setAttribute('data-theme', curTheme);
+    applyThemeVars(THEMES.find(th=>th.id===curTheme)||THEMES[0]);
+    // Hide login, show app
+    const ls = document.getElementById('loginScreen');
+    if (ls) ls.style.display = 'none';
+    launch();
+  } else {
+    // No saved data — show login as normal
+    applyThemeVars(THEMES.find(th=>th.id===curTheme)||THEMES[0]);
+  }
+});
+
+
+// ═══════════════════════════════════════════════════════════
+// MULTI-ACCOUNT SWITCHER
+// ═══════════════════════════════════════════════════════════
+function openAccountSwitcher(){
+  saveCurrentAccount();
+  const sheet = document.getElementById('accountSheet');
+  const body  = document.getElementById('accountSheetBody');
+  const title = document.getElementById('accountSheetTitle');
+  title.textContent = t('accounts')||'Accounts';
+  sheet.classList.add('on');
+  renderAccountList(body);
+}
+
+function closeAccountSwitcher(){
+  document.getElementById('accountSheet').classList.remove('on');
+}
+
+function renderAccountList(body){
+  let html = '';
+
+  accounts.forEach((acc, i) => {
+    const isActive = i === activeAccountIdx;
+    const av = acc.me.avatar
+      ? `<img src="${acc.me.avatar}" style="width:48px;height:48px;border-radius:50%;object-fit:cover;">`
+      : `<div style="width:48px;height:48px;border-radius:50%;background:${acc.me.color};display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;color:#fff;">${acc.me.name.charAt(0).toUpperCase()}</div>`;
+
+    html += `
+      <div onclick="loadAccount(${i})" style="
+        display:flex;align-items:center;gap:14px;
+        padding:14px 16px;border-radius:16px;cursor:pointer;
+        background:${isActive?'var(--acc2)':'var(--s1)'};
+        border:2px solid ${isActive?'var(--acc)':'transparent'};
+        margin-bottom:10px;transition:all .2s;
+      ">
+        <div style="position:relative;flex-shrink:0;">
+          ${av}
+          ${isActive?`<div style="position:absolute;bottom:0;right:0;width:14px;height:14px;border-radius:50%;background:#22c55e;border:2px solid var(--bg);"></div>`:''}
+        </div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:15px;font-weight:700;color:var(--t0);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${acc.me.name}</div>
+          <div style="font-size:12px;color:var(--t3);margin-top:2px;">${acc.me.phone}</div>
+        </div>
+        ${isActive?`<div style="color:var(--acc);font-size:18px;font-weight:700;">✓</div>`:''}
+      </div>`;
+  });
+
+  // Add new account button (up to MAX_ACCOUNTS)
+  if(accounts.length < MAX_ACCOUNTS){
+    html += `
+      <button onclick="addNewAccount()" style="
+        width:100%;padding:16px;border-radius:16px;
+        border:2px dashed var(--br);background:transparent;
+        color:var(--acc);font-size:15px;font-weight:700;
+        cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;
+        transition:all .2s;font-family:var(--fa);
+        margin-top:4px;
+      ">
+        <span style="font-size:22px;">＋</span>
+        <span>${t('addAccount')||'Add Account'}</span>
+      </button>`;
+  } else {
+    html += `<div style="text-align:center;color:var(--t3);font-size:13px;padding:12px;">${t('maxAccounts')||'Maximum '+MAX_ACCOUNTS+' accounts'}</div>`;
+  }
+
+  body.innerHTML = html;
+}
+
+function addNewAccount(){
+  closeAccountSwitcher();
+  // Reset state for new account
+  me = null;
+  contacts = []; friendReqs = []; convos = {}; posts = [];
+  favorites = []; statuses = []; callLog = [];
+  activeAccountIdx = accounts.length;
+
+  // Show login screen
+  const shell = document.getElementById('shell');
+  const ls = document.getElementById('loginScreen');
+  document.getElementById('mainWrap').classList.add('hidden');
+  ls.style.display = '';
+  ls.classList.remove('out');
+  ls.style.opacity = '1';
+
+  // Reset login form
+  document.getElementById('loginLangStep').style.display = '';
+  document.getElementById('loginLangStep').style.opacity = '1';
+  document.getElementById('loginLangStep').style.transform = '';
+  const formStep = document.getElementById('loginFormStep');
+  formStep.style.display = 'none';
+  document.getElementById('lName').value = '';
+  document.getElementById('lPhone').value = '';
+}
+
+
+// ═══════════════════════════════════════════════════════════
+// PERSISTENT STORAGE — localStorage
+// ═══════════════════════════════════════════════════════════
+const STORAGE_KEY = 'cloud_chat_data_v1';
+
+function saveToStorage() {
+  try {
+    // Always update current account snapshot first
+    if (me) {
+      accounts[activeAccountIdx] = {
+        me, contacts, friendReqs, convos, posts,
+        favorites, statuses, callLog,
+        curLang, curTheme
+      };
+    }
+    const data = {
+      accounts,
+      activeAccountIdx,
+      curLang,
+      curTheme,
+      savedAt: Date.now()
+    };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  } catch(e) {
+    console.warn('Storage save failed:', e);
+  }
+}
+
+function loadFromStorage() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return false;
+    const data = JSON.parse(raw);
+    if (!data || !data.accounts || !data.accounts.length) return false;
+
+    accounts         = data.accounts;
+    activeAccountIdx = data.activeAccountIdx || 0;
+    curLang          = data.curLang || 'ar';
+    curTheme         = data.curTheme || 'gold';
+
+    // Load the active account
+    const acc = accounts[activeAccountIdx];
+    if (!acc || !acc.me) return false;
+
+    me         = acc.me;
+    contacts   = acc.contacts   || [];
+    friendReqs = acc.friendReqs || [];
+    convos     = acc.convos     || {};
+    posts      = acc.posts      || [];
+    favorites  = acc.favorites  || [];
+    statuses   = acc.statuses   || [];
+    callLog    = acc.callLog    || [];
+
+    return true;
+  } catch(e) {
+    console.warn('Storage load failed:', e);
+    return false;
+  }
+}
+
+function clearStorage() {
+  localStorage.removeItem(STORAGE_KEY);
+}
+
+// Auto-save every 30 seconds + on page hide
+setInterval(saveToStorage, 30000);
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') saveToStorage();
+});
+window.addEventListener('beforeunload', saveToStorage);
+
 // ═══════════════════════════════════
 // DATA & STATE
 // ═══════════════════════════════════
