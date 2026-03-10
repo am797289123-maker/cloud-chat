@@ -6,6 +6,8 @@
 <title>Pulse</title>
 <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jsQR/1.4.0/jsQR.min.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
 /* ═══════════════════════════════════
    TOKENS & THEMES
@@ -738,6 +740,72 @@ body.easy-large .sh-btn{font-size:17px!important;padding:16px!important;}
 /* QR */
 .qr-wrap{display:flex;flex-direction:column;align-items:center;gap:12px;padding:10px 0;}
 .qr-lbl{font-size:12px;color:var(--t3);text-align:center;max-width:200px;line-height:1.6;}
+
+/* ── Map Location Overlay ── */
+#mapOv{position:fixed;inset:0;z-index:9000;display:none;flex-direction:column;background:var(--bg);max-width:430px;margin:0 auto;}
+#mapOv.on{display:flex;}
+.map-topbar{display:flex;align-items:center;gap:12px;padding:14px 16px;background:var(--bar);border-bottom:1px solid var(--br);flex-shrink:0;}
+.map-topbar-title{flex:1;font-size:16px;font-weight:700;color:var(--t0);}
+#mapContainer{flex:1;position:relative;}
+#leafletMap{width:100%;height:100%;}
+.map-send-bar{padding:12px 16px calc(12px + env(safe-area-inset-bottom));background:var(--bar);border-top:1px solid var(--br);flex-shrink:0;}
+.map-addr{font-size:13px;color:var(--t1);margin-bottom:10px;min-height:18px;display:flex;align-items:center;gap:6px;}
+.map-send-btn{width:100%;padding:13px;border-radius:14px;background:var(--acc);border:none;font-family:var(--fa);font-size:15px;font-weight:700;color:var(--bme-t);cursor:pointer;}
+
+/* ── Discover WeChat-style ── */
+.disc-wechat{flex:1;overflow-y:auto;background:var(--s0);}
+.disc-section{margin-bottom:8px;}
+.disc-moments-row{display:flex;align-items:center;padding:14px 16px;background:var(--bg);cursor:pointer;transition:background .15s;}
+.disc-moments-row:hover{background:var(--s1);}
+.disc-moments-ico{width:42px;height:42px;border-radius:10px;overflow:hidden;flex-shrink:0;margin-left:12px;}
+.disc-moments-ico img{width:100%;height:100%;object-fit:cover;}
+.disc-moments-lbl{flex:1;font-size:16px;font-weight:500;color:var(--t0);}
+.disc-moments-badge{background:var(--badge);color:#fff;font-size:11px;font-weight:700;border-radius:9px;padding:2px 6px;min-width:18px;text-align:center;}
+.disc-moments-thumb{width:38px;height:38px;border-radius:6px;overflow:hidden;margin-left:8px;position:relative;}
+.disc-moments-thumb img{width:100%;height:100%;object-fit:cover;}
+.disc-moments-dot{position:absolute;top:-2px;right:-2px;width:10px;height:10px;background:var(--badge);border-radius:50%;border:2px solid var(--bg);}
+.disc-list-row{display:flex;align-items:center;padding:14px 16px;background:var(--bg);border-bottom:1px solid var(--br);cursor:pointer;transition:background .15s;}
+.disc-list-row:last-child{border-bottom:none;}
+.disc-list-row:hover{background:var(--s1);}
+.disc-list-ico-wrap{width:42px;height:42px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-left:12px;}
+.disc-list-lbl{flex:1;font-size:16px;font-weight:400;color:var(--t0);}
+.disc-list-arr{font-size:18px;color:var(--t3);}
+
+/* ── Full screen sheets (privacy, chat settings) ── */
+.fullscreen-sheet{position:fixed;inset:0;z-index:9000;display:none;flex-direction:column;background:var(--s0);max-width:430px;margin:0 auto;overflow:hidden;}
+.fullscreen-sheet.on{display:flex;}
+.fs-topbar{display:flex;align-items:center;gap:10px;padding:14px 16px;background:var(--bar);border-bottom:1px solid var(--br);flex-shrink:0;}
+.fs-topbar-back{font-size:28px;color:var(--t0);cursor:pointer;background:none;border:none;font-family:var(--fa);line-height:1;padding:0 4px;min-width:36px;}
+.fs-topbar-title{flex:1;font-size:17px;font-weight:700;color:var(--t0);text-align:center;}
+.fs-body{flex:1;overflow-y:auto;padding:12px 0;}
+.priv-section-lbl{font-size:12px;color:var(--t3);font-weight:600;text-transform:uppercase;letter-spacing:.8px;padding:16px 16px 6px;}
+.priv-row{display:flex;align-items:center;padding:14px 16px;background:var(--bg);border-bottom:1px solid var(--br);cursor:pointer;gap:12px;transition:background .15s;}
+.priv-row:last-child{border-bottom:none;}
+.priv-row:hover{background:var(--s1);}
+.priv-row-lbl{flex:1;}
+.priv-row-title{font-size:15px;color:var(--t0);font-weight:500;}
+.priv-row-sub{font-size:12px;color:var(--t3);margin-top:2px;line-height:1.4;}
+.priv-row-val{font-size:13px;color:var(--t2);margin-left:6px;}
+.priv-row-arr{font-size:18px;color:var(--t3);}
+.priv-checkup{margin:12px 16px;padding:14px 16px;background:rgba(52,211,153,.08);border:1.5px solid rgba(52,211,153,.2);border-radius:14px;display:flex;align-items:flex-start;gap:12px;}
+.priv-checkup-ico{font-size:26px;flex-shrink:0;}
+.priv-checkup-txt{flex:1;font-size:13px;color:var(--t1);line-height:1.5;}
+.priv-checkup-close{font-size:18px;color:var(--t3);cursor:pointer;background:none;border:none;}
+
+/* picker sub-sheet */
+.picker-sub{position:fixed;inset:0;z-index:9100;display:none;flex-direction:column;background:var(--s0);max-width:430px;margin:0 auto;}
+.picker-sub.on{display:flex;}
+.picker-opt{display:flex;align-items:center;padding:15px 18px;background:var(--bg);border-bottom:1px solid var(--br);cursor:pointer;gap:14px;transition:background .15s;}
+.picker-opt:hover{background:var(--s1);}
+.picker-opt-lbl{flex:1;font-size:15px;color:var(--t0);}
+.picker-radio{width:20px;height:20px;border-radius:50%;border:2px solid var(--t3);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.picker-radio.on{border-color:var(--acc);background:var(--acc);}
+.picker-radio.on::after{content:'';width:8px;height:8px;border-radius:50%;background:#fff;}
+
+/* Moments full screen */
+.moments-screen{position:fixed;inset:0;z-index:9000;display:none;flex-direction:column;background:var(--bg);max-width:430px;margin:0 auto;}
+.moments-screen.on{display:flex;}
+
 .qr-wrap canvas{border-radius:14px;}
 
 /* Scan */
@@ -940,10 +1008,6 @@ body.easy-large .sh-btn{font-size:17px!important;padding:16px!important;}
         <div class="lf-label" id="lLblName">الاسم</div>
         <input class="lf-solo" id="lName" type="text" placeholder="اكتب اسمك" maxlength="30">
       </div>
-      <div class="lf">
-        <div class="lf-label" id="lLblColor">لون الأفاتار</div>
-        <div class="color-pick" id="lColorPick"></div>
-      </div>
       <button class="login-btn" id="lBtn">دخول ←</button>
       <div class="login-terms" id="loginTerms">بالمتابعة توافق على شروط الاستخدام</div>
     </div>
@@ -985,7 +1049,10 @@ body.easy-large .sh-btn{font-size:17px!important;padding:16px!important;}
           <div class="topbar">
             <div class="tb-title" id="tbTitleFriends">الأصدقاء</div>
             <div class="tb-acts">
-              <button class="tb-btn" id="btnDemoReq" title="طلب تجريبي">📨</button>
+              <button class="tb-btn" id="btnFriendReqs" title="طلبات الصداقة" style="position:relative;">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+                <span id="friendReqBadge" style="display:none;position:absolute;top:-4px;right:-4px;background:var(--badge);color:#fff;font-size:10px;font-weight:700;border-radius:8px;padding:1px 5px;min-width:16px;text-align:center;"></span>
+              </button>
               <button class="tb-btn" id="btnAddF">➕</button>
             </div>
           </div>
@@ -1042,6 +1109,62 @@ body.easy-large .sh-btn{font-size:17px!important;padding:16px!important;}
 
   </div>
 </div>
+
+
+<!-- ══ MAP LOCATION OVERLAY ══ -->
+<div id="mapOv">
+  <div class="map-topbar" style="direction:ltr;">
+    <button class="fs-topbar-back" id="mapBack" style="font-size:28px;line-height:1;padding:0 8px;">‹</button>
+    <div class="map-topbar-title" id="mapTitle">إرسال الموقع</div>
+    <div style="width:40px;"></div>
+  </div>
+  <div id="mapContainer"><div id="leafletMap"></div></div>
+  <div class="map-send-bar">
+    <div class="map-addr" id="mapAddr"><span>📍</span><span id="mapAddrTxt">جاري تحديد الموقع...</span></div>
+    <button class="map-send-btn" id="mapSendBtn">📍 إرسال الموقع</button>
+  </div>
+</div>
+
+<!-- ══ PRIVACY SETTINGS ══ -->
+<div class="fullscreen-sheet" id="privacySheet">
+  <div class="fs-topbar" style="direction:ltr;">
+    <button class="fs-topbar-back" id="privBack" style="font-size:28px;line-height:1;padding:0 8px;">‹</button>
+    <div class="fs-topbar-title" style="text-align:center;">الخصوصية</div>
+    <div style="width:40px;"></div>
+  </div>
+  <div class="fs-body" id="privBody"></div>
+</div>
+
+<!-- ══ CHAT SETTINGS ══ -->
+<div class="fullscreen-sheet" id="chatSettSheet">
+  <div class="fs-topbar" style="direction:ltr;">
+    <button class="fs-topbar-back" id="chatSettBack" style="font-size:28px;line-height:1;padding:0 8px;">‹</button>
+    <div class="fs-topbar-title" style="text-align:center;">المحادثات</div>
+    <div style="width:40px;"></div>
+  </div>
+  <div class="fs-body" id="chatSettBody"></div>
+</div>
+
+<!-- ══ PRIVACY PICKER SUB-SHEET ══ -->
+<div class="picker-sub" id="privPickerSheet">
+  <div class="fs-topbar" style="direction:ltr;">
+    <button class="fs-topbar-back" id="privPickerBack" style="font-size:28px;line-height:1;padding:0 8px;">‹</button>
+    <div class="fs-topbar-title" style="text-align:center;" id="privPickerTitle">من يمكنه الرؤية</div>
+    <div style="width:40px;"></div>
+  </div>
+  <div class="fs-body" id="privPickerBody"></div>
+</div>
+
+<!-- ══ MOMENTS SCREEN ══ -->
+<div class="moments-screen" id="momentsScreen">
+  <div class="fs-topbar" style="direction:ltr;">
+    <button class="fs-topbar-back" id="momentsBack" style="font-size:28px;line-height:1;padding:0 8px;">‹</button>
+    <div class="fs-topbar-title" style="text-align:center;">اللحظات</div>
+    <button id="momentsNewPost" style="background:var(--acc2);color:var(--acc);border-radius:10px;padding:6px 12px;font-size:13px;font-weight:700;border:none;cursor:pointer;font-family:var(--fa);">+ منشور</button>
+  </div>
+  <div class="fs-body" id="momentsFeed" style="padding:0;"></div>
+</div>
+
 </div><!-- /shell -->
 
 <!-- ══════ SHEETS ══════ -->
@@ -1120,23 +1243,22 @@ body.easy-large .sh-btn{font-size:17px!important;padding:16px!important;}
         <!-- Avatar picker -->
         <div style="display:flex;flex-direction:column;align-items:center;margin-bottom:22px;">
           <div style="position:relative;cursor:pointer;" id="epAvTap">
-            <div id="epAvEl" class="av av-l" style="margin:0 auto;border:3px solid var(--br);transition:all .2s;"></div>
+            <div id="epAvEl" class="av av-l" style="margin:0 auto;border:3px solid var(--acc);transition:all .2s;"></div>
             <div style="
               position:absolute;inset:0;border-radius:50%;
-              background:rgba(0,0,0,0.45);
+              background:rgba(0,0,0,0.5);
               display:flex;flex-direction:column;align-items:center;justify-content:center;
-              gap:3px;opacity:0;transition:opacity .2s;border-radius:50%;
+              gap:3px;transition:opacity .2s;border-radius:50%;
             " id="epAvOverlay">
-              <span style="font-size:22px;">🖼️</span>
+              <span style="font-size:24px;">🖼️</span>
               <span style="font-size:10px;color:#fff;font-weight:700;">تغيير</span>
             </div>
           </div>
-          <div id="epHint" style="font-size:12px;color:var(--t3);margin-top:10px;">اضغط على الصورة لتغييرها</div>
+          <div id="epHint" style="font-size:12px;color:var(--t3);margin-top:10px;">اضغط لاختيار صورة من معرضك</div>
           <input type="file" accept="image/*" id="epImgIn" style="display:none">
         </div>
         <div class="field"><div class="f-lbl" id="epLblName">الاسم</div><input class="f-in" id="epName" placeholder="اسمك" maxlength="30"></div>
         <div class="field"><div class="f-lbl" id="epLblStatus">الحالة</div><input class="f-in" id="epStatus" placeholder="مرحباً! أستخدم Pulse 👋" maxlength="70"></div>
-        <div class="field"><div class="f-lbl" id="epLblColor">اللون</div><div class="color-row" id="epColorRow"></div></div>
         <button class="sh-btn" id="epSave">حفظ ✓</button>
       </div>
   </div>
@@ -2139,24 +2261,12 @@ let selCountry = COUNTRIES[0]; // Egypt default
   searchEl.oninput = e => renderCountries(e.target.value);
   document.addEventListener('click', e => { if (!drop.contains(e.target) && e.target !== display) closeDrop(); });
 
-  // Color picker
-  const row=document.getElementById('lColorPick');
-  let sel='B';
-  AVKEYS.forEach(k=>{
-    const d=document.createElement('div');
-    d.className='cp-dot'+(k===sel?' on':'');
-    d.style.background=AVCOLS[k];
-    d.onclick=()=>{sel=k;row.querySelectorAll('.cp-dot').forEach(x=>x.classList.remove('on'));d.classList.add('on');};
-    row.appendChild(d);
-  });
-
   document.getElementById('lBtn').onclick=()=>{
     const phone=document.getElementById('lPhone').value.trim();
     const name=document.getElementById('lName').value.trim();
     if(phone.length<7){toast(t('validPhone'));return;}
     if(!name){toast(t('enterYourName'));return;}
-    const color=row.querySelector('.on')?.style.background
-      ?Object.keys(AVCOLS).find(k=>AVCOLS[k]===row.querySelector('.on').style.background)||'B':'B';
+    const color=AVKEYS[Math.floor(Math.random()*AVKEYS.length)];
     me={name,phone:selCountry.d+' '+phone,color,avatar:null,status:'مرحباً! أستخدم Pulse 👋',
         gender:'',region:selCountry.n,pulseId:name.toLowerCase().replace(/\s+/g,'_')+'_'+Math.floor(Math.random()*90+10),
         whatsUp:'',ringtone:'Default'};
@@ -2555,11 +2665,7 @@ function handleAttach(type, contact){
     };
     inp.click();
   } else if(type==='location'){
-    const locMsg={from:'me',text:'📍 '+(curLang==='ar'?'الموقع الحالي':'Current Location'),time:now()};
-    convos[contact.id].push(locMsg);
-    contact.lastMsg=locMsg.text;contact.lastTime='الآن';
-    renderChatList();renderMsgs(contact.id);
-    toast('📍 '+(curLang==='ar'?'تم إرسال موقعك':'Location sent'));
+    openMapForLocation(contact);
   } else if(type==='contact'){
     // Send a contact card (demo: send me's info)
     const cMsg={from:'me',text:`👤 ${me.name} | ${me.phone}`,time:now()};
@@ -2575,7 +2681,7 @@ function handleAttach(type, contact){
     contact.lastMsg=eMsg.text;contact.lastTime='الآن';
     renderChatList();renderMsgs(contact.id);
     toast('📅 '+(curLang==='ar'?'تم إرسال الفعالية':'Event sent'));
-
+  }
 }
 
 function showPollComposer(contact){
@@ -2781,14 +2887,73 @@ function renderFriends(){
 // DISCOVER
 // ═══════════════════════════════════
 function renderDiscover(){
-  const feed=document.getElementById('discoverFeed');feed.innerHTML='';
-  // Only show posts from me + accepted contacts with seePosts=true
+  const feed=document.getElementById('discoverFeed');
+  feed.innerHTML='';
+  feed.className='disc-wechat';
+
+  // ── Moments row ──
   const visiblePosts = posts.filter(p => {
-    if(p.uid === 'me') return true;
-    const c = contacts.find(x=>x.id===p.uid);
+    if(p.uid==='me') return true;
+    const c=contacts.find(x=>x.id===p.uid);
     return c && (c.friendStatus==='accepted'||!c.friendStatus) && c.seePosts!==false;
   });
-  if(!visiblePosts.length){feed.innerHTML=`<div class="empty-state"><div class="empty-ico">🌐</div><div class="empty-txt">${t('noPosts')}<br><small style="opacity:.6">${t('noPostsHint')}</small></div></div>`;return;}
+  const newPosts = visiblePosts.length;
+  const sec1=document.createElement('div');sec1.className='disc-section';
+  const momRow=document.createElement('div');momRow.className='disc-moments-row';
+  // last post thumbnail
+  const lastPost=[...visiblePosts].reverse()[0];
+  const thumbHTML=lastPost?.img?`<div class="disc-moments-thumb"><img src="${lastPost.img}"><div class="disc-moments-dot"></div></div>`
+    :(newPosts>0?`<div class="disc-moments-thumb" style="background:var(--acc2);display:flex;align-items:center;justify-content:center;font-size:18px;">📝</div>`:'');
+  momRow.innerHTML=`
+    <div class="disc-moments-ico" style="background:linear-gradient(135deg,#3B82F6,#8B5CF6);display:flex;align-items:center;justify-content:center;font-size:22px;">🌅</div>
+    <div class="disc-moments-lbl">${t('moments')||'اللحظات'}</div>
+    ${newPosts>0?`<div class="disc-moments-badge">${newPosts}</div>`:''}
+    ${thumbHTML}
+    <div class="disc-list-arr" style="margin-right:4px;">›</div>
+  `;
+  momRow.onclick=openMomentsScreen;
+  sec1.appendChild(momRow);
+  feed.appendChild(sec1);
+
+  // ── List section ──
+  const listItems=[
+    {ico:'📡',grad:'linear-gradient(135deg,#F97316,#FBBF24)',lbl:t('channels')||'القنوات',fn:()=>toast('📡 '+(curLang==='ar'?'قريباً':'Coming soon'))},
+    {ico:'📷',grad:'linear-gradient(135deg,#06B6D4,#3B82F6)',lbl:t('scanDiscover')||'المسح',fn:openAddModal},
+    {ico:'⭐',grad:'linear-gradient(135deg,#F59E0B,#EF4444)',lbl:t('topStories')||'أبرز القصص',fn:()=>toast('⭐ '+(curLang==='ar'?'قريباً':'Coming soon'))},
+    {ico:'🔍',grad:'linear-gradient(135deg,#8B5CF6,#EC4899)',lbl:t('searchDiscover')||'البحث',fn:()=>toast('🔍 '+(curLang==='ar'?'قريباً':'Coming soon'))},
+    {ico:'👥',grad:'linear-gradient(135deg,#10B981,#3B82F6)',lbl:t('nearby')||'الأشخاص القريبون',fn:openNearbySheet},
+    {ico:'🎯',grad:'linear-gradient(135deg,#6366F1,#8B5CF6)',lbl:t('miniPrograms')||'البرامج المصغرة',fn:()=>toast('🎯 '+(curLang==='ar'?'قريباً':'Coming soon'))},
+  ];
+  const sec2=document.createElement('div');sec2.className='disc-section';
+  listItems.forEach((item,i)=>{
+    const row=document.createElement('div');row.className='disc-list-row';
+    row.innerHTML=`
+      <div class="disc-list-ico-wrap" style="background:${item.grad};">
+        <span style="font-size:20px;">${item.ico}</span>
+      </div>
+      <div class="disc-list-lbl">${item.lbl}</div>
+      <div class="disc-list-arr">›</div>
+    `;
+    row.onclick=item.fn;
+    sec2.appendChild(row);
+  });
+  feed.appendChild(sec2);
+}
+
+function openMomentsScreen(){
+  const scr=document.getElementById('momentsScreen');
+  const feed=document.getElementById('momentsFeed');
+  scr.classList.add('on');
+  feed.innerHTML='';
+  const visiblePosts=posts.filter(p=>{
+    if(p.uid==='me') return true;
+    const c=contacts.find(x=>x.id===p.uid);
+    return c && (c.friendStatus==='accepted'||!c.friendStatus) && c.seePosts!==false;
+  });
+  if(!visiblePosts.length){
+    feed.innerHTML=`<div class="empty-state"><div class="empty-ico">🌅</div><div class="empty-txt">${t('noPosts')}</div></div>`;
+    return;
+  }
   [...visiblePosts].reverse().forEach((p)=>{
     const author=p.uid==='me'?me:contacts.find(c=>c.id===p.uid);
     if(!author)return;
@@ -2807,10 +2972,16 @@ function renderDiscover(){
         <button class="post-act">↗️</button>
       </div>
     `;
-    el.querySelector('[data-i]').onclick=()=>{posts[realIdx].liked=!posts[realIdx].liked;posts[realIdx].likes+=posts[realIdx].liked?1:-1;renderDiscover();};
+    el.querySelector('[data-i]').onclick=()=>{posts[realIdx].liked=!posts[realIdx].liked;posts[realIdx].likes+=posts[realIdx].liked?1:-1;openMomentsScreen();};
     feed.appendChild(el);
   });
 }
+
+function openNearbySheet(){
+  toast('👥 '+(curLang==='ar'?'جاري البحث عن الأشخاص القريبين...':'Searching nearby...'));
+}
+
+
 
 // ═══════════════════════════════════
 // PROFILE SCREEN
@@ -2823,9 +2994,9 @@ function renderProfile(){
   // ── Hero ──
   const hero=document.createElement('div');hero.className='profile-hero';
   hero.innerHTML=`
-    <div class="pav-wrap" id="profileAvWrap">
+    <div class="pav-wrap" id="profileAvWrap" style="cursor:pointer;">
       ${avHTML(me,'av-l')}
-      <div class="pav-edit">📷</div>
+      <div class="pav-edit">🖼️</div>
     </div>
     <div class="pname">${me.name}</div>
     <div class="pphone">${me.phone}</div>
@@ -2835,8 +3006,20 @@ function renderProfile(){
       <div class="pstat" style="border-right:1px solid var(--br);border-left:1px solid var(--br);"><div class="pstat-n">${myPosts}</div><div class="pstat-l">${t('postsCount')}</div></div>
       <div class="pstat"><div class="pstat-n">${callLog.length}</div><div class="pstat-l">${t('callsCount')}</div></div>
     </div>
+    <input type="file" accept="image/*" id="profileAvIn" style="display:none">
   `;
-  hero.querySelector('#profileAvWrap').onclick=openEditProfile;
+  // Clicking avatar → open gallery
+  hero.querySelector('#profileAvWrap').onclick=()=>{
+    hero.querySelector('#profileAvIn').click();
+  };
+  hero.querySelector('#profileAvIn').onchange=e=>{
+    const f=e.target.files[0];if(!f)return;
+    if(!f.type.startsWith('image/')){toast('⚠️ اختر صورة صحيحة');return;}
+    const r=new FileReader();
+    r.onload=ev=>{me.avatar=ev.target.result;renderProfile();updateMeNav();renderChatList();toast(t('photoSelected'));};
+    r.readAsDataURL(f);
+    e.target.value='';
+  };
   sc.appendChild(hero);
 
   // ── Profile Info (WeChat style) ──
@@ -2864,6 +3047,10 @@ function renderProfile(){
     [
       {ico:'✏️',bg:'var(--acc2)',          lbl:t('editProfile'),    val:'',fn:openEditProfile},
       {ico:'🎨',bg:'rgba(100,100,255,.12)',lbl:t('appearance'),     val:'',fn:openThemeSheet},
+    ],
+    [
+      {ico:'🔒',bg:'rgba(239,68,68,.12)',  lbl:curLang==="ar"?'الخصوصية':'Privacy',   val:'',fn:openPrivacySheet},
+      {ico:'💬',bg:'rgba(59,130,246,.12)', lbl:curLang==="ar"?'المحادثات':'Chats',    val:'',fn:openChatSettSheet},
     ],
     [
       {ico:'♿',bg:'rgba(255,180,0,.14)',  lbl:t('easyModeMenu'),   val:easyLargeFont?'✅':'',fn:openEasyModeSheet},
@@ -2894,16 +3081,15 @@ function renderProfile(){
 function openEditProfile(){
   document.getElementById('epName').value = me.name;
   document.getElementById('epStatus').value = me.status || '';
-  epColor = me.color;
 
-  // Render avatar preview
   const prev = document.getElementById('epAvEl');
   const overlay = document.getElementById('epAvOverlay');
+  const tap = document.getElementById('epAvTap');
 
   function refreshAvPreview() {
     if (me.avatar) {
       prev.innerHTML = `<img src="${me.avatar}" style="width:80px;height:80px;object-fit:cover;border-radius:50%;">`;
-      prev.style.background = 'transparent';
+      prev.style.cssText = 'background:transparent;margin:0 auto;';
     } else {
       prev.innerHTML = me.name.charAt(0).toUpperCase();
       prev.style.cssText = `background:${AVCOLS[me.color]||'#888'};color:#fff;font-size:30px;font-weight:800;display:flex;align-items:center;justify-content:center;margin:0 auto;`;
@@ -2911,23 +3097,15 @@ function openEditProfile(){
   }
   refreshAvPreview();
 
-  // Show/hide overlay on hover/touch
-  const tap = document.getElementById('epAvTap');
-  tap.onmouseenter = () => { overlay.style.opacity = '1'; };
-  tap.onmouseleave = () => { overlay.style.opacity = '0'; };
+  // Always show overlay (not opacity 0)
+  overlay.style.opacity = '0.85';
 
-  // Tap to open file picker
-  tap.onclick = () => {
-    overlay.style.opacity = '1';
-    setTimeout(() => overlay.style.opacity = '0', 600);
-    document.getElementById('epImgIn').click();
-  };
+  // Tap → open gallery (no capture attribute = gallery default)
+  tap.onclick = () => { document.getElementById('epImgIn').click(); };
 
-  // File selected
   document.getElementById('epImgIn').onchange = e => {
     const f = e.target.files[0];
     if (!f) return;
-    // validate it's an image
     if (!f.type.startsWith('image/')) { toast('⚠️ اختر صورة صحيحة'); return; }
     const reader = new FileReader();
     reader.onload = ev => {
@@ -2936,27 +3114,8 @@ function openEditProfile(){
       toast(t('photoSelected'));
     };
     reader.readAsDataURL(f);
-    // reset so same file can be picked again
     e.target.value = '';
   };
-
-  // Color row
-  const cr = document.getElementById('epColorRow'); cr.innerHTML = '';
-  AVKEYS.forEach(k => {
-    const d = document.createElement('div');
-    d.className = 'c-dot' + (k === epColor ? ' on' : '');
-    d.style.background = AVCOLS[k];
-    d.onclick = () => {
-      epColor = k;
-      cr.querySelectorAll('.c-dot').forEach(x => x.classList.remove('on'));
-      d.classList.add('on');
-      if (!me.avatar) {
-        prev.style.background = AVCOLS[k];
-        prev.textContent = me.name.charAt(0).toUpperCase();
-      }
-    };
-    cr.appendChild(d);
-  });
 
   // Save
   document.getElementById('epSave').onclick = () => {
@@ -2964,7 +3123,6 @@ function openEditProfile(){
     if (!n) { toast(t('enterYourName')); return; }
     me.name = n;
     me.status = document.getElementById('epStatus').value.trim();
-    me.color = epColor;
     closeOv('ovEdit');
     renderProfile();
     updateMeNav();
@@ -3081,8 +3239,17 @@ function toggleContactSeePosts(cid){
 }
 
 function updateFriendsBadge(){
-  const dot = document.getElementById('friendsReqDot');
-  if(dot) dot.style.display = friendReqs.length ? 'block' : 'none';
+  const count=friendReqs.length;
+  const badge=document.getElementById('friendReqBadge');
+  const navBadge=document.getElementById('friendsBadge');
+  if(badge){
+    badge.style.display=count>0?'block':'none';
+    badge.textContent=count;
+  }
+  if(navBadge){
+    navBadge.style.display=count>0?'flex':'none';
+    navBadge.textContent=count;
+  }
 }
 
 function addContact(data){
@@ -3817,14 +3984,324 @@ const DEMO_NAMES=[
   {name:'Amira Hassan',color:'E',status:'كيف الحال؟',phone:'+962 7 9876 5432'},
 ];
 let demoIdx=0;
-document.getElementById('btnDemoReq').onclick=()=>{
-  const d=DEMO_NAMES[demoIdx%DEMO_NAMES.length];demoIdx++;
-  simulateIncomingRequest(d);
-  if(curTab!=='friends')switchTab('friends');
+document.getElementById('btnFriendReqs').onclick=()=>{
+  if(friendReqs.length===0){
+    toast(curLang==='ar'?'📭 لا توجد طلبات صداقة':'📭 No friend requests');
+  } else {
+    // Scroll to the requests section at top of friends list
+    switchTab('friends');
+    const firstReq=document.querySelector('.freq-card');
+    if(firstReq) firstReq.scrollIntoView({behavior:'smooth'});
+  }
 };
 document.getElementById('mainWrap').style.display=''; // will be shown after login
 // hide mainWrap until login
 document.getElementById('mainWrap').style.opacity='0';
+
+// ═══════════════════════════════════
+// MAP LOCATION
+// ═══════════════════════════════════
+let _mapInst=null,_mapContact=null,_mapMarker=null,_mapLatLng=null;
+function openMapForLocation(contact){
+  _mapContact=contact;
+  const ov=document.getElementById('mapOv');
+  ov.style.display='flex';
+  document.getElementById('mapAddrTxt').textContent=curLang==='ar'?'جاري تحديد الموقع...':'Getting location...';
+  document.getElementById('mapTitle').textContent=curLang==='ar'?'إرسال الموقع':'Send Location';
+  document.getElementById('mapSendBtn').textContent=curLang==='ar'?'📍 إرسال الموقع':'📍 Send Location';
+
+  setTimeout(()=>{
+    if(!_mapInst){
+      _mapInst=L.map('leafletMap',{zoomControl:true,attributionControl:false});
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(_mapInst);
+      _mapInst.on('click',e=>{
+        _mapLatLng=e.latlng;
+        if(_mapMarker) _mapMarker.remove();
+        _mapMarker=L.marker(e.latlng).addTo(_mapInst);
+        reverseGeocode(e.latlng.lat,e.latlng.lng);
+      });
+    }
+    // Try to get real GPS location
+    if(navigator.geolocation){
+      navigator.geolocation.getCurrentPosition(pos=>{
+        const lat=pos.coords.latitude,lng=pos.coords.longitude;
+        _mapLatLng={lat,lng};
+        _mapInst.setView([lat,lng],15);
+        if(_mapMarker) _mapMarker.remove();
+        _mapMarker=L.marker([lat,lng]).addTo(_mapInst);
+        reverseGeocode(lat,lng);
+      },()=>{
+        // fallback to Riyadh
+        _mapInst.setView([24.7136,46.6753],13);
+        _mapLatLng={lat:24.7136,lng:46.6753};
+        if(_mapMarker) _mapMarker.remove();
+        _mapMarker=L.marker([24.7136,46.6753]).addTo(_mapInst);
+        document.getElementById('mapAddrTxt').textContent=curLang==='ar'?'الرياض، المملكة العربية السعودية':'Riyadh, Saudi Arabia';
+      });
+    } else {
+      _mapInst.setView([24.7136,46.6753],13);
+      _mapLatLng={lat:24.7136,lng:46.6753};
+    }
+    _mapInst.invalidateSize();
+  },120);
+}
+
+async function reverseGeocode(lat,lng){
+  try{
+    const r=await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=${curLang==='ar'?'ar':'en'}`);
+    const d=await r.json();
+    const addr=d.display_name||`${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+    document.getElementById('mapAddrTxt').textContent=addr;
+  }catch(e){
+    document.getElementById('mapAddrTxt').textContent=`${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+  }
+}
+
+document.getElementById('mapBack').onclick=()=>{
+  document.getElementById('mapOv').style.display='none';
+};
+document.getElementById('mapSendBtn').onclick=()=>{
+  if(!_mapLatLng||!_mapContact) return;
+  const addr=document.getElementById('mapAddrTxt').textContent;
+  const mapsUrl=`https://www.openstreetmap.org/?mlat=${_mapLatLng.lat}&mlon=${_mapLatLng.lng}#map=15/${_mapLatLng.lat}/${_mapLatLng.lng}`;
+  const locMsg={from:'me',text:`📍 ${addr}\n🔗 ${mapsUrl}`,time:now()};
+  const c=_mapContact;
+  convos[c.id].push(locMsg);c.lastMsg='📍 '+addr.slice(0,30);c.lastTime='الآن';
+  renderChatList();renderMsgs(c.id);
+  document.getElementById('mapOv').style.display='none';
+  toast('📍 '+(curLang==='ar'?'تم إرسال الموقع':'Location sent'));
+};
+
+// ═══════════════════════════════════
+// PRIVACY SETTINGS
+// ═══════════════════════════════════
+const privSettings={
+  lastSeen:'nobody',profilePic:'everyone',about:'everyone',
+  links:'contacts',status:'contacts',readReceipts:true,
+  groups:'everyone',disappearing:'off',appLock:false,chatLock:false
+};
+
+function openPrivacySheet(){
+  const sheet=document.getElementById('privacySheet');
+  sheet.classList.add('on');
+  renderPrivacyBody();
+}
+document.getElementById('privBack').onclick=()=>document.getElementById('privacySheet').classList.remove('on');
+
+function renderPrivacyBody(){
+  const b=document.getElementById('privBody');
+  const opts=['everyone','contacts','nobody'];
+  const optLabels={everyone:curLang==='ar'?'الجميع':'Everyone',contacts:curLang==='ar'?'جهات الاتصال':'My contacts',nobody:curLang==='ar'?'لا أحد':'Nobody'};
+
+  b.innerHTML=`
+    <div class="priv-checkup" id="privCheckup">
+      <div class="priv-checkup-ico">🔒</div>
+      <div class="priv-checkup-txt">${curLang==='ar'?'تحقق من خصوصيتك واختر الإعدادات المناسبة. ':'Control your privacy and choose the right settings. '}<span style="color:var(--acc);cursor:pointer;">${curLang==='ar'?'ابدأ الفحص':'Start checkup'}</span></div>
+      <button class="priv-checkup-close" onclick="document.getElementById('privCheckup').style.display='none'">✕</button>
+    </div>
+    <div class="priv-section-lbl">${curLang==='ar'?'من يمكنه رؤية معلوماتي الشخصية':'Who can see my personal info'}</div>
+    <div style="background:var(--bg);border-radius:0;">
+      ${privRow('lastSeen',curLang==='ar'?'آخر ظهور والاتصال':'Last seen and online',optLabels[privSettings.lastSeen])}
+      ${privRow('profilePic',curLang==='ar'?'صورة الملف الشخصي':'Profile picture',optLabels[privSettings.profilePic])}
+      ${privRow('about',curLang==='ar'?'نبذة عني':'About',optLabels[privSettings.about])}
+      ${privRow('links',curLang==='ar'?'الروابط':'Links',optLabels[privSettings.links])}
+      ${privRow('status',curLang==='ar'?'الحالة':'Status',optLabels[privSettings.status])}
+    </div>
+    <div class="priv-section-lbl"></div>
+    <div style="background:var(--bg);">
+      ${privTogRow('readReceipts',curLang==='ar'?'تأكيدات القراءة':'Read receipts',curLang==='ar'?'إذا أوقفتها لن ترسل أو تستقبل تأكيدات القراءة':'If turned off, you won\'t send or receive read receipts',privSettings.readReceipts)}
+    </div>
+    <div class="priv-section-lbl">${curLang==='ar'?'الرسائل المؤقتة':'Disappearing messages'}</div>
+    <div style="background:var(--bg);">
+      ${privRow('disappearing',curLang==='ar'?'المؤقت الافتراضي':'Default message timer',privSettings.disappearing==='off'?(curLang==='ar'?'معطل':'Off'):'24h')}
+    </div>
+    <div class="priv-section-lbl"></div>
+    <div style="background:var(--bg);">
+      ${privRow('groups',curLang==='ar'?'المجموعات':'Groups',optLabels[privSettings.groups])}
+      ${privRow('appLock',curLang==='ar'?'قفل التطبيق':'App lock',privSettings.appLock?(curLang==='ar'?'مفعل':'Enabled'):(curLang==='ar'?'معطل':'Disabled'))}
+      ${privRow('chatLock',curLang==='ar'?'قفل المحادثة':'Chat lock','')}
+    </div>
+    <div class="priv-section-lbl"></div>
+    <div style="background:var(--bg);">
+      ${privRow('advanced',curLang==='ar'?'متقدم':'Advanced',curLang==='ar'?'حماية IP، تعطيل معاينة الروابط':'Protect IP, disable link previews')}
+    </div>
+  `;
+
+  b.querySelectorAll('[data-priv]').forEach(row=>{
+    const key=row.dataset.priv;
+    if(['readReceipts','appLock'].includes(key)){
+      const tog=row.querySelector('.tog');
+      if(tog) tog.onclick=e=>{
+        e.stopPropagation();
+        privSettings[key]=!privSettings[key];
+        tog.classList.toggle('on',privSettings[key]);
+      };
+    } else {
+      row.onclick=()=>{
+        if(key==='advanced'){toast('🔐 '+(curLang==='ar'?'الإعدادات المتقدمة - قريباً':'Advanced settings coming soon'));return;}
+        if(key==='chatLock'){toast('🔒 '+(curLang==='ar'?'قفل المحادثة - قريباً':'Chat lock coming soon'));return;}
+        if(key==='disappearing'){
+          privSettings.disappearing=privSettings.disappearing==='off'?'24h':'off';
+          renderPrivacyBody();return;
+        }
+        if(['lastSeen','profilePic','about','links','status','groups'].includes(key)){
+          openPrivPicker(key,opts,optLabels);
+        }
+      };
+    }
+  });
+}
+
+function privRow(key,title,val){
+  return `<div class="priv-row" data-priv="${key}">
+    <div class="priv-row-lbl"><div class="priv-row-title">${title}</div></div>
+    ${val?`<div class="priv-row-val">${val}</div>`:''}
+    <div class="priv-row-arr">›</div>
+  </div>`;
+}
+function privTogRow(key,title,sub,isOn){
+  return `<div class="priv-row" data-priv="${key}" style="cursor:default;">
+    <div class="priv-row-lbl">
+      <div class="priv-row-title">${title}</div>
+      <div class="priv-row-sub">${sub}</div>
+    </div>
+    <button class="tog${isOn?' on':''}" style="flex-shrink:0;"></button>
+  </div>`;
+}
+
+function openPrivPicker(key,opts,labels){
+  const sheet=document.getElementById('privPickerSheet');
+  const titles={lastSeen:'آخر ظهور',profilePic:'صورة الملف',about:'نبذة عني',links:'الروابط',status:'الحالة',groups:'المجموعات'};
+  document.getElementById('privPickerTitle').textContent=titles[key]||key;
+  const b=document.getElementById('privPickerBody');
+  b.innerHTML='';
+  opts.forEach(opt=>{
+    const el=document.createElement('div');el.className='picker-opt';
+    const isOn=privSettings[key]===opt;
+    el.innerHTML=`<div class="picker-opt-lbl">${labels[opt]}</div><div class="picker-radio${isOn?' on':''}"></div>`;
+    el.onclick=()=>{privSettings[key]=opt;sheet.classList.remove('on');renderPrivacyBody();};
+    b.appendChild(el);
+  });
+  sheet.classList.add('on');
+}
+document.getElementById('privPickerBack').onclick=()=>document.getElementById('privPickerSheet').classList.remove('on');
+
+// ═══════════════════════════════════
+// CHAT SETTINGS
+// ═══════════════════════════════════
+const chatSettings={enterIsSend:false,mediaVisibility:false,fontSize:'medium',keepArchived:false};
+
+function openChatSettSheet(){
+  const sheet=document.getElementById('chatSettSheet');
+  sheet.classList.add('on');
+  renderChatSettBody();
+}
+document.getElementById('chatSettBack').onclick=()=>document.getElementById('chatSettSheet').classList.remove('on');
+
+function renderChatSettBody(){
+  const b=document.getElementById('chatSettBody');
+  const fontLabel={small:curLang==='ar'?'صغير':'Small',medium:curLang==='ar'?'متوسط':'Medium',large:curLang==='ar'?'كبير':'Large'};
+  b.innerHTML=`
+    <div class="priv-section-lbl">${curLang==='ar'?'إعدادات المحادثة':'Chat settings'}</div>
+    <div style="background:var(--bg);">
+      ${chatSettTogRow('enterIsSend',curLang==='ar'?'إدخال للإرسال':'Enter is send',curLang==='ar'?'مفتاح الإدخال سيرسل رسالتك':'Enter key will send your message',chatSettings.enterIsSend)}
+      ${chatSettTogRow('mediaVisibility',curLang==='ar'?'ظهور الوسائط':'Media visibility',curLang==='ar'?'عرض الوسائط في معرض الجهاز':'Show newly downloaded media in your device\'s gallery',chatSettings.mediaVisibility)}
+      <div class="priv-row" data-chatt="fontSize">
+        <div class="priv-row-lbl"><div class="priv-row-title">${curLang==='ar'?'حجم الخط':'Font size'}</div></div>
+        <div class="priv-row-val">${fontLabel[chatSettings.fontSize]}</div>
+        <div class="priv-row-arr">›</div>
+      </div>
+      <div class="priv-row" data-chatt="voiceTranscripts" style="cursor:default;">
+        <div class="priv-row-lbl">
+          <div class="priv-row-title">${curLang==='ar'?'نصوص الرسائل الصوتية':'Voice message transcripts'}</div>
+          <div class="priv-row-sub">${curLang==='ar'?'قراءة الرسائل الصوتية الجديدة':'Read new voice messages.'}</div>
+        </div>
+        <div class="priv-row-arr">›</div>
+      </div>
+    </div>
+    <div class="priv-section-lbl">${curLang==='ar'?'المحادثات المؤرشفة':'Archived chats'}</div>
+    <div style="background:var(--bg);">
+      ${chatSettTogRow('keepArchived',curLang==='ar'?'الاحتفاظ بالمؤرشفة':'Keep chats archived',curLang==='ar'?'ستظل المحادثات المؤرشفة مؤرشفة عند استقبال رسالة جديدة':'Archived chats will remain archived when you receive a new message',chatSettings.keepArchived)}
+    </div>
+    <div class="priv-section-lbl"></div>
+    <div style="background:var(--bg);">
+      <div class="priv-row" data-chatt="backup">
+        <div class="priv-row-lbl" style="display:flex;align-items:center;gap:12px;">
+          <span style="font-size:24px;">☁️</span>
+          <div class="priv-row-title">${curLang==='ar'?'نسخ احتياطي للمحادثات':'Chat backup'}</div>
+        </div>
+        <div class="priv-row-arr">›</div>
+      </div>
+      <div class="priv-row" data-chatt="transfer">
+        <div class="priv-row-lbl" style="display:flex;align-items:center;gap:12px;">
+          <span style="font-size:24px;">📤</span>
+          <div class="priv-row-title">${curLang==='ar'?'نقل المحادثات':'Transfer chats'}</div>
+        </div>
+        <div class="priv-row-arr">›</div>
+      </div>
+    </div>
+  `;
+  b.querySelectorAll('[data-chatt]').forEach(row=>{
+    const key=row.dataset.chatt;
+    if(['enterIsSend','mediaVisibility','keepArchived'].includes(key)){
+      const tog=row.querySelector('.tog');
+      if(tog) tog.onclick=e=>{
+        e.stopPropagation();
+        chatSettings[key]=!chatSettings[key];
+        tog.classList.toggle('on',chatSettings[key]);
+        if(key==='enterIsSend'){
+          // apply: already handled in sendMsg
+        }
+      };
+    } else if(key==='fontSize'){
+      row.onclick=()=>{
+        const sizes=['small','medium','large'];
+        const idx=sizes.indexOf(chatSettings.fontSize);
+        chatSettings.fontSize=sizes[(idx+1)%3];
+        document.body.style.fontSize=chatSettings.fontSize==='large'?'17px':chatSettings.fontSize==='small'?'13px':'';
+        renderChatSettBody();
+      };
+    } else {
+      row.onclick=()=>toast('🔧 '+(curLang==='ar'?'قريباً':'Coming soon'));
+    }
+  });
+}
+
+function chatSettTogRow(key,title,sub,isOn){
+  return `<div class="priv-row" data-chatt="${key}" style="cursor:default;">
+    <div class="priv-row-lbl">
+      <div class="priv-row-title">${title}</div>
+      ${sub?`<div class="priv-row-sub">${sub}</div>`:''}
+    </div>
+    <button class="tog${isOn?' on':''}" style="flex-shrink:0;"></button>
+  </div>`;
+}
+
+// Moments back button
+document.getElementById('momentsBack').onclick=()=>document.getElementById('momentsScreen').classList.remove('on');
+document.getElementById('momentsNewPost').onclick=()=>{
+  document.getElementById('momentsScreen').classList.remove('on');
+  openOv('ovPost');
+};
+
+// Swipe right to close fullscreen sheets
+['momentsScreen','privacySheet','chatSettSheet','privPickerSheet'].forEach(id=>{
+  const el=document.getElementById(id);
+  if(!el) return;
+  let sx=0,sy=0;
+  el.addEventListener('touchstart',e=>{sx=e.touches[0].clientX;sy=e.touches[0].clientY;},{passive:true});
+  el.addEventListener('touchend',e=>{
+    const dx=e.changedTouches[0].clientX-sx;
+    const dy=Math.abs(e.changedTouches[0].clientY-sy);
+    if(dx>70&&dy<60){
+      // swipe right = go back (RTL: swipe left = forward, swipe right = back)
+      el.classList.remove('on');
+      el.style.display='';
+    }
+  },{passive:true});
+});
+
 </script>
+
 </body>
 </html>
