@@ -4526,6 +4526,8 @@ function launch(){
   updateFriendsBadge();
   saveToStorage();
   setTimeout(renderHomeStats, 300);
+  // Start real friend request polling
+  setTimeout(startFriendSystem, 1000);
 }
 
 // ═══════════════════════════════════
@@ -6183,24 +6185,11 @@ function addFromId(pulseId, name, status, color, phone){
 // FRIEND REQUEST SYSTEM
 // ═══════════════════════════════════
 
-// Send a friend request (from Add Contact form)
-function sendFriendRequest(data){
-  const id = Date.now();
-  contacts.push({
-    id, name:data.name, phone:data.phone||'', status:data.status||t('greeting')||'Hello! 👋',
-    color:data.color||'B', avatar:data.avatar||null,
-    online:false, unread:0, lastMsg:'', lastTime:'',
-    friendStatus:'pending',
-    seePosts:true,
-  });
-  convos[id]=[];
-  renderChatList(); renderFriends(); renderProfile();
-  toast('📨 '+t('reqSent')+' '+data.name);
+// sendFriendRequest, acceptRequest, declineRequest, blockRequest
+// ── كلهم متعرّفين في نظام Supabase الحقيقي أسفل ──
+// (الكود الكامل في قسم "REAL FRIEND REQUEST SYSTEM")
 
-  // Real users only — no auto-accept or bot messages
-}
-
-// Simulate an incoming request (for demo — called when someone "scans your QR")
+// Simulate an incoming request (للديمو فقط)
 function simulateIncomingRequest(data){
   const rid = Date.now();
   const greetings = [
@@ -6214,44 +6203,13 @@ function simulateIncomingRequest(data){
     avatar:data.avatar||null, status:data.status||'',
     pulseId:data.pulseId||null,
     greeting: data.greeting || greetings[Math.floor(Math.random()*greetings.length)],
-    time: now(),
-    seePosts:true,
+    time: now(), seePosts:true,
   });
   updateFriendsBadge();
   saveToStorage();
   renderFriends();
-  toast('📨 '+data.name+(' '+t('sentFriendReq')));
-}
-
-function acceptRequest(rid, allowPosts){
-  const req = friendReqs.find(r=>r.rid===rid);
-  if(!req) return;
-  friendReqs = friendReqs.filter(r=>r.rid!==rid);
-  const id = Date.now();
-  contacts.push({
-    id, name:req.name, phone:req.phone, status:req.status,
-    color:req.color, avatar:req.avatar,
-    online:true, unread:0, lastMsg:'', lastTime:'',
-    friendStatus:'accepted', seePosts:allowPosts,
-  });
-  convos[id]=[];
-  updateFriendsBadge();
-  renderChatList(); renderFriends(); renderProfile();
-  toast(t('reqAccepted'));
-}
-
-function declineRequest(rid){
-  friendReqs = friendReqs.filter(r=>r.rid!==rid);
-  updateFriendsBadge();
-  renderFriends();
-  toast(t('reqDeclined'));
-}
-
-function blockRequest(rid){
-  friendReqs = friendReqs.filter(r=>r.rid!==rid);
-  updateFriendsBadge();
-  renderFriends();
-  toast(t('blocked'));
+  showPushNotif({name:data.name,color:data.color||'C'},'📨 أرسل لك طلب صداقة');
+  toast('📨 '+data.name+' '+t('sentFriendReq'));
 }
 
 function toggleContactSeePosts(cid){
@@ -6927,7 +6885,7 @@ function renderAddScan(){
         cvs.width=img.width;cvs.height=img.height;
         const ctx=cvs.getContext('2d');ctx.drawImage(img,0,0);
         const id=ctx.getImageData(0,0,cvs.width,cvs.height);
-        const result=typeof jsQR!=='undefined'?jsQR(id.data,id.width,id.height):null;
+        const result=typeof jsQR!=='undefined'?jsQR(id.data,id.width,id.height,{inversionAttempts:'attemptBoth'}):null;
         if(result&&result.data){
           handleScan(result.data);
         } else {
@@ -6977,7 +6935,7 @@ async function startScan(){
         if(!v.videoWidth) return;
         ctx.drawImage(v,0,0,320,320);
         const id=ctx.getImageData(0,0,320,320);
-        const result=jsQR(id.data,id.width,id.height,{inversionAttempts:'dontInvert'});
+        const result=jsQR(id.data,id.width,id.height,{inversionAttempts:'attemptBoth'});
         if(result&&result.data){
           clearInterval(scanInterval);scanInterval=null;
           // Flash success
@@ -7004,29 +6962,115 @@ function stopScan(){
 function handleScan(raw){
   stopScan();
 
-  // Flash success in scan frame
   const st=document.getElementById('scanSt');
-  if(st){
-    st.innerHTML=`<span style="color:var(--acc);font-size:15px;font-weight:700;">✅ ${t('scanned')}</span>`;
-  }
+  if(st) st.innerHTML=`<span style="color:#22c55e;font-size:15px;font-weight:700;">✅ تم المسح!</span>`;
 
   setTimeout(()=>{
+    // 1. cloud:// protocol — contact QR from this app
     try{
       const u=new URL(raw);
       if(u.protocol==='cloud:'){
         const p=u.searchParams;
+        const contactData={
+          name:   p.get('name')   ||'جهة اتصال',
+          phone:  p.get('phone')  ||'',
+          status: p.get('status') ||'',
+          pulseId:p.get('id')     ||'',
+          color:  p.get('color')  ||'B',
+        };
         closeOv('ovAdd');
-        addContact({name:p.get('name')||'جهة اتصال',phone:p.get('phone')||'',status:p.get('status')||'',color:p.get('color')||'B'});
-        switchTab('friends');
+        showScannedContactPreview(contactData);
         return;
       }
     }catch(e){}
-    // Any QR → try to use as contact name/data
-    const name = raw.length > 3 && raw.length < 50 ? raw : (t('newContact'));
+
+    // 2. JSON contact card
+    try{
+      const obj=JSON.parse(raw);
+      if(obj.name){
+        closeOv('ovAdd');
+        showScannedContactPreview({name:obj.name,phone:obj.phone||'',status:obj.status||'',color:obj.color||'C'});
+        return;
+      }
+    }catch(e){}
+
+    // 3. vCard format
+    if(raw.startsWith('BEGIN:VCARD')){
+      const nameMatch=raw.match(/FN:(.+)/);
+      const telMatch =raw.match(/TEL[^:]*:(.+)/);
+      const name=nameMatch?nameMatch[1].trim():'جهة اتصال';
+      const phone=telMatch?telMatch[1].trim():'';
+      closeOv('ovAdd');
+      showScannedContactPreview({name,phone,status:'',color:'D'});
+      return;
+    }
+
+    // 4. Phone number
+    if(/^[+\d\s\-()]{7,20}$/.test(raw.trim())){
+      closeOv('ovAdd');
+      showScannedContactPreview({name:raw.trim(),phone:raw.trim(),status:'',color:'E'});
+      return;
+    }
+
+    // 5. URL — show as link contact
+    try{
+      const u=new URL(raw);
+      const domain=u.hostname.replace('www.','');
+      closeOv('ovAdd');
+      showScannedContactPreview({name:domain,phone:'',status:raw,color:'F'});
+      return;
+    }catch(e){}
+
+    // 6. Any text — use as name
+    const name=raw.slice(0,50).trim()||t('newContact');
     closeOv('ovAdd');
-    addContact({name, phone:'', status:'', color:AVKEYS[Math.floor(Math.random()*AVKEYS.length)]});
-    switchTab('friends');
-  }, 800);
+    showScannedContactPreview({name,phone:'',status:raw.slice(0,80),color:AVKEYS[Math.floor(Math.random()*AVKEYS.length)]});
+  },600);
+}
+
+function showScannedContactPreview(contactData){
+  // Show a sheet to confirm adding scanned contact
+  const sheet=document.createElement('div');
+  sheet.style.cssText='position:fixed;inset:0;z-index:900;background:rgba(0,0,0,.7);display:flex;align-items:flex-end;justify-content:center;';
+  const bg=AVCOLS[contactData.color]||'#888';
+  sheet.innerHTML=`
+    <div style="background:var(--s0);width:100%;max-width:430px;border-radius:24px 24px 0 0;padding:20px 16px 36px;">
+      <div style="width:40px;height:4px;border-radius:2px;background:var(--s3);margin:0 auto 16px;"></div>
+      <!-- Contact preview -->
+      <div style="text-align:center;padding:10px 0 20px;">
+        <div style="width:72px;height:72px;border-radius:50%;background:${bg};display:flex;align-items:center;justify-content:center;font-size:30px;font-weight:800;color:#fff;margin:0 auto 12px;border:3px solid var(--acc);">
+          ${contactData.name.charAt(0).toUpperCase()}
+        </div>
+        <div style="font-size:20px;font-weight:800;color:var(--t0);">${contactData.name}</div>
+        ${contactData.phone?`<div style="font-size:14px;color:var(--t2);margin-top:4px;">📞 ${contactData.phone}</div>`:''}
+        ${contactData.status?`<div style="font-size:13px;color:var(--t3);margin-top:4px;max-width:260px;margin-inline:auto;">${contactData.status.slice(0,60)}</div>`:''}
+        ${contactData.pulseId?`<div style="display:inline-flex;align-items:center;gap:4px;background:var(--acc2);color:var(--acc);border-radius:20px;padding:3px 12px;font-size:12px;font-weight:700;margin-top:8px;">🪪 ${contactData.pulseId}</div>`:''}
+      </div>
+      <div style="background:var(--s2);border-radius:14px;padding:12px 14px;margin-bottom:16px;display:flex;align-items:center;gap:8px;">
+        <span style="font-size:16px;">📷</span>
+        <span style="font-size:12px;color:var(--t2);">تم مسح QR بنجاح — هل تريد إضافة هذه الجهة؟</span>
+      </div>
+      <button onclick="confirmAddScanned(${JSON.stringify(contactData).replace(/"/g,'&quot;')},this.closest('div[style]').parentElement)"
+        style="width:100%;padding:14px;border-radius:14px;background:var(--acc);color:var(--bme-t);border:none;font-family:var(--fa);font-size:15px;font-weight:700;cursor:pointer;margin-bottom:8px;">
+        ➕ إضافة جهة الاتصال
+      </button>
+      <button onclick="this.closest('div[style]').remove()"
+        style="width:100%;padding:12px;border-radius:14px;background:var(--s3);color:var(--t2);border:none;font-family:var(--fa);font-size:14px;cursor:pointer;">
+        إلغاء
+      </button>
+    </div>`;
+  document.body.appendChild(sheet);
+}
+
+function confirmAddScanned(data, sheetEl){
+  sheetEl?.remove();
+  addContact(data);
+  switchTab('friends');
+  toast('✅ تمت إضافة '+data.name);
+  // Also send friend request if pulseId
+  if(data.pulseId){
+    simulateIncomingRequest({...data, greeting:'مرحباً! أضفني من QR Code'});
+  }
 }
 
 // ═══════════════════════════════════
@@ -10419,6 +10463,318 @@ function clearLiveTrack(){
 // ${m.trans||m.aiTrans ? ...}
 
 // Add to profile menu: stats, customizer, friends map
+
+// ════════════════════════════════════════════════════════════
+// 📨 REAL FRIEND REQUEST SYSTEM — Supabase Backend
+// نفس النظام المستخدم في التطبيق الأصلي (index-6.html)
+// ════════════════════════════════════════════════════════════
+
+// Supabase config (shared public instance)
+var CLOUD_SB = {
+  url: 'https://ulfevadtqbbdparvzfgp.supabase.co',
+  key: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVsZmV2YWR0cWJiZHBhcnZ6ZmdwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMwMTI1ODIsImV4cCI6MjA4ODU4ODU4Mn0.Hz1VoDySjBkAbqNuJdBryyc7pmAmoPoLXY-_Idyy2NY',
+};
+
+var _frPollTimer = null;
+var _frLastTs    = Date.now() - 86400000; // آخر 24 ساعة
+var _frPollFails = 0;
+
+// ── API helper ──
+function sbCloud(path, opts){
+  var url = CLOUD_SB.url + '/rest/v1/' + path;
+  var headers = {
+    'apikey':        CLOUD_SB.key,
+    'Authorization': 'Bearer ' + CLOUD_SB.key,
+    'Content-Type':  'application/json',
+    'Prefer':        'return=minimal',
+  };
+  return fetch(url, Object.assign({headers}, opts||{}));
+}
+
+// ── إرسال طلب صداقة حقيقي ──
+function sendFriendRequest(data){
+  const contact = contacts.find(c => c.id === data.id);
+  if(!contact) return;
+  contact.friendStatus = 'pending';
+
+  // Build payload — نفس format index-6
+  const payload = {
+    room:  'cloud_friend_req',
+    name:  me?.name  || 'مستخدم',
+    phone: me?.phone || '',
+    role:  'user',
+    msg: JSON.stringify({
+      type:       'friend_req',
+      to:         contact.phone || contact.id,
+      fromName:   me?.name    || 'مستخدم',
+      fromPhone:  me?.phone   || '',
+      fromColor:  me?.color   || 'B',
+      fromAvatar: me?.avatar  || null,
+      fromStatus: me?.status  || '',
+      fromPulseId:me?.pulseId || '',
+      greeting:   data.greeting || 'أهلاً! أريد إضافتك 👋',
+      toName:     contact.name,
+    }),
+    img: null,
+    ts:  Date.now(),
+  };
+
+  toast('⏳ جاري الإرسال...');
+
+  sbCloud('messages', {method:'POST', body:JSON.stringify(payload)})
+    .then(r => {
+      if(r.ok || r.status===201){
+        saveToStorage();
+        renderFriends();
+        renderChatList();
+        toast('📨 تم إرسال الطلب إلى ' + contact.name + ' — في انتظار القبول');
+      } else {
+        toast('⚠️ خطأ في الإرسال: ' + r.status);
+        contact.friendStatus = null;
+      }
+    })
+    .catch(() => {
+      // Fallback: localStorage for same-device
+      _sendFriendReqLocal(payload, contact);
+    });
+}
+
+function _sendFriendReqLocal(payload, contact){
+  try{
+    const key = 'cloud_freq_' + Date.now();
+    localStorage.setItem(key, payload.msg);
+    const list = JSON.parse(localStorage.getItem('cloud_freq_list')||'[]');
+    list.push(key);
+    localStorage.setItem('cloud_freq_list', JSON.stringify(list));
+    saveToStorage();
+    renderFriends();
+    renderChatList();
+    toast('📨 تم الإرسال (محلياً) — افتح تاب آخر لترى الطلب');
+  }catch(e){ toast('⚠️ فشل الإرسال'); }
+}
+
+// ── قبول طلب صداقة ──
+function acceptRequest(rid, allowPosts){
+  const req = friendReqs.find(r => r.rid === rid);
+  if(!req) return;
+
+  // إضافة للـ contacts
+  const existing = contacts.find(c => c.phone === req.phone || c.name === req.name);
+  if(!existing){
+    const newContact = {
+      id:      'c_' + Date.now(),
+      name:    req.name,
+      phone:   req.phone  || '',
+      status:  req.status || '',
+      color:   req.color  || 'C',
+      avatar:  req.avatar || null,
+      pulseId: req.pulseId|| '',
+      friendStatus: 'accepted',
+      seePosts: allowPosts !== false,
+      online:   false, unread: 0, lastMsg:'', lastTime:'',
+    };
+    contacts.push(newContact);
+    convos[newContact.id] = [];
+  } else {
+    existing.friendStatus = 'accepted';
+  }
+
+  friendReqs = friendReqs.filter(r => r.rid !== rid);
+
+  // أبعت إشعار القبول للشخص التاني
+  const acceptPayload = {
+    room:  'cloud_friend_req',
+    name:  me?.name  || 'مستخدم',
+    phone: me?.phone || '',
+    role:  'user',
+    msg: JSON.stringify({
+      type:       'friend_accept',
+      to:         req.phone || req.name,
+      fromName:   me?.name    || 'مستخدم',
+      fromPhone:  me?.phone   || '',
+      fromColor:  me?.color   || 'B',
+      fromAvatar: me?.avatar  || null,
+    }),
+    img: null,
+    ts:  Date.now(),
+  };
+
+  sbCloud('messages', {method:'POST', body:JSON.stringify(acceptPayload)})
+    .catch(() => {});
+
+  saveToStorage();
+  updateFriendsBadge();
+  renderFriends();
+  renderChatList();
+  toast('✅ تمت الإضافة! يمكنك التحدث مع ' + req.name);
+}
+
+function declineRequest(rid){
+  friendReqs = friendReqs.filter(r => r.rid !== rid);
+  saveToStorage();
+  updateFriendsBadge();
+  renderFriends();
+  toast('تم رفض الطلب');
+}
+
+function blockRequest(rid){
+  const req = friendReqs.find(r => r.rid === rid);
+  if(req){
+    const c = contacts.find(c => c.phone === req.phone);
+    if(c) c.friendStatus = 'blocked';
+    else contacts.push({id:'c_'+Date.now(),name:req.name,phone:req.phone||'',friendStatus:'blocked',color:req.color||'C',unread:0,lastMsg:'',lastTime:''});
+  }
+  friendReqs = friendReqs.filter(r => r.rid !== rid);
+  saveToStorage();
+  renderFriends();
+  toast('🚫 تم الحظر');
+}
+
+// ── Poll للطلبات الواردة (كل 5 ثواني) ──
+function startFriendReqPoll(){
+  if(_frPollTimer) clearInterval(_frPollTimer);
+  _frPollTimer = setInterval(pollFriendRequests, 5000);
+  pollFriendRequests(); // فوراً عند البدء
+}
+
+function pollFriendRequests(){
+  if(_frPollFails > 5) return; // توقف بعد 5 فشل
+
+  const since = _frLastTs;
+  sbCloud('messages?room=eq.cloud_friend_req&ts=gt.'+since+'&order=ts.asc&limit=50')
+    .then(r => { _frPollFails = 0; return r.json(); })
+    .then(msgs => {
+      if(!msgs || !Array.isArray(msgs) || !msgs.length) return;
+      _frLastTs = Date.now();
+
+      msgs.forEach(m => {
+        try{
+          const data = JSON.parse(m.msg || '{}');
+          const myPhone = me?.phone || '';
+          const myName  = me?.name  || '';
+
+          // ── طلب إضافة وارد لي ──
+          if(data.type === 'friend_req' &&
+            (data.to === myPhone || data.to === myName) &&
+            data.fromPhone !== myPhone && data.fromName !== myName){
+
+            const already = contacts.find(c => c.phone === data.fromPhone || c.name === data.fromName);
+            const alreadyPend = friendReqs.find(r => r.phone === data.fromPhone || r.name === data.fromName);
+            if(already || alreadyPend) return;
+
+            const newReq = {
+              rid:      'fr_' + m.ts + '_' + data.fromPhone,
+              name:     data.fromName    || 'مستخدم',
+              phone:    data.fromPhone   || '',
+              color:    data.fromColor   || 'C',
+              avatar:   data.fromAvatar  || null,
+              status:   data.fromStatus  || '',
+              pulseId:  data.fromPulseId || '',
+              greeting: data.greeting    || '',
+              time:     now(),
+              seePosts: true,
+            };
+
+            friendReqs.push(newReq);
+            saveToStorage();
+            updateFriendsBadge();
+            renderFriends();
+
+            // إشعار
+            showPushNotif(
+              {name:data.fromName, color:data.fromColor||'C', avatar:data.fromAvatar},
+              '📨 أرسل لك طلب صداقة'
+            );
+            toast('📨 طلب صداقة جديد من ' + data.fromName + '!');
+          }
+
+          // ── قبول طلب مني ──
+          if(data.type === 'friend_accept' &&
+            (data.to === myPhone || data.to === myName) &&
+            data.fromPhone !== myPhone){
+
+            const c = contacts.find(x => x.phone === data.fromPhone || x.name === data.fromName);
+            if(c){
+              c.friendStatus = 'accepted';
+            } else {
+              contacts.push({
+                id: 'c_' + Date.now(),
+                name: data.fromName  || 'مستخدم',
+                phone: data.fromPhone|| '',
+                color: data.fromColor|| 'C',
+                avatar:data.fromAvatar||null,
+                friendStatus:'accepted',
+                online:false, unread:0, lastMsg:'', lastTime:'',
+              });
+            }
+            saveToStorage();
+            renderFriends();
+            renderChatList();
+            showPushNotif(
+              {name:data.fromName, color:data.fromColor||'C'},
+              '🎉 قبل طلب الإضافة!'
+            );
+            toast('🎉 ' + data.fromName + ' قبل طلب الإضافة!');
+          }
+        }catch(ex){}
+      });
+    })
+    .catch(() => { _frPollFails++; });
+}
+
+// ── localStorage fallback poll (same browser) ──
+setInterval(()=>{
+  try{
+    const list = JSON.parse(localStorage.getItem('cloud_freq_list')||'[]');
+    const done  = JSON.parse(localStorage.getItem('cloud_freq_done')||'[]');
+    list.filter(k=>!done.includes(k)).forEach(key=>{
+      try{
+        const raw = localStorage.getItem(key); if(!raw) return;
+        const data = JSON.parse(raw);
+        const myPhone = me?.phone||'', myName = me?.name||'';
+        if(data.type==='friend_req' &&
+          (data.to===myPhone||data.to===myName) &&
+          data.fromName!==myName){
+          const alreadyPend=friendReqs.find(r=>r.phone===data.fromPhone||r.name===data.fromName);
+          if(!alreadyPend){
+            friendReqs.push({
+              rid:'fr_local_'+key, name:data.fromName||'مستخدم',
+              phone:data.fromPhone||'', color:data.fromColor||'C',
+              avatar:data.fromAvatar||null, status:data.fromStatus||'',
+              pulseId:data.fromPulseId||'', greeting:data.greeting||'',
+              time:now(), seePosts:true,
+            });
+            saveToStorage(); updateFriendsBadge(); renderFriends();
+            showPushNotif({name:data.fromName,color:data.fromColor||'C'},'📨 أرسل لك طلب صداقة');
+            toast('📨 طلب صداقة من '+data.fromName);
+          }
+          done.push(key);
+          localStorage.setItem('cloud_freq_done', JSON.stringify(done.slice(-200)));
+        }
+      }catch(e){}
+    });
+  }catch(e){}
+}, 2000);
+
+// Start polling when user logs in
+function startFriendSystem(){
+  startFriendReqPoll();
+}
+
+// ── QR friend request ──
+function sendQRFriendReq(scannedData){
+  // Used when scanning someone's QR
+  const fakeContact = {
+    id: 'qr_'+Date.now(),
+    name: scannedData.name,
+    phone: scannedData.phone||'',
+    pulseId: scannedData.pulseId||'',
+    greeting: 'مسح QR Code الخاص بي',
+    color: scannedData.color||'C',
+  };
+  contacts.push({...fakeContact, friendStatus:'pending', unread:0, lastMsg:'', lastTime:''});
+  sendFriendRequest({...fakeContact, greeting:'مسح QR Code — أريد إضافتك'});
+}
 
 
 // ═══════════════════════════════════
