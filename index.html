@@ -6288,39 +6288,34 @@ function drawQR(canvas, text, size){
     const octx = off.getContext('2d');
 
     const finish = function(){
+      // خلفية
       ctx.fillStyle = bgColor;
       ctx.fillRect(0, 0, size, size);
 
       const qrPx = octx.getImageData(0, 0, size, size).data;
-      const cellSize = size / 25;
+      const cellSize = size / 33; // أدق — 33 module للقراءة الصحيحة
 
-      for (let y = 0; y < size; y += cellSize) {
-        for (let x = 0; x < size; x += cellSize) {
-          const px = Math.floor(x + cellSize/2);
-          const py = Math.floor(y + cellSize/2);
-          const idx = (py * size + px) * 4;
+      for (let row = 0; row < 33; row++) {
+        for (let col = 0; col < 33; col++) {
+          const px = Math.floor((col / 33) * size + size/66);
+          const py = Math.floor((row / 33) * size + size/66);
+          const idx = (Math.min(py, size-1) * size + Math.min(px, size-1)) * 4;
           if (qrPx[idx] >= 128) continue;
 
-          const inFinder = (x < cellSize*8 && y < cellSize*8) ||
-                           (x > size - cellSize*9 && y < cellSize*8) ||
-                           (x < cellSize*8 && y > size - cellSize*9);
+          const x = col * cellSize;
+          const y = row * cellSize;
+
+          // Finder pattern corners → accent color
+          const inFinder = (col < 9 && row < 9) ||
+                           (col > 23 && row < 9) ||
+                           (col < 9 && row > 23);
 
           ctx.fillStyle = inFinder ? acc : fg;
           ctx.beginPath();
-          ctx.roundRect(x+1, y+1, cellSize-2, cellSize-2, cellSize*0.38);
+          ctx.roundRect(x+0.5, y+0.5, cellSize-1, cellSize-1, cellSize*0.3);
           ctx.fill();
         }
       }
-
-      const cr = cellSize * 2.2;
-      ctx.fillStyle = bgColor;
-      ctx.beginPath(); ctx.arc(size/2, size/2, cr+3, 0, Math.PI*2); ctx.fill();
-      ctx.fillStyle = acc;
-      ctx.beginPath(); ctx.arc(size/2, size/2, cr, 0, Math.PI*2); ctx.fill();
-      ctx.fillStyle = '#fff';
-      ctx.font = 'bold ' + Math.floor(cr*1.1) + 'px sans-serif';
-      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillText('\u{1F4AC}', size/2, size/2+1);
 
       tmp.remove();
     };
@@ -6969,62 +6964,52 @@ let scanInterval=null;
 async function startScan(){
   const st=document.getElementById('scanSt'),btn=document.getElementById('scanStart');
   try{
-    if(st) st.textContent=t('opening');
-    if(btn) btn.style.display='none';
-
-    scanStream=await navigator.mediaDevices.getUserMedia({
-      video:{facingMode:'environment',width:{ideal:1280},height:{ideal:720}}
-    });
-
+    st.textContent=t('opening');btn.style.display='none';
+    scanStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment',width:{ideal:640},height:{ideal:640}}});
     const v=document.getElementById('svid');
     const ph=document.getElementById('scanPlaceholder');
+    const cvs=document.getElementById('scanCanvas');
     const scanLine=document.getElementById('scanLineEl');
-
     v.srcObject=scanStream;
     await v.play();
     v.style.display='block';
     if(ph) ph.style.display='none';
     if(scanLine) scanLine.style.display='block';
-    if(st) st.textContent=t('cameraOn');
+    st.textContent=t('cameraOn');
 
-    // Use BarcodeDetector if available (faster, native)
+    // Use BarcodeDetector if available, otherwise jsQR via canvas
     if('BarcodeDetector' in window){
       const det=new BarcodeDetector({formats:['qr_code']});
       scanInterval=setInterval(async()=>{
         try{
           const r=await det.detect(v);
-          if(r&&r.length){
-            clearInterval(scanInterval);scanInterval=null;
-            if(st) st.textContent='✅ '+t('scanned');
-            setTimeout(()=>handleScan(r[0].rawValue),200);
-          }
+          if(r&&r.length){clearInterval(scanInterval);scanInterval=null;handleScan(r[0].rawValue);}
         }catch(e){}
-      },250);
+      },300);
     } else if(typeof jsQR !== 'undefined'){
-      // Offscreen canvas — مش داخل الـ DOM عشان ما يتأثرش
-      const offCanvas=document.createElement('canvas');
-      const ctx=offCanvas.getContext('2d');
+      // Use jsQR with canvas
+      cvs.width=320;cvs.height=320;
+      const ctx=cvs.getContext('2d');
       scanInterval=setInterval(()=>{
-        if(!v.videoWidth||!v.videoHeight) return;
-        const w=v.videoWidth, h=v.videoHeight;
-        offCanvas.width=w; offCanvas.height=h;
-        ctx.drawImage(v,0,0,w,h);
-        const imgData=ctx.getImageData(0,0,w,h);
-        const result=jsQR(imgData.data,w,h,{inversionAttempts:'dontInvert'});
+        if(!v.videoWidth) return;
+        ctx.drawImage(v,0,0,320,320);
+        const id=ctx.getImageData(0,0,320,320);
+        const result=jsQR(id.data,id.width,id.height,{inversionAttempts:'attemptBoth'});
         if(result&&result.data){
           clearInterval(scanInterval);scanInterval=null;
-          if(st) st.textContent='✅ '+t('scanned');
-          setTimeout(()=>handleScan(result.data),200);
+          // Flash success
+          if(st) st.textContent='✅ '+(t('scanned'));
+          setTimeout(()=>handleScan(result.data),300);
         }
       },200);
     } else {
-      if(st) st.textContent='⚠️ '+t('scanNotSupported');
-      if(btn) btn.style.display='block';
+      st.textContent='⚠️ '+(t('scanNotSupported'));
+      btn.style.display='block';
     }
   }catch(e){
-    const st2=document.getElementById('scanSt'),btn2=document.getElementById('scanStart');
-    if(st2) st2.textContent=t('cameraErr')+' — '+e.message;
-    if(btn2) btn2.style.display='block';
+    const st=document.getElementById('scanSt'),btn=document.getElementById('scanStart');
+    if(st) st.textContent=t('cameraErr');
+    if(btn) btn.style.display='block';
   }
 }
 
