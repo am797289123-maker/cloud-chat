@@ -6969,52 +6969,62 @@ let scanInterval=null;
 async function startScan(){
   const st=document.getElementById('scanSt'),btn=document.getElementById('scanStart');
   try{
-    st.textContent=t('opening');btn.style.display='none';
-    scanStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment',width:{ideal:640},height:{ideal:640}}});
+    if(st) st.textContent=t('opening');
+    if(btn) btn.style.display='none';
+
+    scanStream=await navigator.mediaDevices.getUserMedia({
+      video:{facingMode:'environment',width:{ideal:1280},height:{ideal:720}}
+    });
+
     const v=document.getElementById('svid');
     const ph=document.getElementById('scanPlaceholder');
-    const cvs=document.getElementById('scanCanvas');
     const scanLine=document.getElementById('scanLineEl');
+
     v.srcObject=scanStream;
     await v.play();
     v.style.display='block';
     if(ph) ph.style.display='none';
     if(scanLine) scanLine.style.display='block';
-    st.textContent=t('cameraOn');
+    if(st) st.textContent=t('cameraOn');
 
-    // Use BarcodeDetector if available, otherwise jsQR via canvas
+    // Use BarcodeDetector if available (faster, native)
     if('BarcodeDetector' in window){
       const det=new BarcodeDetector({formats:['qr_code']});
       scanInterval=setInterval(async()=>{
         try{
           const r=await det.detect(v);
-          if(r&&r.length){clearInterval(scanInterval);scanInterval=null;handleScan(r[0].rawValue);}
+          if(r&&r.length){
+            clearInterval(scanInterval);scanInterval=null;
+            if(st) st.textContent='✅ '+t('scanned');
+            setTimeout(()=>handleScan(r[0].rawValue),200);
+          }
         }catch(e){}
-      },300);
+      },250);
     } else if(typeof jsQR !== 'undefined'){
-      // Use jsQR with canvas
-      cvs.width=320;cvs.height=320;
-      const ctx=cvs.getContext('2d');
+      // Offscreen canvas — مش داخل الـ DOM عشان ما يتأثرش
+      const offCanvas=document.createElement('canvas');
+      const ctx=offCanvas.getContext('2d');
       scanInterval=setInterval(()=>{
-        if(!v.videoWidth) return;
-        ctx.drawImage(v,0,0,320,320);
-        const id=ctx.getImageData(0,0,320,320);
-        const result=jsQR(id.data,id.width,id.height,{inversionAttempts:'attemptBoth'});
+        if(!v.videoWidth||!v.videoHeight) return;
+        const w=v.videoWidth, h=v.videoHeight;
+        offCanvas.width=w; offCanvas.height=h;
+        ctx.drawImage(v,0,0,w,h);
+        const imgData=ctx.getImageData(0,0,w,h);
+        const result=jsQR(imgData.data,w,h,{inversionAttempts:'dontInvert'});
         if(result&&result.data){
           clearInterval(scanInterval);scanInterval=null;
-          // Flash success
-          if(st) st.textContent='✅ '+(t('scanned'));
-          setTimeout(()=>handleScan(result.data),300);
+          if(st) st.textContent='✅ '+t('scanned');
+          setTimeout(()=>handleScan(result.data),200);
         }
       },200);
     } else {
-      st.textContent='⚠️ '+(t('scanNotSupported'));
-      btn.style.display='block';
+      if(st) st.textContent='⚠️ '+t('scanNotSupported');
+      if(btn) btn.style.display='block';
     }
   }catch(e){
-    const st=document.getElementById('scanSt'),btn=document.getElementById('scanStart');
-    if(st) st.textContent=t('cameraErr');
-    if(btn) btn.style.display='block';
+    const st2=document.getElementById('scanSt'),btn2=document.getElementById('scanStart');
+    if(st2) st2.textContent=t('cameraErr')+' — '+e.message;
+    if(btn2) btn2.style.display='block';
   }
 }
 
