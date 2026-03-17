@@ -6254,17 +6254,16 @@ function deleteContact(id){
 // ═══════════════════════════════════
 function drawQR(canvas, text, size){
   size = size || 180;
-  const isDark = !['rose'].includes(curTheme);
-  const bgColor = isDark ? '#13120E' : '#ffffff';
-  const acc = getComputedStyle(document.body).getPropertyValue('--acc').trim() || '#D4A843';
-  const fg  = isDark ? '#F5F0E8' : '#1C1917';
   canvas.width = size; canvas.height = size;
   const ctx = canvas.getContext('2d');
 
+  // خلفية بيضاء دايماً عشان الـ QR يتقرأ
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, size, size);
+
   if (typeof QRCode === 'undefined') {
-    ctx.fillStyle = bgColor; ctx.fillRect(0,0,size,size);
-    ctx.fillStyle = fg; ctx.font='13px sans-serif';
-    ctx.textAlign='center'; ctx.fillText('QR N/A',size/2,size/2);
+    ctx.fillStyle = '#000'; ctx.font = '13px sans-serif';
+    ctx.textAlign = 'center'; ctx.fillText('QR N/A', size/2, size/2);
     return;
   }
 
@@ -6286,60 +6285,15 @@ function drawQR(canvas, text, size){
   setTimeout(function(){
     const src = tmp.querySelector('canvas') || tmp.querySelector('img');
     if (!src){ tmp.remove(); return; }
-
-    const off = document.createElement('canvas');
-    off.width = size; off.height = size;
-    const octx = off.getContext('2d');
-
-    const finish = function(){
-      ctx.fillStyle = bgColor;
-      ctx.fillRect(0, 0, size, size);
-
-      const qrPx = octx.getImageData(0, 0, size, size).data;
-      const cellSize = size / 25;
-
-      for (let y = 0; y < size; y += cellSize) {
-        for (let x = 0; x < size; x += cellSize) {
-          const px = Math.floor(x + cellSize/2);
-          const py = Math.floor(y + cellSize/2);
-          const idx = (py * size + px) * 4;
-          if (qrPx[idx] >= 128) continue;
-
-          const inFinder = (x < cellSize*8 && y < cellSize*8) ||
-                           (x > size - cellSize*9 && y < cellSize*8) ||
-                           (x < cellSize*8 && y > size - cellSize*9);
-
-          ctx.fillStyle = inFinder ? acc : fg;
-          ctx.beginPath();
-          ctx.roundRect(x+1, y+1, cellSize-2, cellSize-2, cellSize*0.38);
-          ctx.fill();
-        }
-      }
-
-      // لوغو صغير — H correction يتحمل حتى 30% غطاء
-      const cr = size * 0.09; // 9% من الحجم الكلي
-      const cx = size/2, cy = size/2;
-      ctx.fillStyle = bgColor;
-      ctx.beginPath(); ctx.arc(cx, cy, cr+2.5, 0, Math.PI*2); ctx.fill();
-      ctx.fillStyle = acc;
-      ctx.beginPath(); ctx.arc(cx, cy, cr, 0, Math.PI*2); ctx.fill();
-      ctx.fillStyle = '#fff';
-      ctx.font = 'bold ' + Math.floor(cr*1.1) + 'px sans-serif';
-      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillText('\u{1F4AC}', cx, cy+1);
-
-      tmp.remove();
-    };
-
     if (src.tagName === 'CANVAS') {
-      octx.drawImage(src, 0, 0, size, size);
-      finish();
+      ctx.drawImage(src, 0, 0, size, size);
     } else {
       const img = new Image();
-      img.onload = function(){ octx.drawImage(img, 0, 0, size, size); finish(); };
+      img.onload = function(){ ctx.drawImage(img, 0, 0, size, size); };
       img.src = src.src;
     }
-  }, 120);
+    tmp.remove();
+  }, 100);
 }
 function qrData(c){return `cloud://add?name=${encodeURIComponent(c.name)}&phone=${encodeURIComponent(c.phone||'')}&status=${encodeURIComponent(c.status||'')}&color=${c.color}&id=${encodeURIComponent(c.pulseId||c.id||'')}&avatar=${encodeURIComponent(c.avatar||'')}`;}
 
