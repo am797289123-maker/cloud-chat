@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <title>Cloud</title>
 <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jsQR/1.4.0/jsQR.min.js">
 </script>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
@@ -6249,66 +6249,32 @@ function deleteContact(id){
 // QR CODE
 // ═══════════════════════════════════
 function drawQR(canvas, text, size){
-  size = size || 180;
-  canvas.width  = size;
-  canvas.height = size;
-  const ctx = canvas.getContext('2d');
-  ctx.fillStyle = '#ffffff';
-  ctx.fillRect(0, 0, size, size);
-
-  if (typeof QRCode === 'undefined') {
-    ctx.fillStyle = '#000';
-    ctx.font = '13px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText('QR N/A', size/2, size/2);
-    return;
-  }
-
-  const tmp = document.createElement('div');
-  tmp.style.cssText = 'position:absolute;left:-9999px;top:-9999px;';
-  document.body.appendChild(tmp);
-
-  try {
-    new QRCode(tmp, {
-      text: text,
-      width: size,
-      height: size,
-      colorDark:  '#000000',
-      colorLight: '#ffffff',
-      correctLevel: QRCode.CorrectLevel.H
-    });
-  } catch(e){ tmp.remove(); return; }
-
-  setTimeout(function(){
-    const src = tmp.querySelector('canvas') || tmp.querySelector('img');
-    if (!src){ tmp.remove(); return; }
-
-    const doRender = function(qrSrc){
-      ctx.drawImage(qrSrc, 0, 0, size, size);
-      // لوغو في النص زي WhatsApp
-      const r = size * 0.12;
-      const cx = size / 2, cy = size / 2;
-      ctx.fillStyle = '#ffffff';
-      ctx.beginPath(); ctx.arc(cx, cy, r + 3, 0, Math.PI*2); ctx.fill();
-      const acc = getComputedStyle(document.body).getPropertyValue('--acc').trim() || '#25D366';
-      ctx.fillStyle = acc;
-      ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI*2); ctx.fill();
-      ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold ' + Math.floor(r * 1.15) + 'px sans-serif';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText('💬', cx, cy + 1);
-    };
-
-    if (src.tagName === 'CANVAS') {
-      doRender(src);
-    } else {
-      const img = new Image();
-      img.onload = function(){ doRender(img); };
-      img.src = src.src;
-    }
-    tmp.remove();
-  }, 100);
+  size = size||180;
+  canvas.width=size; canvas.height=size;
+  var ctx=canvas.getContext('2d');
+  ctx.fillStyle='#fff'; ctx.fillRect(0,0,size,size);
+  // Google Charts QR - simple, reliable, no library needed
+  var url = "https://chart.googleapis.com/chart?chs="+size+"x"+size+"&cht=qr&chld=H|1&chl="+encodeURIComponent(text);
+  var img = new Image();
+  img.crossOrigin = "anonymous";
+  img.onload = function(){
+    ctx.drawImage(img, 0, 0, size, size);
+    // Logo in center
+    var r=size*0.11, cx=size/2, cy=size/2;
+    var acc=getComputedStyle(document.body).getPropertyValue('--acc').trim()||'#D4A843';
+    ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(cx,cy,r+4,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle=acc; ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle='#fff';
+    ctx.font='bold '+Math.floor(r*1.15)+'px sans-serif';
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText('💬', cx, cy+1);
+  };
+  img.onerror = function(){
+    ctx.fillStyle='#555'; ctx.font='12px sans-serif';
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText('تحقق من الاتصال', size/2, size/2);
+  };
+  img.src = url;
 }
 function qrData(c){return `cloud://add?name=${encodeURIComponent(c.name)}&phone=${encodeURIComponent(c.phone||'')}&status=${encodeURIComponent(c.status||'')}&color=${c.color}&id=${encodeURIComponent(c.pulseId||c.id||'')}&avatar=${encodeURIComponent(c.avatar||'')}`;}
 
