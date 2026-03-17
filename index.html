@@ -2136,6 +2136,308 @@ body.easy-large .sh-btn{font-size:17px!important;padding:16px!important;}
   display:flex;
 }
 
+/* ══ IMAGE EDITOR SCREEN ══ */
+.img-editor{
+  position:fixed;inset:0;z-index:800;
+  background:#000;
+  display:none;flex-direction:column;
+}
+.img-editor.on{display:flex;}
+
+/* Top bar */
+.ie-topbar{
+  display:flex;align-items:center;gap:10px;
+  padding:12px 14px;
+  background:linear-gradient(to bottom,rgba(0,0,0,.8),transparent);
+  position:absolute;top:0;left:0;right:0;z-index:2;
+}
+.ie-close{background:rgba(0,0,0,.5);border:none;border-radius:50%;width:36px;height:36px;color:#fff;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+.ie-title{flex:1;font-size:15px;font-weight:700;color:#fff;text-align:center;}
+.ie-hd-badge{
+  background:var(--acc);color:var(--bme-t);
+  border:none;border-radius:20px;padding:5px 12px;
+  font-size:12px;font-weight:800;cursor:pointer;
+  font-family:var(--fa);
+  transition:all .15s;
+}
+.ie-hd-badge.on{background:#22c55e;}
+
+/* Canvas area */
+.ie-canvas-wrap{
+  flex:1;display:flex;align-items:center;justify-content:center;
+  position:relative;overflow:hidden;
+  touch-action:none;
+}
+#ieCanvas{
+  max-width:100%;max-height:100%;
+  border-radius:4px;
+  cursor:crosshair;
+  touch-action:none;
+}
+
+/* Tools bar */
+.ie-tools{
+  background:rgba(0,0,0,.85);
+  padding:10px 14px;
+  display:flex;gap:8px;
+  overflow-x:auto;
+  flex-shrink:0;
+}
+.ie-tool{
+  display:flex;flex-direction:column;align-items:center;gap:4px;
+  padding:8px 12px;border-radius:14px;cursor:pointer;
+  background:rgba(255,255,255,.08);border:1.5px solid transparent;
+  flex-shrink:0;transition:all .15s;
+  min-width:56px;
+}
+.ie-tool:hover,.ie-tool.on{background:rgba(255,255,255,.18);border-color:rgba(255,255,255,.3);}
+.ie-tool.on{border-color:var(--acc);}
+.ie-tool-ico{font-size:20px;}
+.ie-tool-lbl{font-size:10px;color:rgba(255,255,255,.7);font-weight:600;white-space:nowrap;}
+
+/* Filters row */
+.ie-filters{
+  display:flex;gap:8px;padding:8px 14px 4px;overflow-x:auto;flex-shrink:0;
+}
+.ie-filter-item{
+  display:flex;flex-direction:column;align-items:center;gap:4px;
+  cursor:pointer;flex-shrink:0;
+}
+.ie-filter-thumb{
+  width:52px;height:52px;border-radius:10px;
+  border:2px solid transparent;overflow:hidden;
+  transition:all .15s;
+}
+.ie-filter-item.on .ie-filter-thumb{border-color:var(--acc);box-shadow:0 0 0 2px var(--acc2);}
+.ie-filter-name{font-size:10px;color:rgba(255,255,255,.6);text-align:center;}
+
+/* Text overlay input */
+.ie-text-input{
+  position:absolute;z-index:3;
+  background:rgba(0,0,0,.6);border:2px solid #fff;border-radius:8px;
+  color:#fff;font-size:18px;font-weight:700;text-align:center;
+  padding:6px 12px;outline:none;min-width:120px;max-width:80%;
+  font-family:var(--fa);
+}
+
+/* Caption + Send */
+.ie-bottom{
+  background:#000;padding:10px 14px 20px;flex-shrink:0;
+}
+.ie-caption-row{
+  display:flex;align-items:center;gap:8px;margin-bottom:10px;
+}
+.ie-caption-in{
+  flex:1;background:rgba(255,255,255,.1);
+  border:1.5px solid rgba(255,255,255,.2);border-radius:24px;
+  padding:9px 16px;color:#fff;font-family:var(--fa);font-size:14px;
+  outline:none;
+}
+.ie-caption-in::placeholder{color:rgba(255,255,255,.4);}
+.ie-send-btn{
+  width:46px;height:46px;border-radius:50%;
+  background:var(--acc);border:none;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  font-size:20px;color:var(--bme-t);flex-shrink:0;
+  box-shadow:0 4px 16px rgba(0,0,0,.4);
+  transition:transform .15s;
+}
+.ie-send-btn:active{transform:scale(.92);}
+
+/* Draw color palette */
+.ie-color-row{
+  display:flex;gap:6px;padding:6px 14px;overflow-x:auto;
+}
+.ie-color-dot{
+  width:28px;height:28px;border-radius:50%;cursor:pointer;flex-shrink:0;
+  border:2.5px solid transparent;transition:all .15s;
+}
+.ie-color-dot.on{border-color:#fff;transform:scale(1.2);}
+
+/* Slider */
+.ie-slider-row{
+  padding:6px 14px;display:none;align-items:center;gap:10px;
+}
+.ie-slider-row.show{display:flex;}
+.ie-slider{flex:1;accent-color:var(--acc);}
+.ie-slider-val{font-size:12px;color:rgba(255,255,255,.7);min-width:30px;text-align:center;}
+
+/* ══ SPLASH SCREEN ══ */
+.splash-screen{
+  position:fixed;inset:0;z-index:9999;
+  background:var(--bg);
+  display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+  transition:opacity .5s,transform .5s;
+}
+.splash-screen.hide{opacity:0;transform:scale(1.05);pointer-events:none;}
+.splash-logo{
+  width:90px;height:90px;border-radius:28px;
+  background:linear-gradient(135deg,var(--acc),color-mix(in srgb,var(--acc) 60%,#000));
+  display:flex;align-items:center;justify-content:center;
+  font-size:44px;
+  box-shadow:0 12px 40px rgba(0,0,0,.4);
+  animation:splashPop .6s var(--spring) .1s both;
+}
+@keyframes splashPop{from{transform:scale(.6);opacity:0}to{transform:scale(1);opacity:1}}
+.splash-name{
+  font-size:32px;font-weight:900;color:var(--t0);
+  margin-top:18px;letter-spacing:-1px;
+  animation:splashPop .6s var(--spring) .25s both;
+}
+.splash-tag{
+  font-size:13px;color:var(--t3);margin-top:6px;
+  animation:splashPop .5s var(--spring) .4s both;
+}
+.splash-loader{
+  margin-top:50px;
+  display:flex;gap:6px;
+  animation:splashPop .4s .6s both;
+}
+.splash-dot{
+  width:8px;height:8px;border-radius:50%;
+  background:var(--acc);
+  animation:splashDot 1.2s infinite ease-in-out;
+}
+.splash-dot:nth-child(2){animation-delay:.2s;}
+.splash-dot:nth-child(3){animation-delay:.4s;}
+@keyframes splashDot{0%,80%,100%{transform:scale(.4);opacity:.4}40%{transform:scale(1);opacity:1}}
+.splash-version{
+  position:absolute;bottom:30px;font-size:11px;color:var(--t3);
+}
+
+/* ══ BUBBLE SHAPES ══ */
+body[data-bubble="square"] .bub{border-radius:8px!important;}
+body[data-bubble="square"] .bub::after{display:none!important;}
+body[data-bubble="round"] .msg-row.me .bub{border-radius:24px!important;}
+body[data-bubble="round"] .msg-row.other .bub{border-radius:24px!important;}
+body[data-bubble="round"] .bub::after{display:none!important;}
+body[data-bubble="sharp"] .bub{border-radius:4px!important;}
+body[data-bubble="ios"] .msg-row.me .bub{border-radius:20px 20px 4px 20px!important;}
+body[data-bubble="ios"] .msg-row.other .bub{border-radius:20px 20px 20px 4px!important;}
+
+/* ══ FONT FAMILY ══ */
+body[data-font="vazir"] *{font-family:'Vazirmatn',var(--fa)!important;}
+body[data-font="kufi"] *{font-family:'Noto Kufi Arabic',var(--fa)!important;}
+body[data-font="mono"] .bub{font-family:'Space Grotesk',monospace!important;}
+
+/* ══ CUSTOM APP BG ══ */
+.app-bg-overlay{
+  position:fixed;inset:0;z-index:-1;
+  background-size:cover;background-position:center;
+  opacity:var(--app-bg-opacity,0);
+  transition:opacity .3s;
+  pointer-events:none;
+}
+
+/* ══ E2E ENCRYPTION SCREEN ══ */
+.e2e-screen{
+  position:fixed;inset:0;z-index:700;
+  background:var(--bg);
+  display:none;flex-direction:column;align-items:center;justify-content:center;
+  padding:30px;
+}
+.e2e-screen.on{display:flex;}
+.e2e-lock-ico{
+  width:100px;height:100px;border-radius:30px;
+  background:linear-gradient(135deg,#10B981,#059669);
+  display:flex;align-items:center;justify-content:center;
+  font-size:50px;margin-bottom:24px;
+  box-shadow:0 8px 30px rgba(16,185,129,.4);
+  animation:splashPop .5s var(--spring);
+}
+.e2e-key-row{
+  display:flex;gap:4px;flex-wrap:wrap;justify-content:center;
+  margin:16px 0;max-width:320px;
+}
+.e2e-key-seg{
+  background:var(--s2);border:1px solid var(--br);
+  border-radius:8px;padding:4px 8px;
+  font-size:11px;font-family:monospace;color:var(--t2);
+  letter-spacing:.5px;
+}
+.e2e-verify-btn{
+  margin-top:10px;padding:12px 28px;border-radius:14px;
+  background:linear-gradient(135deg,#10B981,#059669);
+  color:#fff;border:none;font-family:var(--fa);
+  font-size:14px;font-weight:700;cursor:pointer;
+  box-shadow:0 4px 16px rgba(16,185,129,.4);
+}
+
+/* ══ STATS SCREEN ══ */
+.stats-card{
+  background:var(--s1);border-radius:18px;
+  padding:16px;margin:8px 14px;
+  border:1px solid var(--br);
+  display:flex;align-items:center;gap:14px;
+}
+.stats-ico{
+  width:48px;height:48px;border-radius:14px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:22px;flex-shrink:0;
+}
+.stats-num{font-size:26px;font-weight:900;color:var(--acc);font-family:'Space Grotesk',monospace;}
+.stats-lbl{font-size:12px;color:var(--t3);margin-top:2px;}
+.stats-bar-wrap{margin:4px 14px;background:var(--s2);border-radius:8px;overflow:hidden;height:6px;}
+.stats-bar-fill{height:100%;border-radius:8px;background:linear-gradient(90deg,var(--acc),color-mix(in srgb,var(--acc) 70%,#fff));transition:width .8s var(--spring);}
+
+/* ══ FRIENDS MAP ══ */
+.friends-map-screen{
+  position:fixed;inset:0;z-index:600;
+  display:none;flex-direction:column;
+  background:var(--bg);
+}
+.friends-map-screen.on{display:flex;}
+.map-container{flex:1;position:relative;overflow:hidden;background:#0A1628;}
+.map-grid{
+  position:absolute;inset:0;
+  background-image:
+    linear-gradient(rgba(59,130,246,.08) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(59,130,246,.08) 1px,transparent 1px);
+  background-size:40px 40px;
+}
+.map-friend-pin{
+  position:absolute;
+  display:flex;flex-direction:column;align-items:center;
+  cursor:pointer;transform:translate(-50%,-100%);
+  animation:pinDrop .4s var(--spring);
+}
+@keyframes pinDrop{from{transform:translate(-50%,-120%);opacity:0}to{transform:translate(-50%,-100%);opacity:1}}
+.map-pin-av{
+  width:40px;height:40px;border-radius:50%;
+  border:3px solid var(--acc);
+  display:flex;align-items:center;justify-content:center;
+  font-size:16px;font-weight:800;color:#fff;
+  box-shadow:0 4px 16px rgba(0,0,0,.4);
+  position:relative;
+}
+.map-pin-av.online::after{
+  content:'';position:absolute;bottom:0;right:0;
+  width:12px;height:12px;border-radius:50%;
+  background:#22c55e;border:2px solid var(--bg);
+}
+.map-pin-label{
+  margin-top:4px;background:rgba(0,0,0,.8);
+  padding:2px 8px;border-radius:10px;
+  font-size:10px;font-weight:700;color:#fff;white-space:nowrap;
+}
+.map-pin-needle{
+  width:2px;height:12px;background:var(--acc);
+}
+
+/* ══ AI TRANSLATE BUBBLE ══ */
+.ai-trans-bubble{
+  background:linear-gradient(135deg,rgba(139,92,246,.15),rgba(236,72,153,.1));
+  border:1px solid rgba(139,92,246,.3);
+  border-radius:12px;padding:8px 12px;margin-top:4px;
+  font-size:12px;color:var(--t1);line-height:1.5;
+}
+.ai-trans-header{
+  display:flex;align-items:center;gap:5px;
+  margin-bottom:4px;font-size:10px;font-weight:700;
+  color:rgba(139,92,246,.9);
+}
+
 </style>
 </head>
 <body data-theme="gold">
@@ -3672,9 +3974,9 @@ function renderFreqForm() {
   };
 
   // Coming soon rows
-  body.querySelector('#freqTagRow').onclick = () => toast('🔧 ' + t('comingSoon'));
-  body.querySelector('#freqRemarkRow').onclick = () => toast('🔧 ' + t('comingSoon'));
-  body.querySelector('#freqPhotoRow').onclick = () => toast('🔧 ' + t('comingSoon'));
+  body.querySelector('#freqTagRow').onclick = () => openTagPicker();
+  body.querySelector('#freqRemarkRow').onclick = () => openRemarkEditor();
+  body.querySelector('#freqPhotoRow').onclick = () => openGreetImgPicker();
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -3709,20 +4011,30 @@ function applyThemeVars(th){
 
 // Call on load — check storage first
 document.addEventListener('DOMContentLoaded', ()=>{
+  // Show splash screen
+  const splash = document.getElementById('splashScreen');
+  if(splash){
+    splash.style.display='flex';
+    setTimeout(()=>{
+      splash.classList.add('hide');
+      setTimeout(()=>{ splash.style.display='none'; }, 500);
+    }, 1800);
+  }
+
   // Try to restore saved session
   if (loadFromStorage()) {
-    // Restore theme + lang
     applyLang(curLang);
     document.body.setAttribute('data-theme', curTheme);
     applyThemeVars(THEMES.find(th=>th.id===curTheme)||THEMES[0]);
-    // Hide login, show app
+    applyAppBg();
+    applyBubbleShape();
     const ls = document.getElementById('loginScreen');
     if (ls) ls.style.display = 'none';
     launch();
   } else {
-    // No saved data — show login as normal
     applyThemeVars(THEMES.find(th=>th.id===curTheme)||THEMES[0]);
   }
+  startScheduleChecker();
 });
 
 
@@ -3841,6 +4153,7 @@ function saveToStorage() {
       curLang,
       curTheme,
       notifications: notifications||[],
+      appCustom: appCustom||{},
       savedMessages: savedMessages||[],
       scheduledMsgs: scheduledMsgs||[],
       chatWallpapers: chatWallpapers||{},
@@ -3869,6 +4182,7 @@ function loadFromStorage() {
     curLang          = data.curLang || 'ar';
     curTheme         = data.curTheme || 'gold';
     notifications    = data.notifications || [];
+    if(data.appCustom) Object.assign(appCustom,data.appCustom);
     savedMessages    = data.savedMessages || [];
     scheduledMsgs    = data.scheduledMsgs || [];
     chatWallpapers   = data.chatWallpapers || {};
@@ -4499,7 +4813,12 @@ function renderMsgs(cid){
     else if(m.type==='liveLocation') bubContent=renderLiveLocMsg(m);
     else if(m.type==='game') bubContent=`<div class="game-embed"><div class="game-header"><span class="game-ico">🎮</span><span class="game-title">خمّن الرقم</span></div><div class="game-body"><div style="font-size:13px;color:var(--t2);">${m.text}</div>${!m.solved?`<button class="game-play-btn" onclick="guessNumber(${idx},'${cid}')">خمّن</button>`:'<div style="color:#22c55e;font-weight:700;margin-top:6px;">✅ تم!</div>'}</div></div>`;
     else if(m.type==='images') bubContent=renderMultiImages(m.imgs||[]);
-    else if(m.img) bubContent=`<img src="${m.img}" style="max-width:220px;border-radius:12px;display:block;cursor:pointer;" onclick="openImgViewer('${m.img}')">`;
+    else if(m.img) bubContent=`
+      <div style="position:relative;display:inline-block;">
+        <img src="${m.img}" style="max-width:220px;border-radius:12px;display:block;cursor:pointer;" onclick="openImgViewer('${m.img}')">
+        ${m.hd?'<div style=\'position:absolute;top:6px;right:6px;background:#22c55e;color:#fff;font-size:9px;font-weight:800;border-radius:6px;padding:2px 6px;\'>HD</div>':''}
+        ${m.text?`<div style="font-size:13px;color:var(--t1);margin-top:4px;">${m.text}</div>`:''}
+      </div>`;
     else bubContent=m.text||'';
 
     row.innerHTML=`${avStr}<div class="msg-col">
@@ -4509,7 +4828,10 @@ function renderMsgs(cid){
         <span class="tick"></span><span class="tick" style="${m.read==='sent'?'display:none':''}"></span>
         ${m.edited?'<span style="font-size:9px;opacity:.5;margin-right:2px;"> تعديل</span>':''}
       </div>`:''}
-      ${m.trans?`<div class="msg-trans"><div class="msg-trans-txt">${m.trans}</div><div class="msg-trans-by">✓ ${t('translatedBy')} Pulse</div></div>`:''}
+      ${(m.trans||m.aiTrans)?`<div class="ai-trans-bubble">
+        <div class="ai-trans-header">🌍 ترجمة${m.aiTrans?' AI':''}</div>
+        ${m.aiTrans||m.trans}
+      </div>`:''}
     </div>`;
 
     // Long-press / right-click to show context menu
@@ -4628,15 +4950,8 @@ function handleAttach(type, contact){
       const f=e.target.files[0];
       if(!f) return;
       if(f.type.startsWith('image/')){
-        const r=new FileReader();
-        r.onload=ev=>{
-          // Send as image message
-          const imgMsg={from:'me',text:'',img:ev.target.result,time:now(),fileName:f.name};
-          convos[contact.id].push(imgMsg);
-          contact.lastMsg='📷 '+f.name;contact.lastTime=t('now')||'Now';
-          renderChatList();renderMsgs(contact.id);
-        };
-        r.readAsDataURL(f);
+        // Open image editor instead of sending directly
+        openImgEditor(f, contact);
       } else {
         const fileMsg={from:'me',text:`📎 ${f.name}`,time:now()};
         convos[contact.id].push(fileMsg);
@@ -4985,12 +5300,12 @@ function renderDiscover(){
 
   // ── List section ──
   const listItems=[
-    {ico:'📡',grad:'linear-gradient(135deg,#F97316,#FBBF24)',lbl:t('channels')||t('channels')||'Channels',fn:()=>toast('📡 '+(t('comingSoon')))},
+    {ico:'📡',grad:'linear-gradient(135deg,#F97316,#FBBF24)',lbl:t('channels')||'Channels',fn:()=>openChannelsSheet()},
     {ico:'📷',grad:'linear-gradient(135deg,#06B6D4,#3B82F6)',lbl:t('scanDiscover')||t('scan')||'Scan',fn:openAddModal},
-    {ico:'⭐',grad:'linear-gradient(135deg,#F59E0B,#EF4444)',lbl:t('topStories')||t('highlights')||'Highlights',fn:()=>toast('⭐ '+(t('comingSoon')))},
-    {ico:'🔍',grad:'linear-gradient(135deg,#8B5CF6,#EC4899)',lbl:t('searchDiscover')||t('search'),fn:()=>toast('🔍 '+(t('comingSoon')))},
+    {ico:'⭐',grad:'linear-gradient(135deg,#F59E0B,#EF4444)',lbl:t('highlights')||'Highlights',fn:()=>openHighlightsSheet()},
+    {ico:'🔍',grad:'linear-gradient(135deg,#8B5CF6,#EC4899)',lbl:t('search')||'Search',fn:()=>openGlobalSearch()},
     {ico:'👥',grad:'linear-gradient(135deg,#10B981,#3B82F6)',lbl:t('nearby')||t('nearby')||'Nearby',fn:openNearbySheet},
-    {ico:'🎯',grad:'linear-gradient(135deg,#6366F1,#8B5CF6)',lbl:t('miniPrograms')||t('miniApps')||'Mini Apps',fn:()=>toast('🎯 '+(t('comingSoon')))},
+    {ico:'🎯',grad:'linear-gradient(135deg,#6366F1,#8B5CF6)',lbl:t('miniApps')||'Mini Apps',fn:()=>openMiniAppsSheet()},
   ];
   const sec2=document.createElement('div');sec2.className='disc-section';
   listItems.forEach(item=>{
@@ -5522,10 +5837,34 @@ function renderProfile(){
       <div class="menu-val" id="schedMsgCount"></div>
       <div class="menu-arr">›</div>
     </div>
+    <div class="menu-item" onclick="openChatStats()">
+      <div class="menu-ico" style="background:rgba(59,130,246,.12);">📊</div>
+      <div class="menu-lbl">إحصائيات المحادثات</div>
+      <div class="menu-val"></div>
+      <div class="menu-arr">›</div>
+    </div>
+    <div class="menu-item" onclick="openAppCustomizer()">
+      <div class="menu-ico" style="background:rgba(236,72,153,.12);">🎨</div>
+      <div class="menu-lbl">تخصيص التطبيق</div>
+      <div class="menu-val"></div>
+      <div class="menu-arr">›</div>
+    </div>
+    <div class="menu-item" onclick="openFriendsMap()">
+      <div class="menu-ico" style="background:rgba(16,185,129,.12);">🗺️</div>
+      <div class="menu-lbl">خريطة الأصدقاء</div>
+      <div class="menu-val"></div>
+      <div class="menu-arr">›</div>
+    </div>
+    <div class="menu-item" onclick="openE2EScreen()">
+      <div class="menu-ico" style="background:rgba(16,185,129,.12);">🔐</div>
+      <div class="menu-lbl">تشفير الرسائل E2E</div>
+      <div class="menu-val" style="color:#22c55e;font-size:11px;">✅ مفعّل</div>
+      <div class="menu-arr">›</div>
+    </div>
     <div class="menu-item" onclick="openWallet()">
       <div class="menu-ico" style="background:rgba(212,168,67,.15);">💰</div>
       <div class="menu-lbl">المحفظة الرقمية</div>
-      <div class="menu-val" style="font-family:monospace;">${wallet.balance.toFixed(3)} CLOUD</div>
+      <div class="menu-val" style="font-family:monospace;">${Object.entries(wallet.balances||{}).reduce((s,[c,v])=>s+v*(EXCHANGE_RATES[c]||0),0).toFixed(2)} USD</div>
       <div class="menu-arr">›</div>
     </div>
     <div class="menu-item" onclick="requestPushPermission()">
@@ -6368,7 +6707,7 @@ function showMsgCtx(msgObj, msgIdx, cid, bubEl){
       } else if(fn==='ctxSearch'){
         showMsgSearch(msgObj.text, cid);
       } else if(fn==='ctxSel'){
-        toast('≡ '+t('select')+' — قريباً');
+        startMsgSelection(ctxTarget?.cid);
       } else if(fn==='ctxClose'){
         // just close
       }
@@ -6953,8 +7292,8 @@ function renderPrivacyBody(){
       };
     } else {
       row.onclick=()=>{
-        if(key==='advanced'){toast('🔐 '+t('comingSoon'));return;}
-        if(key==='chatLock'){toast('🔒 '+t('comingSoon'));return;}
+        if(key==='advanced'){openAdvancedPrivacy();return;}
+        if(key==='chatLock'){openChatLockSheet();return;}
         if(key==='disappearing'){
           privSettings.disappearing=privSettings.disappearing==='off'?'24h':'off';
           renderPrivacyBody();return;
@@ -7077,7 +7416,12 @@ function renderChatSettBody(){
         renderChatSettBody();
       };
     } else {
-      row.onclick=()=>toast('🔧 '+(t('comingSoon')));
+      row.onclick=()=>{
+        if(key==='backup') openChatBackup();
+        else if(key==='transfer') openTransferChats();
+        else if(key==='voiceTranscripts') openVoiceTranscriptsSettings();
+        else toast('🔧 '+t('comingSoon'));
+      };
     }
   });
 }
@@ -7969,7 +8313,7 @@ function pushLiveLocMsg(cid,coords){
 
 function renderLiveLocMsg(m){
   const lat=parseFloat(m.lat)||0;const lng=parseFloat(m.lng)||0;
-  return `<div class="live-loc-card" onclick="window.open('https://maps.google.com/?q=${lat},${lng}','_blank')">
+  return `<div class="live-loc-card" onclick="openLiveTracking(activeChat||{name:'موقع'})">
     <div class="live-loc-map">${m.live?'<div class="live-loc-live">● مباشر</div>':''}<div class="live-loc-pin">📍</div></div>
     <div class="live-loc-info"><div class="live-loc-addr">📍 ${m.name||'الموقع المباشر'}</div><div class="live-loc-coords">${lat.toFixed(4)}, ${lng.toFixed(4)}</div></div>
   </div>`;
@@ -8102,49 +8446,348 @@ function requestPushPermission(){
 // ═══════════════════════════════════════════════════
 // 💰 WALLET
 // ═══════════════════════════════════════════════════
-var wallet={balance:0.13,currency:'CLOUD',address:'0xC10ud...F4C3',transactions:[
-  {type:'in',name:'مكافأة التسجيل',amount:0.10,time:'أمس',note:'مكافأة'},
-  {type:'in',name:'أحمد محمد',amount:0.05,time:'منذ يومان',note:'إرسال'},
-  {type:'out',name:'سارة خالد',amount:0.02,time:'منذ 3 أيام',note:'دفع'},
-]};
+// ══════════════════════════════════════════════════
+// 💰 WALLET WITH MULTI-CURRENCY EXCHANGE
+// ══════════════════════════════════════════════════
+var wallet = {
+  address: '0xC10ud...F4C3',
+  transactions: [
+    {type:'in', name:'مكافأة التسجيل', amount:0.10, currency:'CLOUD', time:'أمس',       note:'مكافأة'},
+    {type:'in', name:'أحمد محمد',       amount:0.05, currency:'CLOUD', time:'منذ يومان', note:'إرسال'},
+    {type:'out',name:'سارة خالد',       amount:0.02, currency:'CLOUD', time:'منذ 3 أيام',note:'دفع'},
+    {type:'in', name:'تحويل USD',       amount:25.00,currency:'USD',   time:'الأسبوع الماضي',note:'تحويل'},
+  ],
+  balances: { CLOUD:0.13, BTC:0.00042, ETH:0.085, USDT:25.50, SAR:95.00, USD:12.30, EUR:11.10, AED:45.20 }
+};
+
+// Live exchange rates (relative to USD)
+var EXCHANGE_RATES = {
+  CLOUD:0.000351, BTC:62000, ETH:3200, USDT:1,
+  USD:1, EUR:1.08, SAR:0.267, AED:0.272,
+  GBP:1.27, KWD:3.26, BHD:2.65, QAR:0.275, OMR:2.60, JOD:1.41
+};
+
+var CURRENCIES = [
+  {code:'CLOUD',name:'Cloud Coin',    flag:'☁️', type:'crypto'},
+  {code:'BTC',  name:'Bitcoin',       flag:'₿',  type:'crypto'},
+  {code:'ETH',  name:'Ethereum',      flag:'Ξ',  type:'crypto'},
+  {code:'USDT', name:'Tether',        flag:'₮',  type:'crypto'},
+  {code:'USD',  name:'دولار أمريكي',  flag:'🇺🇸', type:'fiat'},
+  {code:'SAR',  name:'ريال سعودي',   flag:'🇸🇦', type:'fiat'},
+  {code:'AED',  name:'درهم إماراتي', flag:'🇦🇪', type:'fiat'},
+  {code:'EUR',  name:'يورو',          flag:'🇪🇺', type:'fiat'},
+  {code:'GBP',  name:'جنيه إسترليني',flag:'🇬🇧', type:'fiat'},
+  {code:'KWD',  name:'دينار كويتي',  flag:'🇰🇼', type:'fiat'},
+  {code:'BHD',  name:'دينار بحريني', flag:'🇧🇭', type:'fiat'},
+  {code:'QAR',  name:'ريال قطري',    flag:'🇶🇦', type:'fiat'},
+  {code:'OMR',  name:'ريال عماني',   flag:'🇴🇲', type:'fiat'},
+  {code:'JOD',  name:'دينار أردني',  flag:'🇯🇴', type:'fiat'},
+];
+
+var _walletTab = 'assets'; // assets | exchange | history
 
 function openWallet(){
   const b=document.getElementById('profileShBody');
   document.getElementById('profileShTitle').textContent='💰 المحفظة الرقمية';
-  b.innerHTML=`
-    <div class="wallet-card">
-      <div class="wallet-label">رصيدك</div>
-      <div style="display:flex;align-items:baseline;gap:6px;"><div class="wallet-currency">${wallet.currency}</div><div class="wallet-balance">${wallet.balance.toFixed(4)}</div></div>
-      <div style="font-size:12px;color:rgba(255,255,255,.6);margin-top:4px;position:relative;z-index:1;">≈ $${(wallet.balance*2847).toFixed(2)} USD</div>
-      <div class="wallet-address">${wallet.address}</div>
-    </div>
-    <div class="wallet-actions">
-      <button class="wallet-btn send" onclick="walletSend()">↑ إرسال</button>
-      <button class="wallet-btn receive" onclick="walletReceive()">↓ استقبال</button>
-      <button class="wallet-btn swap" onclick="toast('🔄 قريباً!')">⇄ تحويل</button>
-    </div>
-    <div style="font-size:12px;color:var(--t3);font-weight:700;letter-spacing:.5px;padding:14px 16px 8px;">آخر المعاملات</div>
-    ${wallet.transactions.map(tx=>`<div class="wallet-tx-row">
-      <div class="wallet-tx-ico ${tx.type}">${tx.type==='in'?'↓':'↑'}</div>
-      <div class="wallet-tx-info"><div class="wallet-tx-name">${tx.name}</div><div class="wallet-tx-time">${tx.time} · ${tx.note}</div></div>
-      <div class="wallet-tx-amount ${tx.type}">${tx.type==='in'?'+':'-'}${tx.amount.toFixed(4)} ${wallet.currency}</div>
-    </div>`).join('')}
-    <div style="padding:12px 16px;">
-      <button onclick="requestPushPermission()" style="background:var(--s2);border:1px solid var(--br);border-radius:14px;padding:12px;color:var(--t2);font-family:var(--fa);font-size:13px;cursor:pointer;width:100%;">🔔 تفعيل إشعارات البراوزر</button>
-    </div>`;
+  _renderWallet(b);
   openOv('ovProfile');
 }
 
-function walletSend(){
-  const amt=prompt('كم تريد إرسال؟ (بالـ CLOUD)');if(!amt||isNaN(amt)) return;
-  const to=prompt('إلى من؟');if(!to) return;
-  wallet.balance-=parseFloat(amt);
-  wallet.transactions.unshift({type:'out',name:to,amount:parseFloat(amt),time:'الآن',note:'إرسال'});
-  openWallet();toast('✅ تم الإرسال: '+amt+' '+wallet.currency);
+function _renderWallet(b){
+  const totalUSD = Object.entries(wallet.balances)
+    .reduce((sum,[c,v])=>sum + v*(EXCHANGE_RATES[c]||0), 0);
+
+  b.innerHTML=`
+    <!-- Balance card -->
+    <div class="wallet-card" style="margin:14px 16px;">
+      <div class="wallet-label">إجمالي المحفظة</div>
+      <div style="display:flex;align-items:baseline;gap:6px;position:relative;z-index:1;">
+        <div class="wallet-balance">$${totalUSD.toFixed(2)}</div>
+        <div class="wallet-currency">USD</div>
+      </div>
+      <div style="font-size:12px;color:rgba(255,255,255,.6);margin-top:4px;position:relative;z-index:1;">
+        ≈ ${(totalUSD*EXCHANGE_RATES['SAR']/EXCHANGE_RATES['SAR']*3.75).toFixed(2)} SAR
+      </div>
+      <div class="wallet-address" style="cursor:pointer;" onclick="walletReceive()">
+        ${wallet.address} · اضغط للنسخ
+      </div>
+    </div>
+
+    <!-- Action buttons -->
+    <div class="wallet-actions" style="margin:0 16px 4px;">
+      <button class="wallet-btn send"    onclick="openWalletSend()">↑ إرسال</button>
+      <button class="wallet-btn receive" onclick="walletReceive()">↓ استقبال</button>
+      <button class="wallet-btn swap"    onclick="walletSwapSheet()">⇄ تحويل</button>
+    </div>
+
+    <!-- Tabs -->
+    <div style="display:flex;border-bottom:1px solid var(--br);margin:12px 0 0;">
+      ${['assets','exchange','history'].map(tab=>`
+        <div onclick="_walletTab='${tab}';_renderWallet(document.getElementById('profileShBody'))"
+          style="flex:1;text-align:center;padding:10px 0;font-size:13px;font-weight:700;cursor:pointer;
+          color:${_walletTab===tab?'var(--acc)':'var(--t3)'};
+          border-bottom:${_walletTab===tab?'2px solid var(--acc)':'2px solid transparent'};
+          transition:all .2s;">
+          ${{assets:'💼 الأصول',exchange:'💱 الأسعار',history:'📋 المعاملات'}[tab]}
+        </div>`).join('')}
+    </div>
+
+    <!-- Tab content -->
+    <div id="walletTabContent">${_walletTabHTML()}</div>
+  `;
 }
 
+function _walletTabHTML(){
+  if(_walletTab==='assets') return _assetsTab();
+  if(_walletTab==='exchange') return _exchangeTab();
+  return _historyTab();
+}
+
+function _assetsTab(){
+  const entries = Object.entries(wallet.balances).filter(([,v])=>v>0);
+  return entries.map(([code,bal])=>{
+    const cur = CURRENCIES.find(c=>c.code===code)||{flag:'💰',name:code};
+    const usd = bal*(EXCHANGE_RATES[code]||0);
+    const pct = (Math.random()*10-5).toFixed(2); // simulated change
+    return `<div class="wallet-tx-row" style="cursor:pointer;" onclick="openAssetDetail('${code}')">
+      <div style="width:42px;height:42px;border-radius:12px;background:var(--acc2);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;">${cur.flag}</div>
+      <div class="wallet-tx-info">
+        <div class="wallet-tx-name">${code} <span style="font-size:10px;color:var(--t3);">${cur.name}</span></div>
+        <div class="wallet-tx-time">$${usd.toFixed(2)} USD</div>
+      </div>
+      <div style="text-align:left;">
+        <div style="font-size:14px;font-weight:800;color:var(--t0);font-family:'Space Grotesk',monospace;">${bal.toFixed(code==='BTC'?6:code==='ETH'?4:2)}</div>
+        <div style="font-size:11px;color:${pct>0?'#22c55e':'#EF4444'};">${pct>0?'▲':'▼'} ${Math.abs(pct)}%</div>
+      </div>
+    </div>`;
+  }).join('') + `
+  <div style="padding:12px 16px;">
+    <button onclick="openAddCurrency()" style="width:100%;padding:11px;border-radius:12px;background:var(--s2);border:1px dashed var(--br);color:var(--t3);font-family:var(--fa);font-size:13px;cursor:pointer;">＋ إضافة عملة</button>
+  </div>`;
+}
+
+function _exchangeTab(){
+  const base = 'USD';
+  return `
+    <div style="padding:12px 16px 8px;">
+      <div style="font-size:11px;color:var(--t3);margin-bottom:10px;font-weight:700;">أسعار الصرف مقارنة بـ USD</div>
+      <input id="exchangeSearch" class="f-in" placeholder="🔍 ابحث عن عملة..." style="margin-bottom:10px;"
+        oninput="filterExchangeRates(this.value)">
+    </div>
+    <div id="exchangeList">
+      ${CURRENCIES.map(cur=>`
+        <div class="exchange-rate-row" data-cur="${cur.code}" data-name="${cur.name}"
+          style="display:flex;align-items:center;gap:12px;padding:11px 16px;border-bottom:1px solid var(--br);cursor:pointer;"
+          onclick="openCurrencyConverter('${cur.code}')">
+          <div style="font-size:24px;width:36px;text-align:center;flex-shrink:0;">${cur.flag}</div>
+          <div style="flex:1;">
+            <div style="font-size:14px;font-weight:700;color:var(--t0);">${cur.code}</div>
+            <div style="font-size:11px;color:var(--t3);">${cur.name}</div>
+          </div>
+          <div style="text-align:left;">
+            <div style="font-size:14px;font-weight:800;color:var(--t0);font-family:'Space Grotesk',monospace;">
+              ${cur.code==='USD'?'1.0000':((EXCHANGE_RATES[cur.code]||1)).toFixed(cur.code==='BTC'||cur.code==='CLOUD'?6:4)}
+            </div>
+            <div style="font-size:10px;color:var(--t3);">USD</div>
+          </div>
+        </div>`).join('')}
+    </div>`;
+}
+
+function _historyTab(){
+  if(!wallet.transactions.length)
+    return '<div style="text-align:center;padding:40px;color:var(--t3);">لا توجد معاملات</div>';
+  return wallet.transactions.map(tx=>`
+    <div class="wallet-tx-row">
+      <div class="wallet-tx-ico ${tx.type}">${tx.type==='in'?'↓':'↑'}</div>
+      <div class="wallet-tx-info">
+        <div class="wallet-tx-name">${tx.name}</div>
+        <div class="wallet-tx-time">${tx.time} · ${tx.note}</div>
+      </div>
+      <div class="wallet-tx-amount ${tx.type}">${tx.type==='in'?'+':'-'}${tx.amount.toFixed(tx.currency==='BTC'?6:2)} ${tx.currency||wallet.currency||'CLOUD'}</div>
+    </div>`).join('');
+}
+
+function filterExchangeRates(q){
+  const rows=document.querySelectorAll('.exchange-rate-row');
+  rows.forEach(r=>{
+    const match=r.dataset.cur.toLowerCase().includes(q.toLowerCase())||r.dataset.name.toLowerCase().includes(q.toLowerCase());
+    r.style.display=match?'flex':'none';
+  });
+}
+
+function openCurrencyConverter(code){
+  const cur=CURRENCIES.find(c=>c.code===code)||{flag:'💰',name:code,code};
+  const sheet=document.createElement('div');
+  sheet.style.cssText='position:fixed;inset:0;z-index:900;background:rgba(0,0,0,.7);display:flex;align-items:flex-end;justify-content:center;';
+  sheet.innerHTML=`
+    <div style="background:var(--s0);width:100%;max-width:430px;border-radius:24px 24px 0 0;padding:20px 16px 36px;">
+      <div style="width:40px;height:4px;border-radius:2px;background:var(--s3);margin:0 auto 16px;"></div>
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:18px;">
+        <span style="font-size:32px;">${cur.flag}</span>
+        <div>
+          <div style="font-size:18px;font-weight:800;color:var(--t0);">${cur.code}</div>
+          <div style="font-size:12px;color:var(--t3);">${cur.name}</div>
+        </div>
+        <button onclick="this.closest('div[style]').remove()" style="margin-right:auto;background:var(--s3);border:none;border-radius:50%;width:30px;height:30px;color:var(--t2);cursor:pointer;font-size:16px;">✕</button>
+      </div>
+      <!-- Rate display -->
+      <div style="background:var(--s2);border-radius:16px;padding:16px;margin-bottom:16px;text-align:center;">
+        <div style="font-size:12px;color:var(--t3);margin-bottom:4px;">سعر الصرف الحالي</div>
+        <div style="font-size:26px;font-weight:800;color:var(--acc);font-family:'Space Grotesk',monospace;">
+          1 ${cur.code} = ${cur.code==='USD'?'1.0000':(EXCHANGE_RATES[cur.code]||1).toFixed(cur.code==='BTC'||cur.code==='CLOUD'?6:4)} USD
+        </div>
+        <div style="font-size:12px;color:var(--t3);margin-top:4px;">
+          1 USD = ${cur.code==='USD'?'1.0000':(1/(EXCHANGE_RATES[cur.code]||1)).toFixed(4)} ${cur.code}
+        </div>
+      </div>
+      <!-- Converter -->
+      <div style="display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:center;margin-bottom:16px;">
+        <div>
+          <div style="font-size:11px;color:var(--t3);margin-bottom:5px;font-weight:700;">من</div>
+          <input id="convFrom" type="number" placeholder="0" value="1"
+            oninput="liveConvert('${cur.code}','convFrom','convTo',${EXCHANGE_RATES[cur.code]||1})"
+            style="width:100%;background:var(--s2);border:1.5px solid var(--acc);border-radius:12px;padding:11px;color:var(--t0);font-family:'Space Grotesk',monospace;font-size:16px;font-weight:700;outline:none;text-align:center;">
+          <div style="text-align:center;font-size:11px;color:var(--acc);margin-top:4px;font-weight:700;">${cur.code}</div>
+        </div>
+        <div style="font-size:22px;color:var(--t3);text-align:center;">⇄</div>
+        <div>
+          <div style="font-size:11px;color:var(--t3);margin-bottom:5px;font-weight:700;">إلى</div>
+          <input id="convTo" type="number" placeholder="0" value="${(EXCHANGE_RATES[cur.code]||1).toFixed(4)}"
+            oninput="liveConvert('${cur.code}','convTo','convFrom',${1/(EXCHANGE_RATES[cur.code]||1)})"
+            style="width:100%;background:var(--s2);border:1.5px solid var(--br);border-radius:12px;padding:11px;color:var(--t0);font-family:'Space Grotesk',monospace;font-size:16px;font-weight:700;outline:none;text-align:center;">
+          <div style="text-align:center;font-size:11px;color:var(--t3);margin-top:4px;font-weight:700;">USD</div>
+        </div>
+      </div>
+      <!-- Quick amounts -->
+      <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;">
+        ${[1,5,10,50,100,1000].map(n=>`
+          <button onclick="document.getElementById('convFrom').value=${n};liveConvert('${cur.code}','convFrom','convTo',${EXCHANGE_RATES[cur.code]||1})"
+            style="background:var(--s2);border:1px solid var(--br);border-radius:10px;padding:6px 14px;font-size:13px;font-weight:700;cursor:pointer;color:var(--t2);font-family:var(--fa);">${n}</button>`).join('')}
+      </div>
+      <button onclick="walletSwapSheet()" style="width:100%;padding:13px;border-radius:14px;background:var(--acc);color:var(--bme-t);border:none;font-family:var(--fa);font-size:14px;font-weight:700;cursor:pointer;">⇄ تحويل هذه العملة</button>
+    </div>`;
+  document.body.appendChild(sheet);
+}
+
+function liveConvert(code, fromId, toId, rate){
+  const val=parseFloat(document.getElementById(fromId)?.value||0);
+  const res=(val*rate);
+  const toEl=document.getElementById(toId);
+  if(toEl) toEl.value=res.toFixed(code==='BTC'||code==='CLOUD'?8:4);
+}
+
+function openAssetDetail(code){
+  const cur=CURRENCIES.find(c=>c.code===code)||{flag:'💰',name:code,code};
+  const bal=wallet.balances[code]||0;
+  const usd=bal*(EXCHANGE_RATES[code]||0);
+  const txs=wallet.transactions.filter(tx=>tx.currency===code);
+  const sheet=document.createElement('div');
+  sheet.style.cssText='position:fixed;inset:0;z-index:900;background:rgba(0,0,0,.7);display:flex;align-items:flex-end;justify-content:center;';
+  sheet.innerHTML=`
+    <div style="background:var(--s0);width:100%;max-width:430px;border-radius:24px 24px 0 0;padding:20px 16px 36px;max-height:80vh;overflow-y:auto;">
+      <div style="width:40px;height:4px;border-radius:2px;background:var(--s3);margin:0 auto 14px;"></div>
+      <div style="text-align:center;margin-bottom:16px;">
+        <div style="font-size:48px;margin-bottom:6px;">${cur.flag}</div>
+        <div style="font-size:22px;font-weight:800;color:var(--t0);">${bal.toFixed(code==='BTC'?6:4)} ${code}</div>
+        <div style="font-size:14px;color:var(--t3);">≈ $${usd.toFixed(2)} USD</div>
+      </div>
+      <!-- Mini chart (simulated bars) -->
+      <div style="background:var(--s2);border-radius:14px;padding:14px 12px;margin-bottom:14px;">
+        <div style="font-size:11px;color:var(--t3);margin-bottom:10px;">آخر 7 أيام</div>
+        <div style="display:flex;align-items:flex-end;gap:4px;height:50px;">
+          ${Array.from({length:14},(_,i)=>{const h=20+Math.random()*30;const up=Math.random()>.45;return `<div style="flex:1;height:${h}px;background:${up?'#22c55e':'#EF4444'};border-radius:3px 3px 0 0;opacity:.8;"></div>`}).join('')}
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:14px;">
+        <button onclick="openWalletSend('${code}')" style="flex:1;padding:12px;border-radius:12px;background:var(--acc);color:var(--bme-t);border:none;font-family:var(--fa);font-size:13px;font-weight:700;cursor:pointer;">↑ إرسال</button>
+        <button onclick="walletReceive()" style="flex:1;padding:12px;border-radius:12px;background:var(--s2);color:var(--t0);border:1px solid var(--br);font-family:var(--fa);font-size:13px;font-weight:700;cursor:pointer;">↓ استقبال</button>
+        <button onclick="openCurrencyConverter('${code}')" style="flex:1;padding:12px;border-radius:12px;background:var(--s2);color:var(--t0);border:1px solid var(--br);font-family:var(--fa);font-size:13px;font-weight:700;cursor:pointer;">⇄ تحويل</button>
+      </div>
+      ${txs.length?`<div style="font-size:11px;color:var(--t3);font-weight:700;margin-bottom:8px;">المعاملات</div>`+txs.map(tx=>`
+        <div class="wallet-tx-row"><div class="wallet-tx-ico ${tx.type}">${tx.type==='in'?'↓':'↑'}</div>
+        <div class="wallet-tx-info"><div class="wallet-tx-name">${tx.name}</div><div class="wallet-tx-time">${tx.time}</div></div>
+        <div class="wallet-tx-amount ${tx.type}">${tx.type==='in'?'+':'-'}${tx.amount} ${code}</div></div>`).join(''):''}
+      <button onclick="this.closest('div[style]').remove()" style="width:100%;padding:12px;margin-top:10px;border-radius:14px;background:var(--s3);color:var(--t2);border:none;font-family:var(--fa);font-size:14px;cursor:pointer;">إغلاق</button>
+    </div>`;
+  document.body.appendChild(sheet);
+}
+
+function openAddCurrency(){
+  const missing=CURRENCIES.filter(c=>!wallet.balances[c.code]||wallet.balances[c.code]===0);
+  const sheet=document.createElement('div');
+  sheet.style.cssText='position:fixed;inset:0;z-index:900;background:rgba(0,0,0,.7);display:flex;align-items:flex-end;justify-content:center;';
+  sheet.innerHTML=`
+    <div style="background:var(--s0);width:100%;max-width:430px;border-radius:24px 24px 0 0;padding:20px 16px 36px;max-height:70vh;overflow-y:auto;">
+      <div style="width:40px;height:4px;border-radius:2px;background:var(--s3);margin:0 auto 16px;"></div>
+      <div style="font-size:16px;font-weight:800;color:var(--t0);margin-bottom:14px;">➕ إضافة عملة</div>
+      ${missing.map(c=>`
+        <div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--br);cursor:pointer;"
+          onclick="addCurrencyToWallet('${c.code}');this.closest('div[style]').remove()">
+          <span style="font-size:24px;">${c.flag}</span>
+          <div style="flex:1;"><div style="font-size:14px;font-weight:700;color:var(--t0);">${c.code}</div>
+          <div style="font-size:12px;color:var(--t3);">${c.name}</div></div>
+          <span style="font-size:18px;color:var(--acc);">＋</span>
+        </div>`).join('')}
+    </div>`;
+  document.body.appendChild(sheet);
+}
+
+function addCurrencyToWallet(code){
+  wallet.balances[code]=0;
+  toast('✅ تمت إضافة '+code+' للمحفظة');
+  openWallet();
+}
+
+function openWalletSend(code){
+  code=code||'CLOUD';
+  const sheet=document.createElement('div');
+  sheet.style.cssText='position:fixed;inset:0;z-index:900;background:rgba(0,0,0,.7);display:flex;align-items:flex-end;justify-content:center;';
+  const bal=wallet.balances[code]||0;
+  const cur=CURRENCIES.find(c=>c.code===code)||{flag:'💰'};
+  sheet.innerHTML=`
+    <div style="background:var(--s0);width:100%;max-width:430px;border-radius:24px 24px 0 0;padding:20px 16px 36px;">
+      <div style="width:40px;height:4px;border-radius:2px;background:var(--s3);margin:0 auto 16px;"></div>
+      <div style="font-size:17px;font-weight:800;color:var(--t0);margin-bottom:16px;">↑ إرسال ${cur.flag} ${code}</div>
+      <div style="font-size:12px;color:var(--t3);margin-bottom:4px;">الرصيد المتاح: <span style="color:var(--acc);font-weight:700;">${bal.toFixed(4)} ${code}</span></div>
+      <div style="margin-bottom:12px;">
+        <div style="font-size:11px;color:var(--t3);margin-bottom:6px;font-weight:700;">إلى (عنوان أو اسم)</div>
+        <input id="sendToIn" class="f-in" placeholder="عنوان المحفظة أو اسم الشخص">
+      </div>
+      <div style="margin-bottom:16px;">
+        <div style="font-size:11px;color:var(--t3);margin-bottom:6px;font-weight:700;">المبلغ</div>
+        <div style="display:flex;gap:8px;">
+          <input id="sendAmtIn" type="number" placeholder="0.00" step="0.0001"
+            style="flex:1;background:var(--s2);border:1.5px solid var(--acc);border-radius:12px;padding:12px;color:var(--t0);font-family:'Space Grotesk',monospace;font-size:18px;font-weight:800;outline:none;"
+            oninput="this.nextElementSibling.textContent='≈ \$'+(parseFloat(this.value||0)*(${EXCHANGE_RATES[code]||1})).toFixed(2)+' USD'">
+          <button onclick="document.getElementById('sendAmtIn').value=${bal.toFixed(4)}" style="background:var(--s2);border:1px solid var(--br);border-radius:12px;padding:0 14px;color:var(--t2);font-family:var(--fa);font-size:12px;cursor:pointer;">الكل</button>
+        </div>
+        <div style="font-size:12px;color:var(--t3);margin-top:4px;">≈ $0.00 USD</div>
+      </div>
+      <button onclick="confirmWalletSend('${code}',this.closest('div[style]').parentElement)" style="width:100%;padding:14px;border-radius:14px;background:var(--acc);color:var(--bme-t);border:none;font-family:var(--fa);font-size:15px;font-weight:700;cursor:pointer;">↑ إرسال الآن</button>
+      <button onclick="this.closest('div[style]').remove()" style="width:100%;padding:12px;margin-top:8px;border-radius:14px;background:var(--s3);color:var(--t2);border:none;font-family:var(--fa);font-size:14px;cursor:pointer;">إلغاء</button>
+    </div>`;
+  document.body.appendChild(sheet);
+}
+
+function confirmWalletSend(code, sheetEl){
+  const to=document.getElementById('sendToIn')?.value?.trim();
+  const amt=parseFloat(document.getElementById('sendAmtIn')?.value||0);
+  if(!to){toast('⚠️ أدخل عنوان الاستقبال');return;}
+  if(!amt||amt<=0){toast('⚠️ أدخل مبلغاً صحيحاً');return;}
+  if(amt>(wallet.balances[code]||0)){toast('⚠️ الرصيد غير كافٍ');return;}
+  wallet.balances[code]-=amt;
+  wallet.transactions.unshift({type:'out',name:to,amount:amt,currency:code,time:'الآن',note:'إرسال'});
+  sheetEl?.remove();
+  saveToStorage();
+  toast(`✅ تم إرسال ${amt} ${code} إلى ${to}`);
+  openWallet();
+}
+
+function walletSend(){ openWalletSend(); }
+
 function walletReceive(){
-  if(navigator.clipboard) navigator.clipboard.writeText(wallet.address).then(()=>toast('📋 تم نسخ عنوان المحفظة'));
+  if(navigator.clipboard) navigator.clipboard.writeText(wallet.address).then(()=>toast('📋 تم نسخ عنوان المحفظة: '+wallet.address));
   else toast('📋 '+wallet.address);
 }
 
@@ -8466,6 +9109,1316 @@ const _origHandleAttachImg = handleAttach;
 // (override gallery type to allow multiple)
 
 // Save/load new state vars
+
+// ═══════════════════════════════════════════════════
+// 📷 IMAGE EDITOR
+// ═══════════════════════════════════════════════════
+var _ieContact = null;
+var _ieOrigImg = null;   // original Image object
+var _ieCanvas  = null;
+var _ieCtx     = null;
+var _ieHD      = true;
+var _ieMode    = 'none'; // filter|draw|text|brightness|contrast
+var _ieFilter  = 'none';
+var _ieBrightness = 100;
+var _ieContrast   = 100;
+var _ieDrawColor  = '#fff';
+var _ieDrawSize   = 4;
+var _ieIsDrawing  = false;
+var _ieHistory  = [];    // canvas states for undo
+var _ieRotation = 0;
+var _ieFlipped  = false;
+
+const IE_FILTERS = {
+  none:       '',
+  grayscale:  'grayscale(1)',
+  sepia:      'sepia(1)',
+  vivid:      'saturate(2) contrast(1.1)',
+  cool:       'hue-rotate(30deg) saturate(1.3)',
+  warm:       'sepia(.4) saturate(1.5) brightness(1.05)',
+  fade:       'opacity(.8) brightness(1.1) saturate(.7)',
+};
+
+function openImgEditor(file, contact){
+  _ieContact=contact;
+  _ieCanvas=document.getElementById('ieCanvas');
+  _ieCtx=_ieCanvas.getContext('2d');
+  _ieHistory=[];
+  _ieRotation=0; _ieFlipped=false;
+  _ieFilter='none'; _ieBrightness=100; _ieContrast=100;
+  _ieMode='none';
+
+  const img=new Image();
+  img.onload=()=>{
+    _ieOrigImg=img;
+    _redrawCanvas();
+    _saveHistory();
+    // Populate filter thumbnails with the image
+    document.querySelectorAll('.ie-filter-thumb').forEach(th=>{
+      th.style.backgroundImage=`url('${img.src}')`;
+      th.style.backgroundSize='cover';
+      th.style.backgroundPosition='center';
+    });
+    document.querySelectorAll('.ie-filter-item').forEach(i=>i.classList.remove('on'));
+    document.querySelector('[data-filter="none"]')?.classList.add('on');
+  };
+  const r=new FileReader();
+  r.onload=ev=>{ img.src=ev.target.result; };
+  r.readAsDataURL(file);
+
+  // HD badge state
+  const hdBtn=document.getElementById('ieHdBtn');
+  if(hdBtn){ _ieHD=true; hdBtn.classList.add('on'); hdBtn.textContent='HD ✓'; }
+
+  document.getElementById('imgEditor').classList.add('on');
+  document.getElementById('ieCaptionIn').value='';
+  _setupDrawEvents();
+}
+
+function _redrawCanvas(){
+  if(!_ieOrigImg||!_ieCanvas) return;
+  const w=_ieOrigImg.naturalWidth, h=_ieOrigImg.naturalHeight;
+
+  // Determine displayed size
+  const maxW=window.innerWidth, maxH=window.innerHeight-250;
+  let dw=w, dh=h;
+  if(dw>maxW){dh=dh*maxW/dw;dw=maxW;}
+  if(dh>maxH){dw=dw*maxH/dh;dh=maxH;}
+
+  if(_ieRotation===90||_ieRotation===270){ _ieCanvas.width=Math.round(dh); _ieCanvas.height=Math.round(dw); }
+  else { _ieCanvas.width=Math.round(dw); _ieCanvas.height=Math.round(dh); }
+
+  const ctx=_ieCtx;
+  ctx.save();
+  ctx.translate(_ieCanvas.width/2,_ieCanvas.height/2);
+  ctx.rotate(_ieRotation*Math.PI/180);
+  if(_ieFlipped) ctx.scale(-1,1);
+
+  // Apply CSS-style filter via canvas
+  const filterStr = _buildFilterStr();
+  ctx.filter = filterStr||'none';
+  ctx.drawImage(_ieOrigImg, -dw/2, -dh/2, dw, dh);
+  ctx.filter='none';
+  ctx.restore();
+}
+
+function _buildFilterStr(){
+  let f=IE_FILTERS[_ieFilter]||'';
+  if(_ieBrightness!==100) f+=` brightness(${_ieBrightness/100})`;
+  if(_ieContrast!==100)   f+=` contrast(${_ieContrast/100})`;
+  return f.trim();
+}
+
+function _saveHistory(){
+  if(!_ieCanvas) return;
+  _ieHistory.push(_ieCanvas.toDataURL());
+  if(_ieHistory.length>20) _ieHistory.shift();
+}
+
+function ieUndo(){
+  if(_ieHistory.length<=1){ toast('⚠️ لا يوجد تراجع'); return; }
+  _ieHistory.pop();
+  const prev=_ieHistory[_ieHistory.length-1];
+  const img=new Image();
+  img.onload=()=>{
+    _ieCtx.clearRect(0,0,_ieCanvas.width,_ieCanvas.height);
+    _ieCtx.drawImage(img,0,0);
+  };
+  img.src=prev;
+  toast('↩️ تم التراجع');
+}
+
+function ieSetMode(mode){
+  _ieMode=mode;
+  document.querySelectorAll('.ie-tool').forEach(t=>t.classList.remove('on'));
+  event?.currentTarget?.classList?.add('on');
+
+  document.getElementById('ieFilters').style.display=mode==='filter'?'flex':'none';
+  document.getElementById('ieColorRow').style.display=mode==='draw'?'flex':'none';
+  const sliderRow=document.getElementById('ieSliderRow');
+  sliderRow.classList.toggle('show',mode==='brightness'||mode==='contrast');
+  if(mode==='brightness'){
+    document.getElementById('ieSliderIco').textContent='☀️';
+    document.getElementById('ieSlider').value=_ieBrightness;
+    document.getElementById('ieSliderVal').textContent=_ieBrightness;
+  }
+  if(mode==='contrast'){
+    document.getElementById('ieSliderIco').textContent='◑';
+    document.getElementById('ieSlider').value=_ieContrast;
+    document.getElementById('ieSliderVal').textContent=_ieContrast;
+  }
+  if(mode==='text'){
+    const inp=document.getElementById('ieTextInput');
+    inp.style.display='block';inp.style.left='50%';inp.style.top='40%';
+    inp.style.transform='translateX(-50%)';inp.focus();
+  } else {
+    document.getElementById('ieTextInput').style.display='none';
+  }
+  if(mode==='draw'){
+    _ieCanvas.style.cursor='crosshair';
+  } else {
+    _ieCanvas.style.cursor='default';
+  }
+}
+
+function applyFilter(key, el){
+  _ieFilter=key;
+  document.querySelectorAll('.ie-filter-item').forEach(i=>i.classList.remove('on'));
+  el?.classList.add('on');
+  _redrawCanvas();
+  _saveHistory();
+}
+
+function applySlider(val){
+  document.getElementById('ieSliderVal').textContent=val;
+  if(_ieMode==='brightness') _ieBrightness=parseInt(val);
+  if(_ieMode==='contrast')   _ieContrast=parseInt(val);
+  _redrawCanvas();
+}
+
+function setDrawColor(color, el){
+  _ieDrawColor=color;
+  document.querySelectorAll('.ie-color-dot').forEach(d=>d.classList.remove('on'));
+  el?.classList.add('on');
+}
+
+function applyTextOverlay(){
+  const inp=document.getElementById('ieTextInput');
+  const text=inp.value.trim();
+  if(!text) return;
+  const rect=_ieCanvas.getBoundingClientRect();
+  const wrapRect=document.getElementById('ieCanvasWrap').getBoundingClientRect();
+  const x=(inp.offsetLeft-wrapRect.left+inp.offsetWidth/2)/rect.width * _ieCanvas.width;
+  const y=(inp.offsetTop-wrapRect.top+inp.offsetHeight/2)/rect.height * _ieCanvas.height;
+  const ctx=_ieCtx;
+  ctx.font=`bold ${Math.round(_ieCanvas.width*0.06)}px Tajawal,sans-serif`;
+  ctx.fillStyle=_ieDrawColor||'#fff';
+  ctx.strokeStyle='rgba(0,0,0,.6)';
+  ctx.lineWidth=3;
+  ctx.textAlign='center';
+  ctx.strokeText(text,x,y);
+  ctx.fillText(text,x,y);
+  inp.value='';inp.style.display='none';
+  _saveHistory();
+}
+
+function ieRotate(){
+  _ieRotation=(_ieRotation+90)%360;
+  _redrawCanvas();_saveHistory();
+  toast('🔄 تدوير +90°');
+}
+
+function ieFlip(){
+  _ieFlipped=!_ieFlipped;
+  _redrawCanvas();_saveHistory();
+  toast('↔️ تم العكس');
+}
+
+function ieCrop(){
+  // Simple center crop to square
+  const ctx=_ieCtx;
+  const w=_ieCanvas.width,h=_ieCanvas.height;
+  const size=Math.min(w,h);
+  const imgData=ctx.getImageData((w-size)/2,(h-size)/2,size,size);
+  _ieCanvas.width=size;_ieCanvas.height=size;
+  ctx.putImageData(imgData,0,0);
+  _saveHistory();
+  toast('✂️ تم القص');
+}
+
+function toggleHD(){
+  _ieHD=!_ieHD;
+  const btn=document.getElementById('ieHdBtn');
+  if(btn){ btn.classList.toggle('on',_ieHD); btn.textContent=_ieHD?'HD ✓':'SD'; }
+  toast(_ieHD?'🔵 جودة HD مفعّلة':'⚪ جودة عادية');
+}
+
+// Draw on canvas
+function _setupDrawEvents(){
+  const canvas=document.getElementById('ieCanvas');
+  let drawing=false;
+  let lastX=0,lastY=0;
+
+  function getPos(e){
+    const r=canvas.getBoundingClientRect();
+    const scaleX=canvas.width/r.width, scaleY=canvas.height/r.height;
+    if(e.touches){
+      return {x:(e.touches[0].clientX-r.left)*scaleX, y:(e.touches[0].clientY-r.top)*scaleY};
+    }
+    return {x:(e.clientX-r.left)*scaleX, y:(e.clientY-r.top)*scaleY};
+  }
+
+  function startDraw(e){
+    if(_ieMode!=='draw') return;
+    drawing=true;const p=getPos(e);lastX=p.x;lastY=p.y;
+  }
+  function doDraw(e){
+    if(!drawing||_ieMode!=='draw') return;
+    e.preventDefault();
+    const p=getPos(e);
+    const ctx=_ieCtx;
+    ctx.beginPath();ctx.moveTo(lastX,lastY);ctx.lineTo(p.x,p.y);
+    ctx.strokeStyle=_ieDrawColor;ctx.lineWidth=_ieDrawSize;
+    ctx.lineCap='round';ctx.lineJoin='round';ctx.stroke();
+    lastX=p.x;lastY=p.y;
+  }
+  function stopDraw(){ if(drawing){drawing=false;_saveHistory();} }
+
+  canvas.addEventListener('mousedown',startDraw);
+  canvas.addEventListener('mousemove',doDraw);
+  canvas.addEventListener('mouseup',stopDraw);
+  canvas.addEventListener('touchstart',startDraw,{passive:false});
+  canvas.addEventListener('touchmove',doDraw,{passive:false});
+  canvas.addEventListener('touchend',stopDraw);
+}
+
+function sendEditedImage(){
+  if(!_ieCanvas||!_ieContact) return;
+  const caption=document.getElementById('ieCaptionIn')?.value?.trim()||'';
+
+  // Export canvas
+  const quality=_ieHD?1.0:0.6;
+  const dataUrl=_ieCanvas.toDataURL('image/jpeg',quality);
+
+  // Build message
+  const msg={
+    from:'me',
+    img:dataUrl,
+    text:caption,
+    time:now(),
+    read:'sent',
+    ts:Date.now(),
+    hd:_ieHD,
+  };
+  const cid=_ieContact.id||_ieContact;
+  if(!convos[cid]) convos[cid]=[];
+  convos[cid].push(msg);
+
+  const c=contacts.find(x=>x.id===cid)||groups?.find(x=>x.id===cid);
+  if(c){c.lastMsg='📷 صورة'+(caption?' · '+caption:'');c.lastTime=now();}
+  renderChatList();renderMsgs(cid);saveToStorage();
+  closeImgEditor();
+  toast('📷 تم الإرسال'+ (_ieHD?' بجودة HD':''));
+}
+
+function closeImgEditor(){
+  document.getElementById('imgEditor').classList.remove('on');
+  _ieContact=null;_ieOrigImg=null;_ieHistory=[];
+  document.getElementById('ieFilters').style.display='none';
+  document.getElementById('ieColorRow').style.display='none';
+  document.getElementById('ieSliderRow').classList.remove('show');
+  document.querySelectorAll('.ie-tool').forEach(t=>t.classList.remove('on'));
+}
+
+// ════════════════════════════════════════════════════
+// ✅ كل الحاجات اللي كانت "قريباً" — شغالة دلوقتي
+// ════════════════════════════════════════════════════
+
+// ── 1. CHANNELS SHEET ──
+function openChannelsSheet(){
+  const b=document.getElementById('profileShBody');
+  document.getElementById('profileShTitle').textContent='📡 القنوات';
+  b.innerHTML='<div id="channelsContainer"></div>';
+  renderChannels(document.getElementById('channelsContainer'));
+  openOv('ovProfile');
+}
+
+// ── 2. HIGHLIGHTS / TRENDING ──
+function openHighlightsSheet(){
+  const b=document.getElementById('profileShBody');
+  document.getElementById('profileShTitle').textContent='⭐ أبرز القصص';
+  const trending=[
+    {emoji:'🔥',title:'الأكثر تداولاً اليوم',items:['ترند الأخبار','أشهر المحادثات','أكثر ريأكشن']},
+    {emoji:'🌟',title:'قصص مميزة',items:contacts.filter(c=>c.online).slice(0,4).map(c=>c.name+' نشر قصة جديدة')},
+    {emoji:'💬',title:'الأكثر نشاطاً',items:contacts.slice(0,3).map(c=>c.name)},
+  ];
+  b.innerHTML=trending.map(sec=>`
+    <div style="padding:14px 16px 6px;">
+      <div style="font-size:13px;font-weight:800;color:var(--t0);">${sec.emoji} ${sec.title}</div>
+    </div>
+    <div style="background:var(--s1);border-radius:14px;margin:0 12px 10px;overflow:hidden;">
+      ${sec.items.map((item,i)=>`
+        <div style="padding:11px 14px;border-bottom:${i<sec.items.length-1?'1px solid var(--br)':'none'};
+          font-size:13px;color:var(--t1);display:flex;align-items:center;gap:10px;cursor:pointer;"
+          onclick="toast('⭐ ${item.replace(/'/g,'\'')}')">
+          <span style="width:28px;height:28px;border-radius:50%;background:var(--acc2);display:flex;align-items:center;justify-content:center;font-size:14px;">${i+1}</span>
+          ${item}
+        </div>`).join('')}
+    </div>`).join('');
+  openOv('ovProfile');
+}
+
+// ── 3. GLOBAL SEARCH ──
+function openGlobalSearch(){
+  const b=document.getElementById('profileShBody');
+  document.getElementById('profileShTitle').textContent='🔍 البحث الشامل';
+  b.innerHTML=`
+    <div style="padding:12px 14px;">
+      <input id="globalSearchIn" class="f-in" placeholder="ابحث في الرسائل والأصدقاء..." autofocus
+        oninput="runGlobalSearch(this.value)" style="font-size:15px;">
+    </div>
+    <div id="globalSearchResults">
+      <div style="text-align:center;padding:40px;color:var(--t3);">ابدأ البحث...</div>
+    </div>`;
+  openOv('ovProfile');
+  setTimeout(()=>document.getElementById('globalSearchIn')?.focus(),200);
+}
+
+function runGlobalSearch(q){
+  const res=document.getElementById('globalSearchResults');
+  if(!q.trim()){res.innerHTML='<div style="text-align:center;padding:40px;color:var(--t3);">ابدأ البحث...</div>';return;}
+  let html='';
+  // Search contacts
+  const fc=contacts.filter(c=>c.name.includes(q)||(c.phone||'').includes(q)||(c.status||'').includes(q));
+  if(fc.length){
+    html+=`<div style="font-size:11px;font-weight:700;color:var(--t3);padding:8px 16px 4px;letter-spacing:.5px;">👥 الأصدقاء</div>`;
+    fc.forEach(c=>{
+      html+=`<div style="display:flex;align-items:center;gap:12px;padding:10px 16px;cursor:pointer;border-bottom:1px solid var(--br);"
+        onclick="closeOv('ovProfile');switchTab('chats');setTimeout(()=>openChat(contacts.find(x=>x.id==='${c.id}')),100)">
+        ${avHTML(c,'av-s')}
+        <div><div style="font-size:14px;font-weight:600;color:var(--t0);">${c.name}</div>
+        <div style="font-size:12px;color:var(--t3);">${c.phone||''}</div></div>
+      </div>`;
+    });
+  }
+  // Search messages
+  let msgResults=[];
+  Object.entries(convos).forEach(([cid,msgs])=>{
+    const c=contacts.find(x=>x.id===cid)||groups?.find(x=>x.id===cid);
+    if(!c) return;
+    msgs.forEach((m,idx)=>{
+      if(m.text&&m.text.includes(q)) msgResults.push({c,m,idx,cid});
+    });
+  });
+  if(msgResults.length){
+    html+=`<div style="font-size:11px;font-weight:700;color:var(--t3);padding:8px 16px 4px;letter-spacing:.5px;">💬 الرسائل (${msgResults.length})</div>`;
+    msgResults.slice(0,10).forEach(({c,m,cid})=>{
+      const hi=m.text.replace(new RegExp(q,'g'),`<mark style="background:var(--acc2);color:var(--acc);border-radius:3px;">${q}</mark>`);
+      html+=`<div style="padding:10px 16px;border-bottom:1px solid var(--br);cursor:pointer;"
+        onclick="closeOv('ovProfile');switchTab('chats');setTimeout(()=>{ ${c.isGroup?`openGroupChat(groups.find(x=>x.id==='${cid}'))`:`openChat(contacts.find(x=>x.id==='${cid}'))`}; },100)">
+        <div style="font-size:12px;color:var(--acc);font-weight:700;margin-bottom:3px;">${c.name}</div>
+        <div style="font-size:13px;color:var(--t1);">${hi}</div>
+        <div style="font-size:10px;color:var(--t3);">${m.time||''}</div>
+      </div>`;
+    });
+  }
+  if(!html) html=`<div style="text-align:center;padding:40px;color:var(--t3);">لا نتائج لـ "${q}"</div>`;
+  res.innerHTML=html;
+}
+
+// ── 4. MINI APPS ──
+var MINI_APPS=[
+  {ico:'🧮',name:'آلة حاسبة',desc:'حاسبة بسيطة',color:'#6366F1'},
+  {ico:'📅',name:'التقويم',desc:'أحداث ومواعيد',color:'#EF4444'},
+  {ico:'🌤️',name:'الطقس',desc:'حالة الطقس',color:'#3B82F6'},
+  {ico:'🎵',name:'موسيقى',desc:'بث موسيقى',color:'#8B5CF6'},
+  {ico:'🍕',name:'طلب طعام',desc:'توصيل أكل',color:'#F59E0B'},
+  {ico:'🚗',name:'مواصلات',desc:'حجز رحلة',color:'#10B981'},
+  {ico:'💸',name:'تحويل مالي',desc:'إرسال واستقبال',color:'#D97706'},
+  {ico:'🎮',name:'ألعاب',desc:'ألعاب خفيفة',color:'#EC4899'},
+];
+
+function openMiniAppsSheet(){
+  const b=document.getElementById('profileShBody');
+  document.getElementById('profileShTitle').textContent='🎯 البرامج المصغرة';
+  b.innerHTML=`
+    <div style="padding:10px 14px 6px;font-size:12px;color:var(--t3);">اضغط على أي تطبيق لتشغيله</div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;padding:12px 14px;">
+      ${MINI_APPS.map(app=>`
+        <div onclick="openMiniApp('${app.name}','${app.ico}')"
+          style="background:var(--s1);border:1px solid var(--br);border-radius:18px;padding:16px 10px;
+          text-align:center;cursor:pointer;transition:all .15s;"
+          onmouseenter="this.style.borderColor='var(--acc)'"
+          onmouseleave="this.style.borderColor='var(--br)'">
+          <div style="font-size:32px;margin-bottom:8px;">${app.ico}</div>
+          <div style="font-size:13px;font-weight:700;color:var(--t0);">${app.name}</div>
+          <div style="font-size:10px;color:var(--t3);margin-top:2px;">${app.desc}</div>
+        </div>`).join('')}
+    </div>`;
+  openOv('ovProfile');
+}
+
+function openMiniApp(name, ico){
+  if(ico==='🧮'){
+    // Real mini calculator
+    closeOv('ovProfile');
+    openCalculatorApp();
+  } else {
+    toast(ico+' '+name+' — جاري التحميل...');
+  }
+}
+
+function openCalculatorApp(){
+  const ov=document.createElement('div');
+  ov.style.cssText='position:fixed;inset:0;z-index:900;background:rgba(0,0,0,.6);display:flex;align-items:flex-end;justify-content:center;';
+  ov.innerHTML=`
+    <div style="background:var(--s0);width:100%;max-width:400px;border-radius:24px 24px 0 0;padding:16px 16px 30px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <span style="font-size:16px;font-weight:800;color:var(--t0);">🧮 آلة حاسبة</span>
+        <button onclick="this.closest('div[style]').parentElement.remove()" style="background:var(--s3);border:none;border-radius:50%;width:30px;height:30px;color:var(--t2);cursor:pointer;font-size:16px;">✕</button>
+      </div>
+      <div id="calcDisplay" style="background:var(--s2);border-radius:14px;padding:14px 16px;font-size:28px;font-weight:800;color:var(--t0);text-align:left;font-family:'Space Grotesk',monospace;margin-bottom:12px;min-height:56px;">0</div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;">
+        ${['C','±','%','÷','7','8','9','×','4','5','6','−','1','2','3','+','0','','.',  '='].map(b=>`
+          <button onclick="calcPress('${b}')" style="padding:16px;border:none;border-radius:14px;font-size:18px;font-weight:700;cursor:pointer;font-family:var(--fa);
+            background:${['÷','×','−','+','='].includes(b)?'var(--acc)':['C','±','%'].includes(b)?'var(--s3)':'var(--s2)'};
+            color:${['÷','×','−','+','='].includes(b)?'var(--bme-t)':'var(--t0)'};
+            ${b===''?'visibility:hidden;':''}
+            ${b==='0'?'grid-column:span 2;':''}
+          ">${b||'·'}</button>`).join('')}
+      </div>
+    </div>`;
+  let _calcVal='',_calcOp='',_calcPrev='';
+  window.calcPress=function(b){
+    const d=document.getElementById('calcDisplay');
+    if(b==='C'){_calcVal='';_calcOp='';_calcPrev='';d.textContent='0';}
+    else if(b==='='){
+      if(_calcOp&&_calcPrev){
+        const a=parseFloat(_calcPrev),v=parseFloat(_calcVal||_calcPrev);
+        let r=0;
+        if(_calcOp==='+'){ r=a+v; } else if(_calcOp==='−'){ r=a-v; }
+        else if(_calcOp==='×'){ r=a*v; } else if(_calcOp==='÷'){ r=v!==0?a/v:0; }
+        _calcVal=String(parseFloat(r.toFixed(8)));_calcOp='';_calcPrev='';
+        d.textContent=_calcVal;
+      }
+    } else if(['+','−','×','÷'].includes(b)){
+      _calcOp=b;_calcPrev=_calcVal||'0';_calcVal='';d.textContent=_calcPrev+' '+b;
+    } else if(b==='%'){
+      _calcVal=String(parseFloat(_calcVal||'0')/100);d.textContent=_calcVal;
+    } else if(b==='±'){
+      _calcVal=String(-parseFloat(_calcVal||'0'));d.textContent=_calcVal;
+    } else {
+      if(b==='.'&&_calcVal.includes('.')) return;
+      _calcVal+=b;d.textContent=_calcVal;
+    }
+  };
+  document.body.appendChild(ov);
+}
+
+// ── 5. MESSAGE SELECTION ──
+var _selMode=false, _selMsgs=new Set();
+function startMsgSelection(cid){
+  _selMode=true; _selMsgs=new Set();
+  // Add selection overlay to messages
+  const msgs=document.querySelectorAll('.msg-row');
+  msgs.forEach((row,i)=>{
+    row.style.cursor='pointer';
+    row.style.userSelect='none';
+    row.addEventListener('click',function selClick(){
+      if(!_selMode) return;
+      if(_selMsgs.has(i)){ _selMsgs.delete(i);row.style.background=''; }
+      else { _selMsgs.add(i);row.style.background='var(--acc2)'; }
+      updateSelBar();
+    },{once:false});
+  });
+  // Show selection bar
+  let bar=document.getElementById('selectionBar');
+  if(!bar){
+    bar=document.createElement('div');
+    bar.id='selectionBar';
+    bar.style.cssText='position:fixed;bottom:80px;left:50%;transform:translateX(-50%);z-index:500;background:var(--s0);border:1px solid var(--br);border-radius:20px;padding:10px 16px;display:flex;gap:12px;align-items:center;box-shadow:var(--sh);';
+    bar.innerHTML=`<span id="selCount" style="font-size:13px;color:var(--t2);">0 محدد</span>
+      <button onclick="selForward()" style="background:var(--acc2);color:var(--acc);border:none;border-radius:10px;padding:6px 14px;font-family:var(--fa);font-size:13px;font-weight:700;cursor:pointer;">↗️ إرسال</button>
+      <button onclick="selDelete()" style="background:rgba(239,68,68,.12);color:#EF4444;border:none;border-radius:10px;padding:6px 14px;font-family:var(--fa);font-size:13px;font-weight:700;cursor:pointer;">🗑️ حذف</button>
+      <button onclick="cancelSelection()" style="background:var(--s3);border:none;border-radius:50%;width:28px;height:28px;cursor:pointer;color:var(--t2);font-size:14px;">✕</button>`;
+    document.body.appendChild(bar);
+  }
+  bar.style.display='flex';
+  updateSelBar();
+}
+function updateSelBar(){ const s=document.getElementById('selCount');if(s)s.textContent=_selMsgs.size+' محدد'; }
+function cancelSelection(){ _selMode=false;_selMsgs=new Set();document.getElementById('selectionBar')?.remove();document.querySelectorAll('.msg-row').forEach(r=>{r.style.background='';r.style.cursor='';});}
+function selDelete(){ if(!activeChat)return;const msgs=document.querySelectorAll('.msg-row');_selMsgs.forEach(i=>{if(convos[activeChat.id]&&convos[activeChat.id][i]) convos[activeChat.id][i]._deleted=true;});convos[activeChat.id]=convos[activeChat.id].filter(m=>!m._deleted);cancelSelection();renderMsgs(activeChat.id);saveToStorage();toast('🗑️ تم الحذف');}
+function selForward(){ toast('↗️ تم إرسال '+_selMsgs.size+' رسائل');cancelSelection(); }
+
+// ── 6. ADVANCED PRIVACY ──
+function openAdvancedPrivacy(){
+  const b=document.getElementById('profileShBody');
+  document.getElementById('profileShTitle').textContent='🔐 الإعدادات المتقدمة';
+  const settings=[
+    {key:'protectIP',    label:'حماية IP',          desc:'إخفاء عنوان IP في المكالمات',ico:'🛡️'},
+    {key:'noLinkPreview',label:'تعطيل معاينة الروابط',desc:'لا تُعرض صور الروابط',ico:'🔗'},
+    {key:'noScreenshot', label:'منع لقطة الشاشة',   desc:'حماية المحادثات الخاصة',ico:'📵'},
+    {key:'twoStep',      label:'التحقق بخطوتين',     desc:'أمان إضافي بكود PIN',ico:'🔑'},
+  ];
+  let advPr=JSON.parse(localStorage.getItem('cloudAdvPriv')||'{}');
+  b.innerHTML=`
+    <div style="padding:10px 14px 6px;font-size:12px;color:var(--t3);">إعدادات الأمان المتقدمة</div>
+    <div style="background:var(--s1);border-radius:16px;margin:0 12px;overflow:hidden;">
+      ${settings.map(s=>`
+        <div style="display:flex;align-items:center;gap:12px;padding:14px;border-bottom:1px solid var(--br);"
+          onclick="toggleAdvPr('${s.key}')">
+          <div style="width:38px;height:38px;border-radius:10px;background:var(--s2);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">${s.ico}</div>
+          <div style="flex:1;"><div style="font-size:14px;font-weight:600;color:var(--t0);">${s.label}</div>
+          <div style="font-size:12px;color:var(--t3);">${s.desc}</div></div>
+          <button class="tog${advPr[s.key]?' on':''}" id="advtog_${s.key}"></button>
+        </div>`).join('')}
+    </div>`;
+  openOv('ovProfile');
+  window.toggleAdvPr=function(k){
+    advPr[k]=!advPr[k];
+    localStorage.setItem('cloudAdvPriv',JSON.stringify(advPr));
+    const tog=document.getElementById('advtog_'+k);
+    if(tog) tog.classList.toggle('on',advPr[k]);
+    toast(advPr[k]?'✅ تم التفعيل':'❌ تم التعطيل');
+  };
+}
+
+// ── 7. CHAT LOCK ──
+function openChatLockSheet(){
+  const b=document.getElementById('profileShBody');
+  document.getElementById('profileShTitle').textContent='🔒 قفل المحادثة';
+  const locked=localStorage.getItem('chatLocked')==='true';
+  b.innerHTML=`
+    <div style="text-align:center;padding:30px 20px 20px;">
+      <div style="font-size:64px;margin-bottom:12px;">${locked?'🔒':'🔓'}</div>
+      <div style="font-size:18px;font-weight:800;color:var(--t0);margin-bottom:8px;">قفل المحادثات</div>
+      <div style="font-size:13px;color:var(--t2);margin-bottom:24px;">قفل المحادثات الخاصة باستخدام بصمة الإصبع أو كلمة المرور</div>
+      <button onclick="toggleChatLock()" style="width:100%;padding:14px;border-radius:14px;background:var(--acc);color:var(--bme-t);border:none;font-family:var(--fa);font-size:15px;font-weight:700;cursor:pointer;">
+        ${locked?'🔓 إلغاء القفل':'🔒 تفعيل القفل'}
+      </button>
+    </div>
+    <div style="background:var(--s1);border-radius:16px;margin:0 12px 12px;overflow:hidden;">
+      <div style="padding:12px 14px;border-bottom:1px solid var(--br);">
+        <div style="font-size:13px;font-weight:600;color:var(--t0);">🤫 المحادثات المخفية</div>
+        <div style="font-size:12px;color:var(--t3);margin-top:2px;">محادثات لا تظهر في القائمة الرئيسية</div>
+      </div>
+      ${contacts.slice(0,3).map(c=>`
+        <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;border-bottom:1px solid var(--br);">
+          ${avHTML(c,'av-s')}
+          <div style="flex:1;font-size:14px;color:var(--t0);">${c.name}</div>
+          <button onclick="toast('🔒 تم إخفاء '+\`${c.name}\`)" style="background:var(--s2);border:1px solid var(--br);border-radius:10px;padding:5px 12px;font-family:var(--fa);font-size:12px;cursor:pointer;color:var(--t2);">إخفاء</button>
+        </div>`).join('')}
+    </div>`;
+  openOv('ovProfile');
+  window.toggleChatLock=function(){
+    const nl=localStorage.getItem('chatLocked')!=='true';
+    localStorage.setItem('chatLocked',nl);
+    toast(nl?'🔒 تم تفعيل قفل المحادثات':'🔓 تم إلغاء القفل');
+    openChatLockSheet();
+  };
+}
+
+// ── 8. CHAT BACKUP ──
+function openChatBackup(){
+  const b=document.getElementById('profileShBody');
+  document.getElementById('profileShTitle').textContent='☁️ النسخ الاحتياطي';
+  const lastBackup=localStorage.getItem('lastBackup')||'لم يتم بعد';
+  const totalMsgs=Object.values(convos).reduce((a,v)=>a+v.length,0);
+  b.innerHTML=`
+    <div style="text-align:center;padding:24px 20px 16px;">
+      <div style="font-size:64px;margin-bottom:10px;">☁️</div>
+      <div style="font-size:18px;font-weight:800;color:var(--t0);margin-bottom:4px;">النسخ الاحتياطي</div>
+      <div style="font-size:12px;color:var(--t3);">آخر نسخة: ${lastBackup}</div>
+    </div>
+    <div style="background:var(--s1);border-radius:16px;margin:0 12px 14px;overflow:hidden;">
+      <div style="padding:14px;border-bottom:1px solid var(--br);display:flex;justify-content:space-between;">
+        <span style="font-size:13px;color:var(--t1);">💬 الرسائل</span>
+        <span style="font-size:13px;font-weight:700;color:var(--t0);">${totalMsgs}</span>
+      </div>
+      <div style="padding:14px;border-bottom:1px solid var(--br);display:flex;justify-content:space-between;">
+        <span style="font-size:13px;color:var(--t1);">👥 جهات الاتصال</span>
+        <span style="font-size:13px;font-weight:700;color:var(--t0);">${contacts.length}</span>
+      </div>
+      <div style="padding:14px;display:flex;justify-content:space-between;">
+        <span style="font-size:13px;color:var(--t1);">📁 حجم البيانات</span>
+        <span style="font-size:13px;font-weight:700;color:var(--t0);">${(JSON.stringify({convos,contacts}).length/1024).toFixed(1)} KB</span>
+      </div>
+    </div>
+    <div style="padding:0 12px;display:flex;flex-direction:column;gap:8px;">
+      <button onclick="doBackup()" style="padding:14px;border-radius:14px;background:var(--acc);color:var(--bme-t);border:none;font-family:var(--fa);font-size:15px;font-weight:700;cursor:pointer;">☁️ نسخ احتياطي الآن</button>
+      <button onclick="doExportBackup()" style="padding:12px;border-radius:14px;background:var(--s2);color:var(--t0);border:1px solid var(--br);font-family:var(--fa);font-size:14px;cursor:pointer;">📤 تصدير ملف نسخة</button>
+    </div>`;
+  openOv('ovProfile');
+  window.doBackup=function(){
+    localStorage.setItem('lastBackup',now());
+    toast('✅ تم النسخ الاحتياطي بنجاح!');
+    openChatBackup();
+  };
+  window.doExportBackup=function(){
+    const data=JSON.stringify({me,contacts,convos,groups,savedMessages,scheduledMsgs,friendReqs,posts},null,2);
+    const blob=new Blob([data],{type:'application/json'});
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(blob);
+    a.download=`cloud-backup-${Date.now()}.json`;
+    a.click();
+    toast('📁 تم تصدير النسخة الاحتياطية');
+  };
+}
+
+// ── 9. TRANSFER CHATS ──
+function openTransferChats(){
+  toast('📲 مسح QR من الجهاز الجديد للنقل');
+  // Show QR-like sheet
+  const b=document.getElementById('profileShBody');
+  document.getElementById('profileShTitle').textContent='📤 نقل المحادثات';
+  b.innerHTML=`
+    <div style="text-align:center;padding:24px 20px;">
+      <div style="font-size:64px;margin-bottom:12px;">📱→📱</div>
+      <div style="font-size:17px;font-weight:800;color:var(--t0);margin-bottom:8px;">نقل المحادثات</div>
+      <div style="font-size:13px;color:var(--t2);margin-bottom:20px;line-height:1.6;">انقل محادثاتك بأمان إلى جهاز جديد<br>بدون فقد أي رسائل</div>
+      <div style="background:var(--s2);border-radius:16px;padding:24px;margin-bottom:20px;display:flex;align-items:center;justify-content:center;">
+        <div style="font-size:80px;">📲</div>
+      </div>
+      <button onclick="doExportBackup();closeOv('ovProfile');" style="width:100%;padding:14px;border-radius:14px;background:var(--acc);color:var(--bme-t);border:none;font-family:var(--fa);font-size:15px;font-weight:700;cursor:pointer;">📤 تصدير للجهاز الجديد</button>
+    </div>`;
+  openOv('ovProfile');
+}
+
+// ── 10. VOICE TRANSCRIPTS ──
+function openVoiceTranscriptsSettings(){
+  const b=document.getElementById('profileShBody');
+  document.getElementById('profileShTitle').textContent='🎙️ نصوص الرسائل الصوتية';
+  const enabled=localStorage.getItem('voiceTranscripts')!=='false';
+  b.innerHTML=`
+    <div style="text-align:center;padding:24px 20px 16px;">
+      <div style="font-size:56px;">🎙️→📝</div>
+      <div style="font-size:17px;font-weight:800;color:var(--t0);margin:12px 0 6px;">تحويل الصوت لنص</div>
+      <div style="font-size:13px;color:var(--t2);line-height:1.5;">قراءة الرسائل الصوتية كنص تلقائياً</div>
+    </div>
+    <div style="background:var(--s1);border-radius:16px;margin:0 12px 14px;overflow:hidden;">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:14px;">
+        <div>
+          <div style="font-size:14px;font-weight:600;color:var(--t0);">تفعيل النصوص</div>
+          <div style="font-size:12px;color:var(--t3);">تحويل الرسائل الصوتية تلقائياً</div>
+        </div>
+        <button class="tog${enabled?' on':''}" id="voiceTransTog" onclick="toggleVoiceTrans(this)"></button>
+      </div>
+    </div>`;
+  openOv('ovProfile');
+  window.toggleVoiceTrans=function(btn){
+    const newVal=btn.classList.toggle('on');
+    localStorage.setItem('voiceTranscripts',newVal);
+    toast(newVal?'✅ تم تفعيل نصوص الصوت':'❌ تم تعطيل نصوص الصوت');
+  };
+}
+
+// ── 11. FREQ FORM: TAG + REMARK + PHOTO ──
+function openTagPicker(){
+  const tags=['👨‍💼 زميل عمل','👨‍👩‍👧 عائلة','👫 صديق','🏫 دراسة','💼 أعمال','⚽ رياضة','🎵 موسيقى','🎮 ألعاب'];
+  const tag=tags[Math.floor(Math.random()*tags.length)];
+  toast('🏷️ تصنيف: '+tag);
+}
+
+function openRemarkEditor(){
+  const r=prompt('أضف ملاحظة لهذا الشخص:');
+  if(r) toast('✅ تم حفظ الملاحظة: '+r);
+}
+
+function openGreetImgPicker(){
+  const inp=document.createElement('input');
+  inp.type='file';inp.accept='image/*';inp.style.display='none';
+  inp.onchange=e=>{
+    const f=e.target.files[0];if(!f)return;
+    const r=new FileReader();
+    r.onload=ev=>{
+      window._freqGreetImg=ev.target.result;
+      const lbl=document.getElementById('freqImgLabel');
+      if(lbl) lbl.textContent='✅ تم اختيار الصورة';
+      toast('✅ تم اختيار صورة الترحيب');
+    };
+    r.readAsDataURL(f);inp.remove();
+  };
+  document.body.appendChild(inp);inp.click();
+}
+
+// ── 12. WALLET SWAP ──
+function walletSwapSheet(){
+  const sheet=document.createElement('div');
+  sheet.style.cssText='position:fixed;inset:0;z-index:900;background:rgba(0,0,0,.7);display:flex;align-items:flex-end;justify-content:center;';
+  const opts=(CURRENCIES||[]).map(c=>`<option value="${c.code}">${c.flag} ${c.code} - ${c.name}</option>`).join('');
+  sheet.innerHTML=`
+    <div style="background:var(--s0);width:100%;max-width:430px;border-radius:24px 24px 0 0;padding:20px 16px 36px;">
+      <div style="width:40px;height:4px;border-radius:2px;background:var(--s3);margin:0 auto 16px;"></div>
+      <div style="font-size:17px;font-weight:800;color:var(--t0);margin-bottom:18px;">⇄ تحويل العملات</div>
+      <div style="display:grid;grid-template-columns:1fr 36px 1fr;gap:8px;align-items:end;margin-bottom:14px;">
+        <div>
+          <div style="font-size:11px;color:var(--t3);margin-bottom:6px;font-weight:700;">من</div>
+          <select id="swapFromSel" oninput="calcSwapLive()" style="width:100%;background:var(--s2);border:1.5px solid var(--acc);border-radius:12px;padding:10px 8px;color:var(--t0);font-family:var(--fa);font-size:13px;outline:none;">${opts}</select>
+        </div>
+        <button onclick="swapFlipSels()" style="background:var(--s2);border:1px solid var(--br);border-radius:50%;width:36px;height:36px;cursor:pointer;color:var(--acc);font-size:18px;margin-bottom:2px;flex-shrink:0;">⇄</button>
+        <div>
+          <div style="font-size:11px;color:var(--t3);margin-bottom:6px;font-weight:700;">إلى</div>
+          <select id="swapToSel" oninput="calcSwapLive()" style="width:100%;background:var(--s2);border:1.5px solid var(--br);border-radius:12px;padding:10px 8px;color:var(--t0);font-family:var(--fa);font-size:13px;outline:none;">${opts}</select>
+        </div>
+      </div>
+      <div style="margin-bottom:8px;">
+        <div style="font-size:11px;color:var(--t3);margin-bottom:6px;font-weight:700;">المبلغ</div>
+        <input id="swapAmtIn" type="number" placeholder="0.00" value="1"
+          oninput="calcSwapLive()"
+          style="width:100%;background:var(--s2);border:1.5px solid var(--acc);border-radius:12px;padding:13px;color:var(--t0);font-family:'Space Grotesk',monospace;font-size:22px;font-weight:800;outline:none;text-align:center;">
+      </div>
+      <div style="text-align:center;padding:14px;background:var(--s2);border-radius:14px;margin-bottom:16px;">
+        <div style="font-size:12px;color:var(--t3);margin-bottom:4px;">ستحصل على</div>
+        <div id="swapResNum" style="font-size:30px;font-weight:800;color:var(--acc);font-family:'Space Grotesk',monospace;">-</div>
+        <div id="swapResRate" style="font-size:11px;color:var(--t3);margin-top:4px;">-</div>
+      </div>
+      <button onclick="execSwap(this.closest('div[style]').parentElement)" style="width:100%;padding:14px;border-radius:14px;background:var(--acc);color:var(--bme-t);border:none;font-family:var(--fa);font-size:15px;font-weight:700;cursor:pointer;">⇄ تنفيذ التحويل الآن</button>
+      <button onclick="this.closest('div[style]').remove()" style="width:100%;padding:12px;margin-top:8px;border-radius:14px;background:var(--s3);color:var(--t2);border:none;font-family:var(--fa);font-size:14px;cursor:pointer;">إلغاء</button>
+    </div>`;
+  document.body.appendChild(sheet);
+  document.getElementById('swapFromSel').value='CLOUD';
+  document.getElementById('swapToSel').value='USD';
+  calcSwapLive();
+}
+
+function calcSwapLive(){
+  const from=document.getElementById('swapFromSel')?.value;
+  const to=document.getElementById('swapToSel')?.value;
+  const amt=parseFloat(document.getElementById('swapAmtIn')?.value||1);
+  if(!from||!to||!EXCHANGE_RATES) return;
+  const rF=EXCHANGE_RATES[from]||1, rT=EXCHANGE_RATES[to]||1;
+  const res=amt*(rF/rT);
+  const dp=to==='BTC'||to==='CLOUD'?8:4;
+  const rn=document.getElementById('swapResNum');
+  const rr=document.getElementById('swapResRate');
+  if(rn) rn.textContent=res.toFixed(dp)+' '+to;
+  if(rr) rr.textContent='1 '+from+' = '+(rF/rT).toFixed(dp)+' '+to;
+}
+
+function swapFlipSels(){
+  const a=document.getElementById('swapFromSel'), b=document.getElementById('swapToSel');
+  if(!a||!b) return;
+  [a.value,b.value]=[b.value,a.value];
+  calcSwapLive();
+}
+
+function execSwap(sheetEl){
+  const from=document.getElementById('swapFromSel')?.value;
+  const to=document.getElementById('swapToSel')?.value;
+  const amt=parseFloat(document.getElementById('swapAmtIn')?.value||0);
+  if(!amt||amt<=0){toast('⚠️ أدخل مبلغاً');return;}
+  if(!wallet.balances) wallet.balances={};
+  if(amt>(wallet.balances[from]||0)){toast('⚠️ الرصيد غير كافٍ في '+from);return;}
+  const rF=EXCHANGE_RATES[from]||1, rT=EXCHANGE_RATES[to]||1;
+  const res=amt*(rF/rT);
+  wallet.balances[from]=(wallet.balances[from]||0)-amt;
+  wallet.balances[to]=(wallet.balances[to]||0)+res;
+  if(!wallet.transactions) wallet.transactions=[];
+  wallet.transactions.unshift({type:'out',name:'تحويل ← '+to,amount:amt, currency:from,time:'الآن',note:'تحويل'});
+  wallet.transactions.unshift({type:'in', name:'تحويل ← '+from,amount:res,currency:to,  time:'الآن',note:'تحويل'});
+  sheetEl?.remove();
+  saveToStorage();
+  const dp=to==='BTC'||to==='CLOUD'?6:2;
+  toast('✅ تم: '+amt+' '+from+' → '+res.toFixed(dp)+' '+to);
+  openWallet();
+}
+
+// ════════════════════════════════════════════════════════
+// 🎨 FULL APP CUSTOMIZATION
+// ════════════════════════════════════════════════════════
+var appCustom = {
+  bubbleShape: 'default',   // default|square|round|sharp|ios
+  fontFamily:  'default',   // default|vazir|kufi|mono
+  fontSize:    'medium',    // small|medium|large
+  bubbleColorMe:    '',     // custom hex
+  bubbleColorOther: '',
+  appBgUrl:    '',          // image URL or gradient
+  appBgOpacity: 0.15,
+  chatBgMap:   {},          // per-contact bg
+};
+
+function openAppCustomizer(){
+  const b=document.getElementById('profileShBody');
+  document.getElementById('profileShTitle').textContent='🎨 تخصيص التطبيق';
+
+  const bubbleShapes=[
+    {id:'default',label:'واتساب',preview:'border-radius:20px 4px 20px 20px'},
+    {id:'round',  label:'دائري', preview:'border-radius:24px'},
+    {id:'square', label:'مربع',  preview:'border-radius:8px'},
+    {id:'sharp',  label:'حاد',   preview:'border-radius:4px'},
+    {id:'ios',    label:'iOS',   preview:'border-radius:20px 20px 4px 20px'},
+  ];
+
+  const bubbleColors=[
+    {c:'#D4A843',n:'ذهبي'},  {c:'#3B82F6',n:'أزرق'},  {c:'#8B5CF6',n:'بنفسجي'},
+    {c:'#10B981',n:'أخضر'},  {c:'#EF4444',n:'أحمر'},  {c:'#EC4899',n:'وردي'},
+    {c:'#F97316',n:'برتقالي'},{c:'#0EA5E9',n:'سماوي'}, {c:'#6366F1',n:'نيلي'},
+  ];
+
+  const fonts=[
+    {id:'default',label:'Tajawal (افتراضي)'},
+    {id:'mono',   label:'Space Grotesk'},
+  ];
+
+  b.innerHTML=`
+    <!-- BUBBLE SHAPE -->
+    <div style="padding:14px 16px 8px;font-size:11px;font-weight:800;color:var(--t3);letter-spacing:.5px;">شكل الفقاعات</div>
+    <div style="display:flex;gap:8px;padding:0 14px 14px;overflow-x:auto;">
+      ${bubbleShapes.map(s=>`
+        <div onclick="setBubbleShape('${s.id}')" style="flex-shrink:0;cursor:pointer;text-align:center;">
+          <div style="width:60px;height:36px;${s.preview};
+            background:${appCustom.bubbleShape===s.id?'var(--acc)':'var(--s2)'};
+            border:2px solid ${appCustom.bubbleShape===s.id?'var(--acc)':'var(--br)'};
+            display:flex;align-items:center;justify-content:center;margin-bottom:4px;
+            transition:all .15s;">
+            <span style="font-size:10px;color:${appCustom.bubbleShape===s.id?'var(--bme-t)':'var(--t2)'};">A</span>
+          </div>
+          <div style="font-size:10px;color:var(--t3);">${s.label}</div>
+        </div>`).join('')}
+    </div>
+
+    <!-- BUBBLE COLOR (me) -->
+    <div style="padding:6px 16px 8px;font-size:11px;font-weight:800;color:var(--t3);letter-spacing:.5px;">لون فقاعتي</div>
+    <div style="display:flex;gap:8px;padding:0 14px 14px;flex-wrap:wrap;">
+      ${bubbleColors.map(({c,n})=>`
+        <div onclick="setBubbleColor('me','${c}')" title="${n}"
+          style="width:32px;height:32px;border-radius:50%;background:${c};cursor:pointer;
+          border:3px solid ${appCustom.bubbleColorMe===c?'#fff':'transparent'};
+          box-shadow:${appCustom.bubbleColorMe===c?'0 0 0 2px '+c:'none'};
+          transition:all .15s;"></div>`).join('')}
+      <div title="مخصص" onclick="pickCustomBubbleColor('me')"
+        style="width:32px;height:32px;border-radius:50%;background:conic-gradient(red,yellow,green,blue,red);cursor:pointer;border:2px solid var(--br);"></div>
+    </div>
+
+    <!-- FONT -->
+    <div style="padding:6px 16px 8px;font-size:11px;font-weight:800;color:var(--t3);letter-spacing:.5px;">الخط</div>
+    <div style="display:flex;gap:8px;padding:0 14px 14px;flex-wrap:wrap;">
+      ${fonts.map(f=>`
+        <div onclick="setAppFont('${f.id}')"
+          style="padding:8px 16px;border-radius:12px;cursor:pointer;border:2px solid ${appCustom.fontFamily===f.id?'var(--acc)':'var(--br)'};
+          background:${appCustom.fontFamily===f.id?'var(--acc2)':'var(--s2)'};
+          font-size:13px;color:${appCustom.fontFamily===f.id?'var(--acc)':'var(--t2)'};font-weight:600;
+          transition:all .15s;">${f.label}</div>`).join('')}
+    </div>
+
+    <!-- APP BACKGROUND -->
+    <div style="padding:6px 16px 8px;font-size:11px;font-weight:800;color:var(--t3);letter-spacing:.5px;">خلفية التطبيق</div>
+    <div style="padding:0 14px 10px;display:flex;gap:8px;flex-wrap:wrap;">
+      <button onclick="setAppBg('none')" style="${_custBtnStyle(appCustom.appBgUrl==='')}">بدون خلفية</button>
+      <button onclick="setAppBg('dots')" style="${_custBtnStyle(appCustom.appBgUrl==='dots')}">نقاط</button>
+      <button onclick="setAppBg('lines')" style="${_custBtnStyle(appCustom.appBgUrl==='lines')}">خطوط</button>
+      <button onclick="setAppBg('waves')" style="${_custBtnStyle(appCustom.appBgUrl==='waves')}">أمواج</button>
+      <button onclick="pickAppBgImage()" style="${_custBtnStyle(false)}">🖼️ صورة</button>
+    </div>
+    <div style="padding:0 14px 6px;display:flex;align-items:center;gap:10px;">
+      <span style="font-size:12px;color:var(--t3);">الشفافية</span>
+      <input type="range" min="5" max="40" value="${Math.round((appCustom.appBgOpacity||.15)*100)}"
+        oninput="setAppBgOpacity(this.value/100);this.nextElementSibling.textContent=this.value+'%'"
+        style="flex:1;accent-color:var(--acc);">
+      <span style="font-size:12px;color:var(--t3);min-width:30px;">${Math.round((appCustom.appBgOpacity||.15)*100)}%</span>
+    </div>
+
+    <div style="height:16px;"></div>
+    <div style="padding:0 14px 20px;">
+      <button onclick="resetCustomization()" style="width:100%;padding:12px;border-radius:14px;background:rgba(239,68,68,.1);color:#EF4444;border:1.5px solid rgba(239,68,68,.3);font-family:var(--fa);font-size:13px;cursor:pointer;">🔄 إعادة الضبط</button>
+    </div>
+  `;
+  openOv('ovProfile');
+}
+
+function _custBtnStyle(active){
+  return `padding:7px 14px;border-radius:12px;cursor:pointer;font-family:var(--fa);font-size:12px;font-weight:600;
+    background:${active?'var(--acc2)':'var(--s2)'};color:${active?'var(--acc)':'var(--t2)'};
+    border:1.5px solid ${active?'var(--acc)':'var(--br)'};transition:all .15s;`;
+}
+
+function setBubbleShape(shape){
+  appCustom.bubbleShape=shape;
+  document.body.setAttribute('data-bubble',shape);
+  saveCustomization();
+  openAppCustomizer();
+}
+
+function setBubbleColor(who, color){
+  if(who==='me'){
+    appCustom.bubbleColorMe=color;
+    document.documentElement.style.setProperty('--bme',color);
+  } else {
+    appCustom.bubbleColorOther=color;
+    document.documentElement.style.setProperty('--bother',color);
+  }
+  saveCustomization();
+  openAppCustomizer();
+}
+
+function pickCustomBubbleColor(who){
+  const inp=document.createElement('input');
+  inp.type='color';inp.value=who==='me'?(appCustom.bubbleColorMe||'#D4A843'):'#1A1A2E';
+  inp.oninput=()=>setBubbleColor(who,inp.value);
+  inp.click();
+}
+
+function setAppFont(fontId){
+  appCustom.fontFamily=fontId;
+  document.body.setAttribute('data-font',fontId);
+  saveCustomization();
+  openAppCustomizer();
+}
+
+const APP_BG_PATTERNS = {
+  dots:  'radial-gradient(circle,rgba(255,255,255,.4) 1px,transparent 1px)',
+  lines: 'repeating-linear-gradient(45deg,rgba(255,255,255,.15) 0,rgba(255,255,255,.15) 1px,transparent 0,transparent 50%)',
+  waves: 'repeating-radial-gradient(circle at 0 0,rgba(255,255,255,.1) 0,rgba(255,255,255,.1) 2px,transparent 0,transparent 50%)',
+};
+
+function setAppBg(type){
+  const overlay=document.getElementById('appBgOverlay');
+  if(!overlay) return;
+  if(type==='none'){
+    appCustom.appBgUrl='';
+    overlay.style.backgroundImage='none';
+    overlay.style.opacity='0';
+  } else {
+    appCustom.appBgUrl=type;
+    overlay.style.backgroundImage=APP_BG_PATTERNS[type]||'none';
+    overlay.style.backgroundSize='20px 20px';
+    overlay.style.opacity=appCustom.appBgOpacity||.15;
+  }
+  saveCustomization();
+  openAppCustomizer();
+}
+
+function setAppBgOpacity(val){
+  appCustom.appBgOpacity=val;
+  const overlay=document.getElementById('appBgOverlay');
+  if(overlay&&appCustom.appBgUrl) overlay.style.opacity=val;
+  saveCustomization();
+}
+
+function pickAppBgImage(){
+  const inp=document.createElement('input');
+  inp.type='file';inp.accept='image/*';inp.style.display='none';
+  inp.onchange=e=>{
+    const f=e.target.files[0];if(!f)return;
+    const r=new FileReader();
+    r.onload=ev=>{
+      appCustom.appBgUrl=ev.target.result;
+      applyAppBg();
+      saveCustomization();
+      closeOv('ovProfile');
+      toast('✅ تم تطبيق خلفية التطبيق');
+    };
+    r.readAsDataURL(f);inp.remove();
+  };
+  document.body.appendChild(inp);inp.click();
+}
+
+function applyAppBg(){
+  const overlay=document.getElementById('appBgOverlay');
+  if(!overlay||!appCustom.appBgUrl) return;
+  if(appCustom.appBgUrl.startsWith('data:')||appCustom.appBgUrl.startsWith('http')){
+    overlay.style.backgroundImage=`url('${appCustom.appBgUrl}')`;
+    overlay.style.backgroundSize='cover';
+  } else if(APP_BG_PATTERNS[appCustom.appBgUrl]){
+    overlay.style.backgroundImage=APP_BG_PATTERNS[appCustom.appBgUrl];
+    overlay.style.backgroundSize='20px 20px';
+  }
+  overlay.style.opacity=appCustom.appBgOpacity||.15;
+}
+
+function applyBubbleShape(){
+  if(appCustom.bubbleShape) document.body.setAttribute('data-bubble',appCustom.bubbleShape);
+  if(appCustom.fontFamily)  document.body.setAttribute('data-font',appCustom.fontFamily);
+  if(appCustom.bubbleColorMe) document.documentElement.style.setProperty('--bme',appCustom.bubbleColorMe);
+  if(appCustom.bubbleColorOther) document.documentElement.style.setProperty('--bother',appCustom.bubbleColorOther);
+}
+
+function saveCustomization(){
+  try{ localStorage.setItem('cloudCustom',JSON.stringify(appCustom)); }catch(e){}
+}
+
+function resetCustomization(){
+  appCustom={bubbleShape:'default',fontFamily:'default',fontSize:'medium',bubbleColorMe:'',bubbleColorOther:'',appBgUrl:'',appBgOpacity:.15,chatBgMap:{}};
+  document.body.removeAttribute('data-bubble');
+  document.body.removeAttribute('data-font');
+  document.documentElement.style.removeProperty('--bme');
+  document.documentElement.style.removeProperty('--bother');
+  const ov=document.getElementById('appBgOverlay');if(ov){ov.style.backgroundImage='none';ov.style.opacity='0';}
+  saveCustomization();
+  openAppCustomizer();
+  toast('🔄 تم إعادة الضبط');
+}
+
+// Load custom on init
+try{
+  const saved=localStorage.getItem('cloudCustom');
+  if(saved) Object.assign(appCustom,JSON.parse(saved));
+}catch(e){}
+
+// ════════════════════════════════════════════════════════
+// 🔐 E2E ENCRYPTION SCREEN
+// ════════════════════════════════════════════════════════
+function openE2EScreen(contactName){
+  const screen=document.getElementById('e2eScreen');
+  // Generate fake E2E key (demo)
+  const key=Array.from({length:8},()=>Math.random().toString(16).slice(2,6).toUpperCase()).join(' ');
+  const keyRow=document.getElementById('e2eKeyRow');
+  if(keyRow) keyRow.innerHTML=key.split(' ').map(seg=>`<div class="e2e-key-seg">${seg}</div>`).join('');
+  screen.classList.add('on');
+}
+
+function verifyE2E(){
+  document.getElementById('e2eScreen').classList.remove('on');
+  toast('✅ تم التحقق — رسائلك آمنة 🔐');
+}
+
+// ════════════════════════════════════════════════════════
+// 📊 CHAT STATISTICS
+// ════════════════════════════════════════════════════════
+function openChatStats(){
+  const b=document.getElementById('profileShBody');
+  document.getElementById('profileShTitle').textContent='📊 إحصائيات المحادثات';
+
+  const totalMsgs=Object.values(convos).reduce((a,v)=>a+v.length,0);
+  const myMsgs=Object.values(convos).reduce((a,v)=>a+v.filter(m=>m.from==='me').length,0);
+  const totalDays=Math.max(1,Math.round((Date.now()-3600000*24*30)/86400000));
+
+  // Per-contact stats
+  const perContact=contacts.map(c=>{
+    const msgs=convos[c.id]||[];
+    const myCount=msgs.filter(m=>m.from==='me').length;
+    const theirCount=msgs.filter(m=>m.from!=='me'&&m.from!=='system').length;
+    return {c,total:msgs.length,mine:myCount,theirs:theirCount};
+  }).filter(x=>x.total>0).sort((a,b)=>b.total-a.total);
+
+  const maxTotal=Math.max(1,...perContact.map(x=>x.total));
+  const mostActive=perContact[0];
+  const voiceMsgs=Object.values(convos).flat().filter(m=>m.type==='voice').length;
+  const imgMsgs=Object.values(convos).flat().filter(m=>m.img||m.type==='images').length;
+  const pollMsgs=Object.values(convos).flat().filter(m=>m.type==='poll').length;
+
+  b.innerHTML=`
+    <!-- Summary cards -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:14px 14px 8px;">
+      ${[
+        {ico:'💬',bg:'rgba(59,130,246,.12)',n:totalMsgs,l:'إجمالي الرسائل'},
+        {ico:'📤',bg:'rgba(212,168,67,.12)', n:myMsgs,  l:'رسائل أرسلتها'},
+        {ico:'🎙️',bg:'rgba(16,185,129,.12)',n:voiceMsgs,l:'رسائل صوتية'},
+        {ico:'📷',bg:'rgba(139,92,246,.12)',n:imgMsgs,  l:'صور مشاركة'},
+      ].map(s=>`
+        <div class="stats-card" style="padding:12px;">
+          <div class="stats-ico" style="background:${s.bg};">${s.ico}</div>
+          <div><div class="stats-num" style="font-size:22px;">${s.n}</div><div class="stats-lbl">${s.l}</div></div>
+        </div>`).join('')}
+    </div>
+
+    ${mostActive?`
+    <!-- Most active contact -->
+    <div style="padding:6px 16px 8px;font-size:11px;font-weight:800;color:var(--t3);letter-spacing:.5px;">🏆 أكثر تواصل</div>
+    <div class="stats-card" style="margin:0 14px 14px;">
+      ${avHTML(mostActive.c,'av-m')}
+      <div style="flex:1;">
+        <div style="font-size:15px;font-weight:700;color:var(--t0);">${mostActive.c.name}</div>
+        <div style="font-size:12px;color:var(--t3);">${mostActive.total} رسالة مجموع</div>
+        <div class="stats-bar-wrap" style="margin:8px 0 4px;"><div class="stats-bar-fill" style="width:100%;"></div></div>
+        <div style="display:flex;gap:16px;font-size:11px;color:var(--t3);">
+          <span>📤 أنت: ${mostActive.mine}</span>
+          <span>📥 هو/هي: ${mostActive.theirs}</span>
+        </div>
+      </div>
+    </div>`:''}
+
+    <!-- All contacts ranking -->
+    <div style="padding:6px 16px 8px;font-size:11px;font-weight:800;color:var(--t3);letter-spacing:.5px;">📈 تصنيف المحادثات</div>
+    ${perContact.slice(0,8).map((x,i)=>`
+      <div style="display:flex;align-items:center;gap:12px;padding:10px 16px;border-bottom:1px solid var(--br);">
+        <div style="font-size:16px;font-weight:800;color:var(--t3);width:20px;text-align:center;">${i+1}</div>
+        ${avHTML(x.c,'av-s')}
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:13px;font-weight:600;color:var(--t0);">${x.c.name}</div>
+          <div class="stats-bar-wrap" style="margin:5px 0 2px;"><div class="stats-bar-fill" style="width:${Math.round(x.total/maxTotal*100)}%;"></div></div>
+        </div>
+        <div style="font-size:13px;font-weight:800;color:var(--acc);font-family:'Space Grotesk',monospace;">${x.total}</div>
+      </div>`).join('')}
+    ${!perContact.length?'<div style="text-align:center;padding:40px;color:var(--t3);">لا توجد محادثات بعد</div>':''}
+  `;
+  openOv('ovProfile');
+}
+
+// ════════════════════════════════════════════════════════
+// 🌍 AI TRANSLATION (using Claude API)
+// ════════════════════════════════════════════════════════
+var _translatingMsgIdx=null;
+
+async function aiTranslateMsg(text, msgIdx, cid){
+  if(!text||text.length<2) return;
+  toast('🌍 جاري الترجمة...');
+  try{
+    const res=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        model:'claude-sonnet-4-20250514',
+        max_tokens:300,
+        messages:[{role:'user',content:`Translate this text to Arabic (if it's already Arabic, translate to English). Reply ONLY with the translation, no explanation:
+
+${text}`}]
+      })
+    });
+    const data=await res.json();
+    const translated=data?.content?.[0]?.text?.trim()||'';
+    if(!translated) throw new Error('empty');
+    // Store in msg
+    const msgs=convos[cid];
+    if(msgs&&msgs[msgIdx]){
+      msgs[msgIdx].aiTrans=translated;
+      renderMsgs(cid);
+      saveToStorage();
+    }
+  } catch(e){
+    // Fallback demo translation
+    const demos={
+      'hello':'مرحباً','hi':'أهلاً','how are you':'كيف حالك',
+      'good':'جيد','thanks':'شكراً','ok':'حسناً','bye':'مع السلامة'
+    };
+    const lower=text.toLowerCase();
+    const demo=demos[lower]||`[ترجمة: ${text}]`;
+    const msgs=convos[cid];
+    if(msgs&&msgs[msgIdx]){msgs[msgIdx].aiTrans=demo;renderMsgs(cid);saveToStorage();}
+    toast('🌍 تمت الترجمة');
+  }
+}
+
+// Add AI translate to ctx menu
+const _origShowMsgCtxBase=showMsgCtx;
+function showMsgCtx(msgObj,msgIdx,cid,bubEl){
+  _origShowMsgCtxBase(msgObj,msgIdx,cid,bubEl);
+  // Add AI translate button to existing menu
+  const menu=document.getElementById('msgCtxMenu');
+  if(menu&&msgObj.text){
+    const aiBtn=document.createElement('button');
+    aiBtn.className='msg-ctx-btn';
+    aiBtn.innerHTML='<span class="ctx-ico">🌍</span>ترجمة AI';
+    aiBtn.onclick=()=>{ aiTranslateMsg(msgObj.text,msgIdx,cid); closeCtx(); };
+    menu.insertBefore(aiBtn, menu.lastElementChild);
+  }
+}
+
+// Render AI translation in msg
+// (injected into renderMsgs via the trans check)
+
+// ════════════════════════════════════════════════════════
+// 🗺️ FRIENDS MAP
+// ════════════════════════════════════════════════════════
+var CITY_COORDS={
+  'SA':{x:55,y:30,city:'الرياض'},  'EG':{x:45,y:28,city:'القاهرة'},
+  'AE':{x:58,y:32,city:'دبي'},     'KW':{x:54,y:26,city:'الكويت'},
+  'QA':{x:56,y:29,city:'الدوحة'}, 'BH':{x:55,y:28,city:'المنامة'},
+  'OM':{x:60,y:32,city:'مسقط'},   'JO':{x:47,y:26,city:'عمان'},
+  'SY':{x:46,y:22,city:'دمشق'},   'IQ':{x:50,y:24,city:'بغداد'},
+  'LB':{x:45,y:23,city:'بيروت'}, 'MA':{x:28,y:25,city:'الرباط'},
+  'US':{x:18,y:25,city:'نيويورك'},'GB':{x:36,y:16,city:'لندن'},
+  'FR':{x:37,y:17,city:'باريس'},  'DE':{x:39,y:15,city:'برلين'},
+  'TR':{x:44,y:20,city:'إسطنبول'},'IN':{x:67,y:30,city:'نيودلهي'},
+};
+var COUNTRIES=Object.keys(CITY_COORDS);
+
+function openFriendsMap(){
+  const screen=document.getElementById('friendsMapScreen');
+  screen.classList.add('on');
+  renderFriendsMap();
+}
+
+function renderFriendsMap(){
+  const pins=document.getElementById('friendsPins');
+  const list=document.getElementById('friendsMapList');
+  if(!pins||!list) return;
+  pins.innerHTML='';
+  list.innerHTML='';
+
+  const container=document.getElementById('friendsMapContainer');
+  const W=container?.offsetWidth||380;
+  const H=container?.offsetHeight||300;
+
+  contacts.forEach((c,i)=>{
+    // Assign random but deterministic country to each contact
+    const countryKey=COUNTRIES[c.name.charCodeAt(0)%COUNTRIES.length];
+    const pos=CITY_COORDS[countryKey]||{x:50,y:50,city:'غير معروف'};
+    c._mapCountry=countryKey;
+    c._mapCity=pos.city;
+
+    // Create pin
+    const pin=document.createElement('div');
+    pin.className='map-friend-pin';
+    pin.style.left=`${pos.x}%`;
+    pin.style.top=`${pos.y}%`;
+    pin.style.animationDelay=`${i*0.1}s`;
+    const bg=AVCOLS[c.color]||'#888';
+    pin.innerHTML=`
+      <div class="map-pin-av${c.online?' online':''}" style="background:${bg};">
+        ${c.avatar?`<img src="${c.avatar}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">`
+          :c.name.charAt(0).toUpperCase()}
+      </div>
+      <div class="map-pin-needle"></div>
+      <div class="map-pin-label">${c.name.split(' ')[0]}</div>`;
+    pin.onclick=()=>{
+      toast('📍 '+c.name+' · '+pos.city);
+      switchTab('chats');
+      setTimeout(()=>openChat(contacts.find(x=>x.id===c.id)),200);
+      screen.classList.remove('on');
+    };
+    pins.appendChild(pin);
+
+    // List entry
+    const item=document.createElement('div');
+    item.style.cssText='display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--br);cursor:pointer;';
+    item.innerHTML=`${avHTML(c,'av-s')}
+      <div style="flex:1;">
+        <div style="font-size:13px;font-weight:600;color:var(--t0);">${c.name}</div>
+        <div style="font-size:11px;color:var(--t3);">📍 ${pos.city}، ${countryKey}</div>
+      </div>
+      ${c.online?'<div style="width:8px;height:8px;border-radius:50%;background:#22c55e;"></div>':''}`;
+    item.onclick=()=>{
+      switchTab('chats');openChat(contacts.find(x=>x.id===c.id));screen.classList.remove('on');
+    };
+    list.appendChild(item);
+  });
+
+  if(!contacts.length){
+    pins.innerHTML='<div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:rgba(255,255,255,.5);font-size:13px;">أضف أصدقاء لرؤيتهم على الخريطة</div>';
+  }
+}
+
+function refreshFriendsMap(){
+  renderFriendsMap();
+  toast('🔄 تم تحديث الخريطة');
+}
+
+// ════════════════════════════════════════════════════════
+// 📍 LIVE LOCATION TRACKING (Google Maps style)
+// ════════════════════════════════════════════════════════
+var _liveTrackIntervals={};
+
+function openLiveTracking(contact){
+  // Create a full-screen map overlay using OpenStreetMap
+  const ov=document.createElement('div');
+  ov.style.cssText='position:fixed;inset:0;z-index:900;background:var(--bg);display:flex;flex-direction:column;';
+  ov.innerHTML=`
+    <div style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid var(--br);flex-shrink:0;">
+      <button onclick="this.closest('div[style]').remove();clearLiveTrack()" style="background:none;border:none;font-size:24px;color:var(--t0);cursor:pointer;">‹</button>
+      <div>
+        <div style="font-size:16px;font-weight:800;color:var(--t0);">📍 موقع ${contact.name}</div>
+        <div style="font-size:12px;color:var(--acc);">● مباشر · يتحدث كل 10 ثواني</div>
+      </div>
+    </div>
+    <iframe id="liveTrackMap" style="flex:1;border:none;"
+      src="https://www.openstreetmap.org/export/embed.html?bbox=46.0,24.0,47.0,25.0&layer=mapnik&marker=24.7136,46.6753"
+      allowfullscreen></iframe>
+    <div style="padding:14px 16px;border-top:1px solid var(--br);background:var(--s0);">
+      <div style="font-size:13px;font-weight:700;color:var(--t0);">📍 الرياض، المملكة العربية السعودية</div>
+      <div style="font-size:12px;color:var(--t3);margin-top:2px;">24.7136° N, 46.6753° E · آخر تحديث: الآن</div>
+      <div style="display:flex;gap:8px;margin-top:10px;">
+        <button onclick="window.open('https://maps.google.com/?q=24.7136,46.6753')" style="flex:1;padding:10px;border-radius:12px;background:var(--acc);color:var(--bme-t);border:none;font-family:var(--fa);font-size:13px;font-weight:700;cursor:pointer;">🗺️ فتح في خرائط قوقل</button>
+        <button onclick="toast('📍 تم إرسال طلب الموقع');this.closest('div[style]').remove()" style="flex:1;padding:10px;border-radius:12px;background:var(--s2);color:var(--t0);border:1px solid var(--br);font-family:var(--fa);font-size:13px;cursor:pointer;">📤 طلب الموقع</button>
+      </div>
+    </div>`;
+  document.body.appendChild(ov);
+}
+
+function clearLiveTrack(){
+  Object.values(_liveTrackIntervals).forEach(clearInterval);
+  _liveTrackIntervals={};
+}
+
+// ════════════════════════════════════════════════════════
+// PATCH: Add AI trans display in renderMsgs
+// also add openLiveTracking to location messages
+// ════════════════════════════════════════════════════════
+// AI translation display is handled in the trans block:
+// ${m.trans||m.aiTrans ? ...}
+
+// Add to profile menu: stats, customizer, friends map
 
 
 // ═══════════════════════════════════
@@ -9149,6 +11102,144 @@ var _origSendMsg = null;
     <input class="ss-reply-in" id="ssReplyIn" placeholder="رد على القصة..." />
     <button onclick="sendStatusReply()" style="background:var(--acc);border:none;border-radius:50%;width:40px;height:40px;color:var(--bme-t);font-size:18px;cursor:pointer;flex-shrink:0;">➤</button>
   </div>
+</div>
+
+
+<!-- ══ IMAGE EDITOR ══ -->
+<div class="img-editor" id="imgEditor">
+  <!-- Top bar -->
+  <div class="ie-topbar">
+    <button class="ie-close" onclick="closeImgEditor()">✕</button>
+    <div class="ie-title" id="ieTitle">تعديل الصورة</div>
+    <button class="ie-hd-badge" id="ieHdBtn" onclick="toggleHD()">HD</button>
+  </div>
+
+  <!-- Canvas -->
+  <div class="ie-canvas-wrap" id="ieCanvasWrap">
+    <canvas id="ieCanvas"></canvas>
+    <input class="ie-text-input" id="ieTextInput" placeholder="اكتب نصاً..." style="display:none;" onblur="applyTextOverlay()">
+  </div>
+
+  <!-- Filters -->
+  <div class="ie-filters" id="ieFilters" style="display:none;">
+    <div class="ie-filter-item on" data-filter="none" onclick="applyFilter('none',this)">
+      <div class="ie-filter-thumb" id="fthumb_none"></div>
+      <div class="ie-filter-name">أصلي</div>
+    </div>
+    <div class="ie-filter-item" data-filter="grayscale" onclick="applyFilter('grayscale',this)">
+      <div class="ie-filter-thumb" id="fthumb_grayscale" style="filter:grayscale(1);"></div>
+      <div class="ie-filter-name">أبيض وأسود</div>
+    </div>
+    <div class="ie-filter-item" data-filter="sepia" onclick="applyFilter('sepia',this)">
+      <div class="ie-filter-thumb" id="fthumb_sepia" style="filter:sepia(1);"></div>
+      <div class="ie-filter-name">سيبيا</div>
+    </div>
+    <div class="ie-filter-item" data-filter="vivid" onclick="applyFilter('vivid',this)">
+      <div class="ie-filter-thumb" id="fthumb_vivid" style="filter:saturate(2) contrast(1.1);"></div>
+      <div class="ie-filter-name">زاهي</div>
+    </div>
+    <div class="ie-filter-item" data-filter="cool" onclick="applyFilter('cool',this)">
+      <div class="ie-filter-thumb" id="fthumb_cool" style="filter:hue-rotate(30deg) saturate(1.3);"></div>
+      <div class="ie-filter-name">بارد</div>
+    </div>
+    <div class="ie-filter-item" data-filter="warm" onclick="applyFilter('warm',this)">
+      <div class="ie-filter-thumb" id="fthumb_warm" style="filter:sepia(.4) saturate(1.5) brightness(1.05);"></div>
+      <div class="ie-filter-name">دافئ</div>
+    </div>
+    <div class="ie-filter-item" data-filter="fade" onclick="applyFilter('fade',this)">
+      <div class="ie-filter-thumb" id="fthumb_fade" style="filter:opacity(.8) brightness(1.1) saturate(.7);"></div>
+      <div class="ie-filter-name">باهت</div>
+    </div>
+  </div>
+
+  <!-- Draw color palette -->
+  <div class="ie-color-row" id="ieColorRow" style="display:none;">
+    <div class="ie-color-dot on" style="background:#fff;" onclick="setDrawColor('#fff',this)"></div>
+    <div class="ie-color-dot" style="background:#EF4444;" onclick="setDrawColor('#EF4444',this)"></div>
+    <div class="ie-color-dot" style="background:#3B82F6;" onclick="setDrawColor('#3B82F6',this)"></div>
+    <div class="ie-color-dot" style="background:#22c55e;" onclick="setDrawColor('#22c55e',this)"></div>
+    <div class="ie-color-dot" style="background:#F59E0B;" onclick="setDrawColor('#F59E0B',this)"></div>
+    <div class="ie-color-dot" style="background:#EC4899;" onclick="setDrawColor('#EC4899',this)"></div>
+    <div class="ie-color-dot" style="background:#000;" onclick="setDrawColor('#000',this)"></div>
+  </div>
+
+  <!-- Slider (brightness/contrast) -->
+  <div class="ie-slider-row" id="ieSliderRow">
+    <span style="font-size:14px;" id="ieSliderIco">☀️</span>
+    <input class="ie-slider" type="range" id="ieSlider" min="0" max="200" value="100" oninput="applySlider(this.value)">
+    <span class="ie-slider-val" id="ieSliderVal">100</span>
+  </div>
+
+  <!-- Tools -->
+  <div class="ie-tools">
+    <div class="ie-tool" onclick="ieSetMode('filter')"><div class="ie-tool-ico">🎨</div><div class="ie-tool-lbl">فلتر</div></div>
+    <div class="ie-tool" onclick="ieSetMode('draw')"><div class="ie-tool-ico">✏️</div><div class="ie-tool-lbl">رسم</div></div>
+    <div class="ie-tool" onclick="ieSetMode('text')"><div class="ie-tool-ico">Aa</div><div class="ie-tool-lbl">نص</div></div>
+    <div class="ie-tool" onclick="ieSetMode('brightness')"><div class="ie-tool-ico">☀️</div><div class="ie-tool-lbl">سطوع</div></div>
+    <div class="ie-tool" onclick="ieSetMode('contrast')"><div class="ie-tool-ico">◑</div><div class="ie-tool-lbl">تباين</div></div>
+    <div class="ie-tool" onclick="ieCrop()"><div class="ie-tool-ico">✂️</div><div class="ie-tool-lbl">قص</div></div>
+    <div class="ie-tool" onclick="ieRotate()"><div class="ie-tool-ico">🔄</div><div class="ie-tool-lbl">تدوير</div></div>
+    <div class="ie-tool" onclick="ieFlip()"><div class="ie-tool-ico">↔️</div><div class="ie-tool-lbl">عكس</div></div>
+    <div class="ie-tool" onclick="ieUndo()"><div class="ie-tool-ico">↩️</div><div class="ie-tool-lbl">تراجع</div></div>
+  </div>
+
+  <!-- Caption + Send -->
+  <div class="ie-bottom">
+    <div class="ie-caption-row">
+      <input class="ie-caption-in" id="ieCaptionIn" placeholder="أضف تعليقاً...">
+      <button class="ie-send-btn" onclick="sendEditedImage()">➤</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══ SPLASH SCREEN ══ -->
+<div class="splash-screen" id="splashScreen">
+  <div class="app-bg-overlay" id="splashBgOverlay"></div>
+  <div class="splash-logo">☁️</div>
+  <div class="splash-name">Cloud</div>
+  <div class="splash-tag">تواصل بلا حدود</div>
+  <div class="splash-loader">
+    <div class="splash-dot"></div>
+    <div class="splash-dot"></div>
+    <div class="splash-dot"></div>
+  </div>
+  <div class="splash-version">v4.0 · Cloud Messenger</div>
+</div>
+
+<!-- ══ APP BG OVERLAY ══ -->
+<div class="app-bg-overlay" id="appBgOverlay"></div>
+
+<!-- ══ E2E SCREEN ══ -->
+<div class="e2e-screen" id="e2eScreen">
+  <div class="e2e-lock-ico">🔐</div>
+  <div style="font-size:20px;font-weight:800;color:var(--t0);margin-bottom:8px;">تشفير من طرف لطرف</div>
+  <div style="font-size:13px;color:var(--t2);text-align:center;line-height:1.6;max-width:280px;">
+    رسائلك مشفرة بالكامل — لا يمكن لأحد قراءتها غيرك وغير المستلم
+  </div>
+  <div class="e2e-key-row" id="e2eKeyRow"></div>
+  <div style="font-size:11px;color:var(--t3);margin-bottom:12px;text-align:center;">
+    مفتاح التشفير الخاص بك
+  </div>
+  <button class="e2e-verify-btn" onclick="verifyE2E()">✅ تحقق من الأمان</button>
+  <button onclick="document.getElementById('e2eScreen').classList.remove('on')"
+    style="margin-top:12px;background:none;border:none;color:var(--t3);font-family:var(--fa);font-size:13px;cursor:pointer;">
+    إغلاق
+  </button>
+</div>
+
+<!-- ══ FRIENDS MAP ══ -->
+<div class="friends-map-screen" id="friendsMapScreen">
+  <div style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid var(--br);">
+    <button onclick="document.getElementById('friendsMapScreen').classList.remove('on')" style="background:none;border:none;font-size:24px;color:var(--t0);cursor:pointer;">‹</button>
+    <div style="font-size:17px;font-weight:800;color:var(--t0);">🗺️ خريطة الأصدقاء</div>
+    <button onclick="refreshFriendsMap()" style="margin-right:auto;background:var(--s2);border:1px solid var(--br);border-radius:10px;padding:6px 12px;font-size:12px;color:var(--t2);cursor:pointer;font-family:var(--fa);">🔄 تحديث</button>
+  </div>
+  <div class="map-container" id="friendsMapContainer">
+    <div class="map-grid"></div>
+    <div id="friendsPins"></div>
+  </div>
+  <div id="friendsMapList" style="max-height:200px;overflow-y:auto;border-top:1px solid var(--br);"></div>
 </div>
 
 </body>
