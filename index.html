@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <title>Cloud</title>
 <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jsQR/1.4.0/jsQR.min.js">
 </script>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
@@ -6247,32 +6248,53 @@ function deleteContact(id){
 // ═══════════════════════════════════
 // QR CODE
 // ═══════════════════════════════════
-function drawQR(canvas,text,size=180){
-  const ctx=canvas.getContext('2d');canvas.width=size;canvas.height=size;
-  const M=25,cell=Math.floor(size/M),pad=Math.floor((size-cell*M)/2);
-  function hash(s){let h=0x811c9dc5;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=(h*0x01000193)>>>0;}return h;}
-  const mod=[];for(let r=0;r<M;r++){mod[r]=[];for(let c=0;c<M;c++){mod[r][c]=(hash(text+r*31+c*97)&1)===0;}}
-  function finder(r,c){for(let i=0;i<7;i++)for(let j=0;j<7;j++)mod[r+i][c+j]=(i===0||i===6||j===0||j===6||(i>=2&&i<=4&&j>=2&&j<=4));}
-  finder(0,0);finder(0,18);finder(18,0);
-  for(let i=8;i<17;i++){mod[6][i]=(i%2===0);mod[i][6]=(i%2===0);}
-  const isDark=!['rose'].includes(curTheme);
-  ctx.fillStyle=isDark?'#13120E':'#fff';ctx.fillRect(0,0,size,size);
-  const fg=isDark?'#F5F0E8':'#1C1917';
-  const acc=getComputedStyle(document.body).getPropertyValue('--acc').trim()||'#D4A843';
-  for(let r=0;r<M;r++)for(let c=0;c<M;c++){
-    if(mod[r][c]){
-      const inF=(r<8&&c<8)||(r<8&&c>16)||(r>16&&c<8);
-      ctx.fillStyle=inF?acc:fg;
-      ctx.beginPath();ctx.roundRect(pad+c*cell+1,pad+r*cell+1,cell-2,cell-2,2);ctx.fill();
-    }
+function drawQR(canvas, text, size){
+  size = size || 180;
+  var isDark = !['rose'].includes(curTheme);
+  var bgColor = isDark ? '#13120E' : '#ffffff';
+  var fgColor = isDark ? '#F5F0E8' : '#1C1917';
+  canvas.width = size; canvas.height = size;
+  var ctx = canvas.getContext('2d');
+  ctx.fillStyle = bgColor; ctx.fillRect(0,0,size,size);
+
+  if (typeof QRCode === 'undefined') {
+    ctx.fillStyle = fgColor; ctx.font = '13px sans-serif';
+    ctx.textAlign = 'center'; ctx.fillText('QR N/A', size/2, size/2);
+    return;
   }
-  const cx2=size/2,cy2=size/2,cr2=cell*1.8;
-  ctx.fillStyle=isDark?'#13120E':'#fff';ctx.beginPath();ctx.arc(cx2,cy2,cr2+2,0,Math.PI*2);ctx.fill();
-  ctx.fillStyle=acc;ctx.beginPath();ctx.arc(cx2,cy2,cr2,0,Math.PI*2);ctx.fill();
-  ctx.fillStyle='#fff';ctx.font=`bold ${Math.floor(cr2*1.1)}px sans-serif`;
-  ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('💬',cx2,cy2+1);
+
+  var tmp = document.createElement('div');
+  tmp.style.cssText = 'position:absolute;left:-9999px;top:-9999px;';
+  document.body.appendChild(tmp);
+
+  try {
+    var qr = new QRCode(tmp, {
+      text: text,
+      width: size,
+      height: size,
+      colorDark: fgColor,
+      colorLight: bgColor,
+      correctLevel: QRCode.CorrectLevel.M
+    });
+    setTimeout(function(){
+      var el = tmp.querySelector('canvas') || tmp.querySelector('img');
+      if (el) {
+        if (el.tagName === 'CANVAS') {
+          ctx.drawImage(el, 0, 0, size, size);
+        } else {
+          var i2 = new Image();
+          i2.onload = function(){ ctx.drawImage(i2, 0, 0, size, size); };
+          i2.src = el.src;
+        }
+      }
+      tmp.remove();
+    }, 100);
+  } catch(e) {
+    tmp.remove();
+  }
 }
-function qrData(c){return `cloud://add?name=${encodeURIComponent(c.name)}&phone=${encodeURIComponent(c.phone||'')}&status=${encodeURIComponent(c.status||'')}&color=${c.color}`;}
+function qrData(c){return `cloud://add?name=${encodeURIComponent(c.name)}&phone=${encodeURIComponent(c.phone||'')}&status=${encodeURIComponent(c.status||'')}&color=${c.color}&id=${encodeURIComponent(c.pulseId||c.id||'')}&avatar=${encodeURIComponent(c.avatar||'')}`;}
+
 
 function openMyQR(){
   const b=document.getElementById('profileShBody');
@@ -6977,6 +6999,7 @@ function handleScan(raw){
           status: p.get('status') ||'',
           pulseId:p.get('id')     ||'',
           color:  p.get('color')  ||'B',
+          avatar: p.get('avatar') ||null,
         };
         closeOv('ovAdd');
         showScannedContactPreview(contactData);
