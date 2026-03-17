@@ -6250,48 +6250,90 @@ function deleteContact(id){
 // ═══════════════════════════════════
 function drawQR(canvas, text, size){
   size = size || 180;
-  var isDark = !['rose'].includes(curTheme);
-  var bgColor = isDark ? '#13120E' : '#ffffff';
-  var fgColor = isDark ? '#F5F0E8' : '#1C1917';
+  const isDark = !['rose'].includes(curTheme);
+  const bgColor = isDark ? '#13120E' : '#ffffff';
+  const acc = getComputedStyle(document.body).getPropertyValue('--acc').trim() || '#D4A843';
+  const fg  = isDark ? '#F5F0E8' : '#1C1917';
   canvas.width = size; canvas.height = size;
-  var ctx = canvas.getContext('2d');
-  ctx.fillStyle = bgColor; ctx.fillRect(0,0,size,size);
+  const ctx = canvas.getContext('2d');
 
   if (typeof QRCode === 'undefined') {
-    ctx.fillStyle = fgColor; ctx.font = '13px sans-serif';
-    ctx.textAlign = 'center'; ctx.fillText('QR N/A', size/2, size/2);
+    ctx.fillStyle = bgColor; ctx.fillRect(0,0,size,size);
+    ctx.fillStyle = fg; ctx.font='13px sans-serif';
+    ctx.textAlign='center'; ctx.fillText('QR N/A',size/2,size/2);
     return;
   }
 
-  var tmp = document.createElement('div');
+  const tmp = document.createElement('div');
   tmp.style.cssText = 'position:absolute;left:-9999px;top:-9999px;';
   document.body.appendChild(tmp);
 
   try {
-    var qr = new QRCode(tmp, {
+    new QRCode(tmp, {
       text: text,
       width: size,
       height: size,
-      colorDark: fgColor,
-      colorLight: bgColor,
+      colorDark: '#000000',
+      colorLight: '#ffffff',
       correctLevel: QRCode.CorrectLevel.M
     });
-    setTimeout(function(){
-      var el = tmp.querySelector('canvas') || tmp.querySelector('img');
-      if (el) {
-        if (el.tagName === 'CANVAS') {
-          ctx.drawImage(el, 0, 0, size, size);
-        } else {
-          var i2 = new Image();
-          i2.onload = function(){ ctx.drawImage(i2, 0, 0, size, size); };
-          i2.src = el.src;
+  } catch(e){ tmp.remove(); return; }
+
+  setTimeout(function(){
+    const src = tmp.querySelector('canvas') || tmp.querySelector('img');
+    if (!src){ tmp.remove(); return; }
+
+    const off = document.createElement('canvas');
+    off.width = size; off.height = size;
+    const octx = off.getContext('2d');
+
+    const finish = function(){
+      ctx.fillStyle = bgColor;
+      ctx.fillRect(0, 0, size, size);
+
+      const qrPx = octx.getImageData(0, 0, size, size).data;
+      const cellSize = size / 25;
+
+      for (let y = 0; y < size; y += cellSize) {
+        for (let x = 0; x < size; x += cellSize) {
+          const px = Math.floor(x + cellSize/2);
+          const py = Math.floor(y + cellSize/2);
+          const idx = (py * size + px) * 4;
+          if (qrPx[idx] >= 128) continue;
+
+          const inFinder = (x < cellSize*8 && y < cellSize*8) ||
+                           (x > size - cellSize*9 && y < cellSize*8) ||
+                           (x < cellSize*8 && y > size - cellSize*9);
+
+          ctx.fillStyle = inFinder ? acc : fg;
+          ctx.beginPath();
+          ctx.roundRect(x+1, y+1, cellSize-2, cellSize-2, cellSize*0.38);
+          ctx.fill();
         }
       }
+
+      const cr = cellSize * 2.2;
+      ctx.fillStyle = bgColor;
+      ctx.beginPath(); ctx.arc(size/2, size/2, cr+3, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle = acc;
+      ctx.beginPath(); ctx.arc(size/2, size/2, cr, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle = '#fff';
+      ctx.font = 'bold ' + Math.floor(cr*1.1) + 'px sans-serif';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText('\u{1F4AC}', size/2, size/2+1);
+
       tmp.remove();
-    }, 100);
-  } catch(e) {
-    tmp.remove();
-  }
+    };
+
+    if (src.tagName === 'CANVAS') {
+      octx.drawImage(src, 0, 0, size, size);
+      finish();
+    } else {
+      const img = new Image();
+      img.onload = function(){ octx.drawImage(img, 0, 0, size, size); finish(); };
+      img.src = src.src;
+    }
+  }, 120);
 }
 function qrData(c){return `cloud://add?name=${encodeURIComponent(c.name)}&phone=${encodeURIComponent(c.phone||'')}&status=${encodeURIComponent(c.status||'')}&color=${c.color}&id=${encodeURIComponent(c.pulseId||c.id||'')}&avatar=${encodeURIComponent(c.avatar||'')}`;}
 
@@ -7087,13 +7129,28 @@ function showScannedContactPreview(contactData){
 
 function confirmAddScanned(data, sheetEl){
   sheetEl?.remove();
-  addContact(data);
+  // Send real friend request via Supabase
+  const fakeContact = {
+    id:      'qr_' + Date.now(),
+    name:    data.name,
+    phone:   data.phone   || '',
+    pulseId: data.pulseId || '',
+    color:   data.color   || 'C',
+    avatar:  data.avatar  || null,
+    status:  data.status  || '',
+    friendStatus: 'pending',
+    unread: 0, lastMsg: '', lastTime: '',
+  };
+  // Check not already in contacts
+  const existing = contacts.find(c =>
+    (c.pulseId && c.pulseId === fakeContact.pulseId) ||
+    (c.phone   && c.phone   === fakeContact.phone)
+  );
+  if (!existing) contacts.push(fakeContact);
+  sendFriendRequest({...fakeContact, greeting: 'مسح QR Code — أريد إضافتك 👋'});
   switchTab('friends');
-  toast('✅ تمت إضافة '+data.name);
-  // Also send friend request if pulseId
-  if(data.pulseId){
-    simulateIncomingRequest({...data, greeting:'مرحباً! أضفني من QR Code'});
-  }
+  renderFriends();
+  renderChatList();
 }
 
 // ═══════════════════════════════════
@@ -10494,8 +10551,8 @@ function clearLiveTrack(){
 
 // Supabase config (shared public instance)
 var CLOUD_SB = {
-  url: 'https://ulfevadtqbbdparvzfgp.supabase.co',
-  key: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVsZmV2YWR0cWJiZHBhcnZ6ZmdwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMwMTI1ODIsImV4cCI6MjA4ODU4ODU4Mn0.Hz1VoDySjBkAbqNuJdBryyc7pmAmoPoLXY-_Idyy2NY',
+  url: 'https://gjowraahfzexxzgwvyrb.supabase.co',
+  key: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdqb3dyYWFoZnpleHh6Z3d2eXJiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM3NzQ5OTMsImV4cCI6MjA4OTM1MDk5M30.i_lSfKa3swzP6pXIXHYIn2oJmFgWXqNtl90tw4xhUpM',
 };
 
 var _frPollTimer = null;
@@ -10527,16 +10584,17 @@ function sendFriendRequest(data){
     phone: me?.phone || '',
     role:  'user',
     msg: JSON.stringify({
-      type:       'friend_req',
-      to:         contact.phone || contact.id,
-      fromName:   me?.name    || 'مستخدم',
-      fromPhone:  me?.phone   || '',
-      fromColor:  me?.color   || 'B',
-      fromAvatar: me?.avatar  || null,
-      fromStatus: me?.status  || '',
-      fromPulseId:me?.pulseId || '',
-      greeting:   data.greeting || 'أهلاً! أريد إضافتك 👋',
-      toName:     contact.name,
+      type:        'friend_req',
+      to:          contact.pulseId || contact.phone || contact.id,
+      toPhone:     contact.phone || '',
+      fromName:    me?.name    || 'مستخدم',
+      fromPhone:   me?.phone   || '',
+      fromColor:   me?.color   || 'B',
+      fromAvatar:  me?.avatar  || null,
+      fromStatus:  me?.status  || '',
+      fromPulseId: me?.pulseId || '',
+      greeting:    data.greeting || 'أهلاً! أريد إضافتك 👋',
+      toName:      contact.name,
     }),
     img: null,
     ts:  Date.now(),
@@ -10611,12 +10669,14 @@ function acceptRequest(rid, allowPosts){
     phone: me?.phone || '',
     role:  'user',
     msg: JSON.stringify({
-      type:       'friend_accept',
-      to:         req.phone || req.name,
-      fromName:   me?.name    || 'مستخدم',
-      fromPhone:  me?.phone   || '',
-      fromColor:  me?.color   || 'B',
-      fromAvatar: me?.avatar  || null,
+      type:        'friend_accept',
+      to:          req.pulseId || req.phone || req.name,
+      toPhone:     req.phone || '',
+      fromName:    me?.name    || 'مستخدم',
+      fromPhone:   me?.phone   || '',
+      fromColor:   me?.color   || 'B',
+      fromAvatar:  me?.avatar  || null,
+      fromPulseId: me?.pulseId || '',
     }),
     img: null,
     ts:  Date.now(),
@@ -10677,11 +10737,12 @@ function pollFriendRequests(){
           const myName  = me?.name  || '';
 
           // ── طلب إضافة وارد لي ──
+          const myPulseId = me?.pulseId || '';
           if(data.type === 'friend_req' &&
-            (data.to === myPhone || data.to === myName) &&
+            (data.to === myPhone || data.to === myName || (myPulseId && data.to === myPulseId)) &&
             data.fromPhone !== myPhone && data.fromName !== myName){
 
-            const already = contacts.find(c => c.phone === data.fromPhone || c.name === data.fromName);
+            const already = contacts.find(c => c.phone === data.fromPhone || c.name === data.fromName || (c.pulseId && c.pulseId === data.fromPulseId));
             const alreadyPend = friendReqs.find(r => r.phone === data.fromPhone || r.name === data.fromName);
             if(already || alreadyPend) return;
 
@@ -10713,7 +10774,7 @@ function pollFriendRequests(){
 
           // ── قبول طلب مني ──
           if(data.type === 'friend_accept' &&
-            (data.to === myPhone || data.to === myName) &&
+            (data.to === myPhone || data.to === myName || (myPulseId && data.to === myPulseId)) &&
             data.fromPhone !== myPhone){
 
             const c = contacts.find(x => x.phone === data.fromPhone || x.name === data.fromName);
