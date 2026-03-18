@@ -170,6 +170,7 @@ body{font-family:var(--fa);background:var(--bg);color:var(--t1);transition:backg
   overflow:hidden;
   opacity:0;animation:fadeUp .4s var(--ease) .1s forwards;
 }
+#mainWrap.visible{opacity:1 !important;animation:none !important;}
 #mainWrap.visible{opacity:1;animation:none;}
 @keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
 
@@ -4083,6 +4084,8 @@ document.addEventListener('DOMContentLoaded', ()=>{
   if (loadFromStorage()) {
     document.getElementById('mainWrap').classList.add('visible');
     document.getElementById('mainWrap').style.opacity = '1';
+    // Mark user as online
+    if(me) me.online = true;
     applyLang(curLang);
     document.body.setAttribute('data-theme', curTheme);
     applyThemeVars(THEMES.find(th=>th.id===curTheme)||THEMES[0]);
@@ -4260,6 +4263,14 @@ function loadFromStorage() {
     contacts   = acc.contacts   || [];
     groups     = acc.groups     || [];
     friendReqs = acc.friendReqs || [];
+  // Refresh online status on load
+  if(contacts && contacts.length) {
+    contacts.forEach(c => {
+      if(c.friendStatus === 'accepted' || !c.friendStatus) {
+        c.online = Math.random() > 0.4; // 60% chance online
+      }
+    });
+  }
     convos     = acc.convos     || {};
     posts      = acc.posts      || [];
     favorites  = acc.favorites  || [];
@@ -4580,6 +4591,9 @@ function launch(){
   mw.classList.add('visible');
   mw.classList.remove('hidden');
   mw.style.opacity = '1';
+  mw.style.animation = 'none';
+  // Set online status
+  if(me) me.online = true;
   updateMeNav();
   renderChatList();
   renderFriends();
