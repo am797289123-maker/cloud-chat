@@ -5370,6 +5370,29 @@ function renderStatusBar(){
 }
 
 function renderDiscover(){
+  // تحديد الموقع الحقيقي في تبويب اكتشف
+  if(navigator.geolocation){
+    navigator.geolocation.getCurrentPosition(pos=>{
+      const lat=pos.coords.latitude, lng=pos.coords.longitude;
+      window._discLat=lat; window._discLng=lng;
+      const nameEl=document.getElementById('discLocName');
+      const coordEl=document.getElementById('discLocCoords');
+      if(coordEl) coordEl.textContent=lat.toFixed(4)+'° N, '+lng.toFixed(4)+'° E · آخر تحديث: الآن';
+      // Reverse geocode
+      fetch('https://nominatim.openstreetmap.org/reverse?lat='+lat+'&lon='+lng+'&format=json')
+        .then(r=>r.json()).then(d=>{
+          if(nameEl) nameEl.textContent='📍 '+(d.display_name||lat+','+lng).split(',').slice(0,3).join(',');
+        }).catch(()=>{
+          if(nameEl) nameEl.textContent='📍 '+lat.toFixed(4)+', '+lng.toFixed(4);
+        });
+      // Update map frame
+      const frame=document.getElementById('discoverMapFrame');
+      if(frame) frame.src='https://www.openstreetmap.org/export/embed.html?bbox='+(lng-.05)+','+(lat-.05)+','+(lng+.05)+','+(lat+.05)+'&layer=mapnik&marker='+lat+','+lng;
+    }, ()=>{
+      const nameEl=document.getElementById('discLocName');
+      if(nameEl) nameEl.textContent='📍 GPS غير متاح';
+    },{enableHighAccuracy:true,timeout:10000});
+  }
   const feed=document.getElementById('discoverFeed');
   feed.innerHTML='';
   feed.className='disc-wechat';
@@ -7602,8 +7625,9 @@ function openMapForLocation(contact){
         document.getElementById('mapAddrTxt').textContent='اضغط على الخريطة لاختيار موقعك';
       });
     } else {
-      _mapInst.setView([24.7136,46.6753],13);
-      _mapLatLng={lat:24.7136,lng:46.6753};
+      // GPS not supported - show world map
+      _mapInst.setView([0,0],2);
+      document.getElementById('mapAddrTxt').textContent='GPS غير متاح - اضغط لاختيار موقعك';
     }
     _mapInst.invalidateSize();
   },120);
@@ -11109,13 +11133,13 @@ function openLiveTracking(contact){
       </div>
     </div>
     <iframe id="liveTrackMap" style="flex:1;border:none;"
-      src="https://www.openstreetmap.org/export/embed.html?bbox=46.0,24.0,47.0,25.0&layer=mapnik&marker=24.7136,46.6753"
+      id="discoverMapFrame" src="about:blank"
       allowfullscreen></iframe>
     <div style="padding:14px 16px;border-top:1px solid var(--br);background:var(--s0);">
       <div style="font-size:13px;font-weight:700;color:var(--t0);">📍 الرياض، المملكة العربية السعودية</div>
       <div style="font-size:12px;color:var(--t3);margin-top:2px;">24.7136° N, 46.6753° E · آخر تحديث: الآن</div>
       <div style="display:flex;gap:8px;margin-top:10px;">
-        <button onclick="window.open('https://maps.google.com/?q=24.7136,46.6753')" style="flex:1;padding:10px;border-radius:12px;background:var(--acc);color:var(--bme-t);border:none;font-family:var(--fa);font-size:13px;font-weight:700;cursor:pointer;">🗺️ فتح في خرائط قوقل</button>
+        <button id="discOpenMaps" onclick="if(window._discLat)window.open('https://maps.google.com/?q='+window._discLat+','+window._discLng)" style="flex:1;padding:10px;border-radius:12px;background:var(--acc);color:var(--bme-t);border:none;font-family:var(--fa);font-size:13px;font-weight:700;cursor:pointer;">🗺️ فتح في خرائط قوقل</button>
         <button onclick="toast('📍 تم إرسال طلب الموقع');this.closest('div[style]').remove()" style="flex:1;padding:10px;border-radius:12px;background:var(--s2);color:var(--t0);border:1px solid var(--br);font-family:var(--fa);font-size:13px;cursor:pointer;">📤 طلب الموقع</button>
       </div>
     </div>`;
@@ -11146,6 +11170,17 @@ var CLOUD_SB = {
   url: 'https://ulfevadtqbbdparvzfgp.supabase.co',
   key: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVsZmV2YWR0cWJiZHBhcnZ6ZmdwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMwMTI1ODIsImV4cCI6MjA4ODU4ODU4Mn0.Hz1VoDySjBkAbqNuJdBryyc7pmAmoPoLXY-_Idyy2NY',
 };
+
+
+// ── Helper: build chat room ID ──
+function getChatRoom(contactOrId){
+  const myId = ((me&&me.pulseId)||(me&&me.phone)||'unknown').replace(/\s+/g,'').replace(/[^\w+]/g,'_');
+  const cObj = typeof contactOrId==='object' ? contactOrId : contacts.find(x=>x.id===contactOrId);
+  if(!cObj) return null;
+  const toId = (cObj.pulseId||cObj.phone||String(cObj.id)).replace(/\s+/g,'').replace(/[^\w+]/g,'_');
+  if(!cObj.pulseId && !cObj.phone) return null; // not a real contact
+  return {room:[myId,toId].sort().join('__chat__'), myId, toId, isReal:!!(cObj.pulseId||cObj.phone)};
+}
 
 var _frPollTimer = null;
 var _frLastTs    = Date.now() - 86400000; // آخر 24 ساعة
@@ -11483,10 +11518,15 @@ function startMsgPolling(contact){
             ts: data.ts,
             read: 'read',
           };
-          // دعم الصور الواردة
-          if(data.imgs && data.imgs.length) {
-            incomingMsg.type='images';
-            incomingMsg.imgs=data.imgs;
+          // دعم أنواع الملفات المختلفة
+          if(data.type === 'image' && data.src){
+            incomingMsg.type='image'; incomingMsg.src=data.src;
+          } else if(data.type === 'video' && data.src){
+            incomingMsg.type='video'; incomingMsg.src=data.src;
+          } else if(data.type === 'file'){
+            incomingMsg.type='file'; incomingMsg.fileName=data.fileName||'ملف';
+          } else if(data.imgs && data.imgs.length){
+            incomingMsg.type='images'; incomingMsg.imgs=data.imgs;
           }
           convos[cid].push(incomingMsg);
           // بعث read_receipt للمرسل
@@ -12084,22 +12124,40 @@ function sendFileMsg(cid, file){
   const isVid = file.type.startsWith('video/');
   const r = new FileReader();
   r.onload = ev=>{
+    const ts = Date.now();
     if(!convos[cid]) convos[cid]=[];
     const msg = {
-      from:'me', time:now(),
+      from:'me', time:now(), ts,
       type: isImg?'image': isVid?'video':'file',
       src: ev.target.result,
       fileName: file.name,
       fileSize: (file.size/1024 > 1024 ? (file.size/1048576).toFixed(1)+' MB' : (file.size/1024).toFixed(0)+' KB'),
-      status:'sent'
+      read:'sent', status:'sent'
     };
     convos[cid].push(msg);
-    const c = contacts.find(x=>x.id===cid);
-    if(c){ c.lastMsg = isImg?'📷 صورة': isVid?'🎥 فيديو':'📎 '+file.name; c.lastTime=now(); }
+    const ct = contacts.find(x=>x.id===cid);
+    if(ct){ ct.lastMsg = isImg?'📷 صورة': isVid?'🎥 فيديو':'📎 '+file.name; ct.lastTime=now(); }
     renderChatList();
-    if(activeChat && activeChat.id===cid) renderChat(cid);
+    if(activeChat && activeChat.id===cid) renderMsgs(cid);
     saveToStorage();
-    addNotif('📤','تم الإرسال', file.name, null);
+    // إرسال عبر Supabase للأصدقاء الحقيقيين
+    const cr = getChatRoom(cid);
+    if(cr && cr.isReal){
+      // صور صغيرة نبعتها base64، كبيرة نبعت اسم الملف فقط
+      const preview = isImg && ev.target.result.length < 60000 ? ev.target.result : null;
+      sbCloud('messages',{method:'POST',body:JSON.stringify({
+        room: cr.room, name: me?me.name:'', role: 'chat_msg',
+        msg: JSON.stringify({
+          text: isImg?'📷 صورة': isVid?'🎥 فيديو':'📎 '+file.name,
+          type: isImg?'image': isVid?'video':'file',
+          src: preview,
+          fileName: file.name,
+          from: cr.myId, fromName: me?me.name:'', ts,
+        }),
+        img: preview,
+        ts,
+      })}).catch(()=>{});
+    }
   };
   r.readAsDataURL(file);
 }
