@@ -8214,7 +8214,10 @@ function startIncomingCallPoll(){
           console.log('[POLL] call_invite age:', age, 'ms, callId:', callId, 'shown:', _shownCallIds.has(callId));
           if(age < 35000 && !_shownCallIds.has(callId)){
             _shownCallIds.add(callId);
-            showIncomingCall(sig, sig.room);
+            // استخدم room من الـ row مباشرة كـ fallback
+            const callRoom = sig.room || row.room.replace('cloud_callinbox_','cloud_call_') || _rtcCallRoom;
+            console.log('[CALL] Showing incoming call from:', sig.fromName, 'room:', callRoom);
+            showIncomingCall(sig, callRoom);
             break;
           }
         }catch(e){ console.error('[POLL] parse error:', e); }
@@ -8231,7 +8234,10 @@ function showIncomingCall(sig, room){
   document.getElementById('inCallAv').style.background=AVCOLS[sig.fromColor]||'#4F8EF7';
   document.getElementById('inCallName').textContent=sig.fromName||'مجهول';
   document.getElementById('inCallType').textContent='مكالمة واردة...';
-  screen.style.display='flex';
+  // Force show - override any CSS that might hide it
+  screen.style.cssText = 'display:flex !important; position:fixed; inset:0; z-index:99999;' +
+    'background:linear-gradient(180deg,#1a1a2e 0%,#16213e 100%);' +
+    'flex-direction:column; align-items:center; justify-content:center; gap:24px;';
   try{
     var ctx=new(window.AudioContext||window.webkitAudioContext)();
     function beep(t){
