@@ -4088,8 +4088,9 @@ document.addEventListener('DOMContentLoaded', ()=>{
   if (loadFromStorage()) {
     document.getElementById('mainWrap').classList.add('visible');
     document.getElementById('mainWrap').style.opacity = '1';
-    // Mark user as online
     if(me) me.online = true;
+    // ابدأ استقبال الاتصالات فوراً بعد تحميل البيانات
+    setTimeout(startIncomingCallPoll, 500);
     applyLang(curLang);
     document.body.setAttribute('data-theme', curTheme);
     applyThemeVars(THEMES.find(th=>th.id===curTheme)||THEMES[0]);
@@ -7637,7 +7638,7 @@ document.getElementById('mapSendBtn').onclick=()=>{
   toast('📍 '+(t('locationSent')));
   // إرسال عبر Supabase للأصدقاء الحقيقيين
   if(ct.pulseId){
-    const myId=(me&&me.pulseId)||(me&&me.phone)||'unknown';
+    const myId=((me&&me.pulseId)||(me&&me.phone)||'unknown').replace(/\s+/g,'').replace(/[^\w+]/g,'_');
     const toId=ct.pulseId||ct.phone||String(ct.id);
     const chatRoom=[myId,toId].sort().join('__chat__');
     sbCloud('messages',{method:'POST',body:JSON.stringify({
@@ -8054,22 +8055,25 @@ async function openCallScreen(contact){
   const localVid=document.getElementById('callLocalVideo');
   if(localVid) localVid.style.display='none';
 
-  const targetId = contact.pulseId || contact.phone || String(contact.id);
+  const targetId = (contact.pulseId || contact.phone || String(contact.id)).replace(/\s+/g,'').replace(/[^\w+]/g,'_');
   const myId = (me&&me.pulseId)||(me&&me.phone)||'unknown';
   _rtcCallRoom = [myId, targetId].sort().join('__');
 
   // إرسال الاتصال لـ inbox الشخص التاني مباشرة
   const targetInbox = 'cloud_callinbox_' + targetId;
+  console.log('[CALL] Sending to inbox:', targetInbox, 'myId:', myId, 'targetId:', targetId);
+  const callTs = Date.now();
   await sbCloud('messages',{method:'POST',body:JSON.stringify({
     room: targetInbox,
     name: me ? me.name : '',
     role: 'call_invite',
     msg: JSON.stringify({
       from:myId, fromName:me?me.name:'', fromColor:me?me.color:'C',
-      to:targetId, room:_rtcCallRoom, ts:Date.now(),
+      to:targetId, room:_rtcCallRoom, ts:callTs,
     }),
-    ts: Date.now(),
-  })});
+    ts: callTs,
+  })}).then(r=>{ console.log('[CALL] Invite sent, status:', r.status); })
+    .catch(e=>{ console.error('[CALL] Send failed:', e); toast('❌ فشل إرسال الاتصال'); });
 
   var answered = false;
   rtcPoll(_rtcCallRoom, async (row)=>{
@@ -8133,11 +8137,24 @@ async function startWebRTCCaller(){
   }
 }
 
+var _incomingCallPollStarted = false;
+
 function startIncomingCallPoll(){
-  if(!me) return;
-  const myId = me.pulseId||me.phone; if(!myId) return;
-  // كل مستخدم عنده room خاص باستقبال الاتصالات باسمه
+  // لو me مش جاهز، حاول تاني بعد ثانية
+  if(!me || !( me.pulseId||me.phone)){
+    setTimeout(startIncomingCallPoll, 1000);
+    return;
+  }
+  if(_incomingCallPollStarted) return;
+  _incomingCallPollStarted = true;
+
+  const myId = (me.pulseId||me.phone||'').replace(/\s+/g,'').replace(/[^\w+]/g,'_');
   const inboxRoom = 'cloud_callinbox_' + myId;
+  // أيضاً استمع على رقم الهاتف لو كانوا يستخدمونه للـ ID
+  const phone2 = (me.phone||'').replace(/\s+/g,'').replace(/[^\w+]/g,'_');
+  const inboxRoom2 = me.pulseId && me.phone && me.pulseId !== phone2
+    ? 'cloud_callinbox_' + phone2 : null;
+  console.log('[POLL] My inbox rooms:', inboxRoom, inboxRoom2||'(none)');
   var lastCallTs = Date.now() - 5000;
   var _shownCallIds = new Set();
 
@@ -8145,20 +8162,38 @@ function startIncomingCallPoll(){
     if(document.getElementById('callScreen').classList.contains('on')) return;
     if(document.getElementById('incomingCallScreen').style.display==='flex') return;
     try{
-      const r = await sbCloud('messages?room=eq.'+encodeURIComponent(inboxRoom)+'&role=eq.call_invite&ts=gt.'+lastCallTs+'&order=ts.desc&limit=3');
+      // Poll both inbox rooms (pulseId and phone)
+      const rooms = [inboxRoom];
+      if(inboxRoom2) rooms.push(inboxRoom2);
+      const allRows = [];
+      for(const room of rooms){
+        try{
+          const rx = await sbCloud(
+            'messages?room=eq.'+encodeURIComponent(room)+
+            '&role=eq.call_invite&ts=gt.'+lastCallTs+
+            '&order=ts.desc&limit=3'
+          );
+          const rrows = await rx.json();
+          if(Array.isArray(rrows)) allRows.push(...rrows);
+        }catch(e){}
+      }
+      const r = {json: ()=>Promise.resolve(allRows)};
       const rows = await r.json();
       if(!Array.isArray(rows)||!rows.length) return;
+      console.log('[POLL] Got', rows.length, 'rows in', inboxRoom);
       for(const row of rows){
         lastCallTs = Math.max(lastCallTs, row.ts);
         try{
           const sig = JSON.parse(row.msg||'{}');
-          const callId = sig.room + '_' + sig.ts;
-          if(Date.now()-sig.ts < 35000 && !_shownCallIds.has(callId)){
+          const callId = sig.room+'_'+sig.ts;
+          const age = Date.now()-sig.ts;
+          console.log('[POLL] call_invite age:', age, 'ms, callId:', callId, 'shown:', _shownCallIds.has(callId));
+          if(age < 35000 && !_shownCallIds.has(callId)){
             _shownCallIds.add(callId);
             showIncomingCall(sig, sig.room);
             break;
           }
-        }catch(e){}
+        }catch(e){ console.error('[POLL] parse error:', e); }
       }
     }catch(e){}
   }, 2000);
@@ -9743,7 +9778,7 @@ function sendMultiImages(cid, imgDataArray){
   // إرسال عبر Supabase للأصدقاء الحقيقيين
   const ct=contacts.find(x=>x.id===cid);
   if(ct && ct.pulseId){
-    const myId=(me&&me.pulseId)||(me&&me.phone)||'unknown';
+    const myId=((me&&me.pulseId)||(me&&me.phone)||'unknown').replace(/\s+/g,'').replace(/[^\w+]/g,'_');
     const toId=ct.pulseId||ct.phone||String(cid);
     const chatRoom=[myId,toId].sort().join('__chat__');
     // لو صورة واحدة صغيرة نبعتها كـ base64، لو كبيرة نبعت placeholder
