@@ -4874,6 +4874,7 @@ function renderMsgs(cid){
     if(m.type==='voice') bubContent=renderVoiceMsg(m);
     else if(m.type==='poll') bubContent=renderPollMsg(m,idx,cid);
     else if(m.type==='liveLocation') bubContent=renderLiveLocMsg(m);
+    else if(m.type==='file') bubContent=renderFileMsg(m);
     else if(m.type==='game') bubContent=`<div class="game-embed"><div class="game-header"><span class="game-ico">🎮</span><span class="game-title">خمّن الرقم</span></div><div class="game-body"><div style="font-size:13px;color:var(--t2);">${m.text}</div>${!m.solved?`<button class="game-play-btn" onclick="guessNumber(${idx},'${cid}')">خمّن</button>`:'<div style="color:#22c55e;font-weight:700;margin-top:6px;">✅ تم!</div>'}</div></div>`;
     else if(m.type==='images') bubContent=renderMultiImages(m.imgs||[]);
     else if(m.img) bubContent=`
@@ -5016,10 +5017,29 @@ function handleAttach(type, contact){
         // Open image editor instead of sending directly
         openImgEditor(f, contact);
       } else {
-        const fileMsg={from:'me',text:`📎 ${f.name}`,time:now()};
-        convos[contact.id].push(fileMsg);
-        contact.lastMsg='📎 '+f.name;contact.lastTime=t('now')||'Now';
-        renderChatList();renderMsgs(contact.id);
+        // File/document — read as base64 and send
+        const fr=new FileReader();
+        fr.onload=ev=>{
+          const tsNow=Date.now();
+          const fileMsg={from:'me',type:'file',text:'📎 '+f.name,fileName:f.name,fileSize:Math.round(f.size/1024)+'KB',fileSrc:ev.target.result,time:now(),ts:tsNow,read:'sent'};
+          convos[contact.id].push(fileMsg);
+          contact.lastMsg='📎 '+f.name; contact.lastTime=now();
+          renderChatList(); renderMsgs(contact.id); saveToStorage();
+          // Broadcast via Supabase
+          const ct=contacts.find(x=>x.id===contact.id);
+          if(ct&&(ct.pulseId||ct.phone)){
+            const myId=(me&&me.pulseId)||(me&&me.phone)||'unknown';
+            const toId=ct.pulseId||ct.phone||String(ct.id);
+            const chatRoom=[myId,toId].sort().join('__chat__');
+            sbCloud('messages',{method:'POST',body:JSON.stringify({
+              room:chatRoom, name:me?me.name:'', phone:me?me.phone:'', role:'chat_msg',
+              msg:JSON.stringify({type:'file',fileName:f.name,fileSize:Math.round(f.size/1024)+'KB',fileSrc:ev.target.result,from:myId,fromName:me?me.name:'',ts:tsNow}),
+              ts:tsNow,
+            })}).catch(()=>{});
+          }
+          toast('📎 '+f.name+' — تم الإرسال');
+        };
+        fr.readAsDataURL(f);
       }
       document.body.removeChild(inp);
     };
@@ -7876,12 +7896,41 @@ function stopRecording(cid, demo=false){
 
 function sendVoiceMsg(cid, audioUrl, dur){
   if(!activeChat) return;
-  const durStr = dur>=60 ? `${Math.floor(dur/60)}:${String(dur%60).padStart(2,'0')}` : `0:${String(dur||2).padStart(2,'0')}`;
-  const msg={from:'me', time:now(), type:'voice', audioUrl, duration:durStr};
+  const tsNow=Date.now();
+  const durStr = dur>=60?`${Math.floor(dur/60)}:${String(dur%60).padStart(2,'0')}`:`0:${String(dur||2).padStart(2,'0')}`;
+  const msg={from:'me',time:now(),type:'voice',audioUrl,duration:durStr,ts:tsNow};
   if(!convos[cid]) convos[cid]=[];
   convos[cid].push(msg);
-  activeChat.lastMsg='🎙️ رسالة صوتية';activeChat.lastTime=now();
+  activeChat.lastMsg='🎙️ رسالة صوتية'; activeChat.lastTime=now();
   renderChatList(); renderMsgs(cid); saveToStorage();
+
+  // ── Broadcast via Supabase ──
+  const ct=contacts.find(x=>x.id===cid);
+  if(ct&&(ct.pulseId||ct.phone)&&audioUrl){
+    const myId=(me&&me.pulseId)||(me&&me.phone)||'unknown';
+    const toId=ct.pulseId||ct.phone||String(ct.id);
+    const chatRoom=[myId,toId].sort().join('__chat__');
+    // Convert audioUrl blob to base64 for sending
+    fetch(audioUrl).then(r=>r.blob()).then(blob=>{
+      const reader=new FileReader();
+      reader.onload=ev=>{
+        const b64=ev.target.result; // data:audio/webm;base64,...
+        sbCloud('messages',{method:'POST',body:JSON.stringify({
+          room:chatRoom, name:me?me.name:'', phone:me?me.phone:'', role:'chat_msg',
+          msg:JSON.stringify({type:'voice',audioSrc:b64,duration:durStr,from:myId,fromName:me?me.name:'',ts:tsNow}),
+          ts:tsNow,
+        })}).catch(()=>{});
+      };
+      reader.readAsDataURL(blob);
+    }).catch(()=>{
+      // fallback: send without audio data (other side sees placeholder)
+      sbCloud('messages',{method:'POST',body:JSON.stringify({
+        room:chatRoom, name:me?me.name:'', phone:me?me.phone:'', role:'chat_msg',
+        msg:JSON.stringify({type:'voice',audioSrc:null,duration:durStr,from:myId,fromName:me?me.name:'',ts:tsNow}),
+        ts:tsNow,
+      })}).catch(()=>{});
+    });
+  }
 }
 
 // Render voice message bubble
@@ -7950,6 +7999,9 @@ function openCallScreen(contact){
 
 function _sendCallNotification(contact, state){
   try{
+    // Send to both phone AND pulseId so matching works regardless
+    var toId = contact.pulseId||contact.phone||String(contact.id||'');
+    var toPhone = contact.phone||'';
     var payload={
       room:'cloud_call',
       name:me&&me.name||'',
@@ -7957,9 +8009,11 @@ function _sendCallNotification(contact, state){
       role:'user',
       msg:JSON.stringify({
         type:'call_'+state,
-        to:contact.phone||contact.id||'',
+        to:      toId,       // primary target ID (pulseId or phone)
+        toPhone: toPhone,    // also send phone for fallback matching
         fromName:  me&&me.name||'',
         fromPhone: me&&me.phone||'',
+        fromPulseId: me&&me.pulseId||'',
         fromColor: me&&me.color||'B',
         fromAvatar:me&&me.avatar||null,
         ts:Date.now(),
@@ -7968,7 +8022,7 @@ function _sendCallNotification(contact, state){
       ts:Date.now(),
     };
     sbCloud('messages',{method:'POST',body:JSON.stringify(payload)}).catch(function(){});
-  }catch(e){}
+  }catch(e){ console.error('_sendCallNotification error:',e); }
 }
 
 function callConnected(){
@@ -8076,10 +8130,12 @@ function pollIncomingCalls(){
           var d=JSON.parse(m.msg||'{}');
           var myPhone=me&&me.phone||'', myName=me&&me.name||'';
           if(d.fromPhone===myPhone||d.fromName===myName) return;
-          if(d.type==='call_ringing'&&(d.to===myPhone||d.to===myName)){
+          var myPulse=me&&me.pulseId||'';
+          var isForMe=(d.to&&(d.to===myPhone||d.to===myName||d.to===myPulse))||(d.toPhone&&d.toPhone===myPhone);
+          if(d.type==='call_ringing'&&isForMe&&d.fromPhone!==myPhone){
             showIncomingCall(d);
           }
-          if(d.type==='call_declined'&&(d.to===myPhone||d.to===myName)){
+          if(d.type==='call_declined'&&isForMe&&d.fromPhone!==myPhone){
             var cs=document.getElementById('callScreen');
             if(cs&&cs.classList.contains('on')){ endCall(); toast('📵 '+(d.fromName||'الشخص')+' رفض المكالمة'); }
           }
@@ -11294,6 +11350,8 @@ function startMsgPolling(contact){
           };
           if(data.type==='image'&&data.src){ inMsg.type='image'; inMsg.src=data.src; inMsg.img=data.src; }
           else if(data.type==='video'&&data.src){ inMsg.type='video'; inMsg.src=data.src; }
+          else if(data.type==='voice'){ inMsg.type='voice'; inMsg.audioUrl=data.audioSrc||null; inMsg.duration=data.duration||'0:02'; inMsg.text=''; }
+          else if(data.type==='file'){ inMsg.type='file'; inMsg.text='📎 '+(data.fileName||'ملف'); inMsg.fileName=data.fileName||'ملف'; inMsg.fileSize=data.fileSize||''; inMsg.fileSrc=data.fileSrc||null; }
           else if(data.type==='liveLocation'){ inMsg.type='liveLocation'; inMsg.lat=data.lat; inMsg.lng=data.lng; inMsg.name=data.locName||'الموقع'; inMsg.live=true; }
           else if(data.imgs&&data.imgs.length){ inMsg.type='images'; inMsg.imgs=data.imgs; }
           convos[cid].push(inMsg);
@@ -11317,6 +11375,40 @@ function startMsgPolling(contact){
 
 function stopMsgPolling(cid){
   if(_msgPollTimers[cid]){ clearInterval(_msgPollTimers[cid]); delete _msgPollTimers[cid]; }
+}
+
+function renderFileMsg(m){
+  const name=m.fileName||m.text||'ملف';
+  const size=m.fileSize||'';
+  const ext=(name.split('.').pop()||'').toLowerCase();
+  const icons={'pdf':'📄','doc':'📝','docx':'📝','xls':'📊','xlsx':'📊','ppt':'📋','pptx':'📋','txt':'📄','mp3':'🎵','mp4':'🎬','zip':'🗜️','rar':'🗜️'};
+  const ico=icons[ext]||'📎';
+  const dlPart=m.fileSrc?`onclick="const a=document.createElement('a');a.href='${m.fileSrc.substring(0,50)}...';a.download='${name}';a.click()" style="cursor:pointer;"`:'' ;
+  return `<div class="file-msg" ${m.fileSrc?`onclick="downloadFile('${encodeURIComponent(name)}', this.dataset.src)" data-src="${m.fileSrc?'has':''}"`:''}
+    style="display:flex;align-items:center;gap:10px;padding:6px 4px;min-width:160px;cursor:${m.fileSrc?'pointer':'default'};"
+    ${m.fileSrc?`onclick="_downloadFileMsg(this)"`:''}
+    data-fname="${name}">
+    <div style="width:42px;height:42px;border-radius:12px;background:var(--acc2);display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;">${ico}</div>
+    <div style="flex:1;min-width:0;">
+      <div style="font-size:13px;font-weight:700;color:var(--t0);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${name}</div>
+      <div style="font-size:11px;color:var(--t3);">${size} ${m.fileSrc?'· اضغط للتحميل':''}</div>
+    </div>
+    ${m.fileSrc?'<div style="font-size:18px;">⬇️</div>':''}
+  </div>`;
+}
+
+function _downloadFileMsg(el){
+  const name=el.dataset.fname||'file';
+  // Find the message with this filename
+  if(!activeChat) return;
+  const msg=(convos[activeChat.id]||[]).find(m=>m.fileName===name&&m.fileSrc);
+  if(msg&&msg.fileSrc){
+    const a=document.createElement('a');
+    a.href=msg.fileSrc; a.download=name; a.click();
+    toast('📥 جاري التحميل: '+name);
+  } else {
+    toast('⚠️ الملف غير متاح للتحميل');
+  }
 }
 
 
