@@ -4610,6 +4610,8 @@ function launch(){
   setTimeout(startFriendSystem, 1000);
   // Start incoming call poll
   setTimeout(startIncomingCallPoll, 2000);
+  // Start online status poll
+  setTimeout(startOnlineStatusPoll, 3000);
 }
 
 // ═══════════════════════════════════
@@ -4864,6 +4866,8 @@ function openChat(contact){
   emoOpen=false;stkOpen=false;attachOpen=false;
   renderMsgs(contact.id);
   setTimeout(()=>applySavedWallpaper(contact.id),50);
+  // ابدأ استقبال الرسائل الحقيقية
+  if(contact.pulseId) startMsgPolling(contact);
   slideToChatView();
   setTimeout(showHint,600);
 }
@@ -4954,22 +4958,31 @@ function sendMsg(){
   if(!inp||!inp.value.trim()||!activeChat)return;
   const text=inp.value.trim();inp.value='';inp.style.height='auto';
   const ts=now();
-  // isReal: contact added via QR/ID has pulseId; only real contacts get blue ticks
   const isRealContact = !!(activeChat.pulseId);
   const msgObj={from:'me',text,time:ts,read:'sent',ts:Date.now(),realContact:isRealContact};
   if(quotedMsg){ msgObj.quote=quotedMsg; }
   convos[activeChat.id].push(msgObj);
-  // Only show delivered/read ticks for real contacts
   if(isRealContact){
     const _midx = convos[activeChat.id].length-1;
     const _cid = activeChat.id;
     setTimeout(()=>{if(convos[_cid]&&convos[_cid][_midx]){convos[_cid][_midx].read='delivered';renderMsgs(_cid);}},1500);
-    // Real "read" only happens when other person actually opens - we keep as delivered for now
-    // (blue ticks will show when the receiver opens and polls Supabase)
+    // إرسال الرسالة عبر Supabase للشخص التاني
+    const myId = (me&&me.pulseId)||(me&&me.phone)||'unknown';
+    const toId  = activeChat.pulseId||activeChat.phone||String(activeChat.id);
+    const chatRoom = [myId,toId].sort().join('__chat__');
+    sbCloud('messages',{method:'POST',body:JSON.stringify({
+      room:  chatRoom,
+      name:  me ? me.name : '',
+      phone: me ? me.phone : '',
+      role:  'chat_msg',
+      msg:   JSON.stringify({text, from:myId, fromName:me?me.name:'', ts:Date.now()}),
+      ts:    Date.now(),
+    })}).catch(()=>{});
   }
   activeChat.lastMsg=text;activeChat.lastTime=t('now')||'Now';
   quotedMsg=null;renderQuoteBar();
   renderChatList();renderMsgs(activeChat.id);
+  saveToStorage();
 }
 function sendStk(s){
   if(!activeChat)return;
@@ -11326,6 +11339,106 @@ setInterval(()=>{
 }, 2000);
 
 // Start polling when user logs in
+// ── نظام استقبال الرسائل الحقيقي ──
+var _msgPollTimers = {}; // {contactId: intervalId}
+var _msgLastTs = {};     // {chatRoom: lastTs}
+var _onlinePollTimer = null;
+
+function startMsgPolling(contact){
+  if(!contact.pulseId) return; // فقط جهات الاتصال الحقيقية
+  const myId = (me&&me.pulseId)||(me&&me.phone)||'unknown';
+  const toId  = contact.pulseId||contact.phone||String(contact.id);
+  const chatRoom = [myId,toId].sort().join('__chat__');
+  const cid = contact.id;
+  if(_msgPollTimers[cid]) return; // already polling
+
+  _msgLastTs[chatRoom] = _msgLastTs[chatRoom] || (Date.now()-60000);
+
+  _msgPollTimers[cid] = setInterval(async ()=>{
+    try{
+      const since = _msgLastTs[chatRoom];
+      const r = await sbCloud('messages?room=eq.'+chatRoom+'&role=eq.chat_msg&ts=gt.'+since+'&order=ts.asc&limit=20');
+      const rows = await r.json();
+      if(!Array.isArray(rows)||!rows.length) return;
+      let gotNew = false;
+      rows.forEach(row=>{
+        _msgLastTs[chatRoom] = row.ts+1;
+        try{
+          const data = JSON.parse(row.msg||'{}');
+          // تجاهل رسائلنا نحن
+          if(data.from === myId) return;
+          // تجاهل لو موجودة بالفعل
+          const exists = (convos[cid]||[]).find(m=>m.ts===data.ts&&m.from!=='me');
+          if(exists) return;
+          if(!convos[cid]) convos[cid]=[];
+          convos[cid].push({
+            from: cid,
+            text: data.text||'',
+            time: new Date(data.ts).toLocaleTimeString('ar',{hour:'2-digit',minute:'2-digit'}),
+            ts: data.ts,
+            read: 'read',
+          });
+          // تحديث آخر رسالة
+          const ct = contacts.find(c=>c.id===cid);
+          if(ct){ ct.lastMsg=data.text||''; ct.lastTime='الآن'; ct.unread=(ct.unread||0)+(activeChat&&activeChat.id===cid?0:1); }
+          gotNew = true;
+        }catch(e){}
+      });
+      if(gotNew){
+        renderChatList();
+        if(activeChat && activeChat.id===cid) renderMsgs(cid);
+        saveToStorage();
+      }
+    }catch(e){}
+  }, 3000);
+}
+
+function stopMsgPolling(cid){
+  if(_msgPollTimers[cid]){ clearInterval(_msgPollTimers[cid]); delete _msgPollTimers[cid]; }
+}
+
+// ── Online Status polling ──
+function startOnlineStatusPoll(){
+  if(!me) return;
+  const myId = me.pulseId||me.phone; if(!myId) return;
+
+  // أعلن إنك online كل 30 ثانية
+  function heartbeat(){
+    if(!me) return;
+    sbCloud('messages',{method:'POST',body:JSON.stringify({
+      room: 'cloud_online_'+myId,
+      name: me.name||'',
+      role: 'heartbeat',
+      msg:  JSON.stringify({id:myId, ts:Date.now()}),
+      ts:   Date.now(),
+    })}).catch(()=>{});
+  }
+  heartbeat();
+  setInterval(heartbeat, 25000);
+
+  // تحقق من الأصدقاء كل 20 ثانية
+  setInterval(async ()=>{
+    const since = Date.now()-60000; // آخر دقيقة
+    for(const ct of contacts){
+      const tid = ct.pulseId||ct.phone; if(!tid) continue;
+      try{
+        const r = await sbCloud('messages?room=eq.cloud_online_'+tid+'&role=eq.heartbeat&ts=gt.'+since+'&order=ts.desc&limit=1');
+        const rows = await r.json();
+        const wasOnline = ct.online;
+        ct.online = Array.isArray(rows) && rows.length > 0;
+        if(ct.online !== wasOnline){
+          // تحديث الـ topbar لو المحادثة مفتوحة
+          if(activeChat && activeChat.id===ct.id){
+            const sub = document.querySelector('.ctb-sub');
+            if(sub) sub.textContent = ct.online ? '🟢 '+t('online') : '⚫ '+t('offline');
+          }
+          renderChatList();
+        }
+      }catch(e){}
+    }
+  }, 20000);
+}
+
 function startFriendSystem(){
   startFriendReqPoll();
   // سجّل المستخدم في Supabase عشان الناس تلاقيه بالـ ID
