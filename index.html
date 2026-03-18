@@ -7626,12 +7626,25 @@ document.getElementById('mapSendBtn').onclick=()=>{
   if(!_mapLatLng||!_mapContact) return;
   const addr=document.getElementById('mapAddrTxt').textContent;
   const mapsUrl=`https://www.openstreetmap.org/?mlat=${_mapLatLng.lat}&mlon=${_mapLatLng.lng}#map=15/${_mapLatLng.lat}/${_mapLatLng.lng}`;
-  const locMsg={from:'me',text:`📍 ${addr}\n🔗 ${mapsUrl}`,time:now()};
-  const c=_mapContact;
-  convos[c.id].push(locMsg);c.lastMsg='📍 '+addr.slice(0,30);c.lastTime=t('now')||'Now';
-  renderChatList();renderMsgs(c.id);
+  const text='📍 '+addr+'\n🔗 '+mapsUrl;
+  const ts=Date.now();
+  const ct=_mapContact;
+  if(!convos[ct.id]) convos[ct.id]=[];
+  convos[ct.id].push({from:'me',text,time:now(),ts,read:'sent'});
+  ct.lastMsg='📍 '+addr.slice(0,30); ct.lastTime=t('now')||'Now';
+  renderChatList(); renderMsgs(ct.id); saveToStorage();
   document.getElementById('mapOv').style.display='none';
   toast('📍 '+(t('locationSent')));
+  // إرسال عبر Supabase للأصدقاء الحقيقيين
+  if(ct.pulseId){
+    const myId=(me&&me.pulseId)||(me&&me.phone)||'unknown';
+    const toId=ct.pulseId||ct.phone||String(ct.id);
+    const chatRoom=[myId,toId].sort().join('__chat__');
+    sbCloud('messages',{method:'POST',body:JSON.stringify({
+      room:chatRoom, name:me?me.name:'', role:'chat_msg',
+      msg:JSON.stringify({text,from:myId,fromName:me?me.name:'',ts}), ts,
+    })}).catch(()=>{});
+  }
 };
 
 // ═══════════════════════════════════
@@ -8126,6 +8139,7 @@ function startIncomingCallPoll(){
   // كل مستخدم عنده room خاص باستقبال الاتصالات باسمه
   const inboxRoom = 'cloud_callinbox_' + myId;
   var lastCallTs = Date.now() - 5000;
+  var _shownCallIds = new Set();
 
   setInterval(async ()=>{
     if(document.getElementById('callScreen').classList.contains('on')) return;
@@ -8135,17 +8149,19 @@ function startIncomingCallPoll(){
       const rows = await r.json();
       if(!Array.isArray(rows)||!rows.length) return;
       for(const row of rows){
-        lastCallTs = row.ts;
+        lastCallTs = Math.max(lastCallTs, row.ts);
         try{
           const sig = JSON.parse(row.msg||'{}');
-          if(Date.now()-sig.ts < 35000){
+          const callId = sig.room + '_' + sig.ts;
+          if(Date.now()-sig.ts < 35000 && !_shownCallIds.has(callId)){
+            _shownCallIds.add(callId);
             showIncomingCall(sig, sig.room);
             break;
           }
         }catch(e){}
       }
     }catch(e){}
-  }, 3000);
+  }, 2000);
 }
 
 function showIncomingCall(sig, room){
@@ -8256,6 +8272,10 @@ function toggleCallMute(){
   const btn=document.getElementById('callMuteBtn');
   btn.textContent=_callMuted?'🔇':'🎙️';
   btn.classList.toggle('on',_callMuted);
+  // كتم الميكروفون الحقيقي
+  if(_rtcLocalStream){
+    _rtcLocalStream.getAudioTracks().forEach(t=>{ t.enabled=!_callMuted; });
+  }
 }
 function toggleCallSpeaker(){
   _callSpeaker=!_callSpeaker;
@@ -9714,12 +9734,35 @@ function cancelScheduledMsg(id){
 // ═══════════════════════════════════════════════════
 function sendMultiImages(cid, imgDataArray){
   if(!imgDataArray.length) return;
-  const msg={from:'me',time:now(),read:'sent',ts:Date.now(),
-    type:'images', imgs:imgDataArray};
+  const ts=Date.now();
+  const msg={from:'me',time:now(),read:'sent',ts,type:'images', imgs:imgDataArray};
   if(!convos[cid]) convos[cid]=[];
   convos[cid].push(msg);
   if(activeChat){activeChat.lastMsg=`📷 ${imgDataArray.length} صورة`;activeChat.lastTime=now();}
   renderChatList();renderMsgs(cid);saveToStorage();
+  // إرسال عبر Supabase للأصدقاء الحقيقيين
+  const ct=contacts.find(x=>x.id===cid);
+  if(ct && ct.pulseId){
+    const myId=(me&&me.pulseId)||(me&&me.phone)||'unknown';
+    const toId=ct.pulseId||ct.phone||String(cid);
+    const chatRoom=[myId,toId].sort().join('__chat__');
+    // لو صورة واحدة صغيرة نبعتها كـ base64، لو كبيرة نبعت placeholder
+    const preview = imgDataArray.length===1 && imgDataArray[0].length < 50000
+      ? imgDataArray[0] : null;
+    sbCloud('messages',{method:'POST',body:JSON.stringify({
+      room: chatRoom,
+      name: me?me.name:'',
+      role: 'chat_msg',
+      msg: JSON.stringify({
+        text: `📷 ${imgDataArray.length} صورة`,
+        imgs: preview ? [preview] : null,
+        imgCount: imgDataArray.length,
+        from: myId, fromName: me?me.name:'', ts,
+      }),
+      img: preview,
+      ts,
+    })}).catch(()=>{});
+  }
 }
 
 function renderMultiImages(imgs){
@@ -11398,13 +11441,19 @@ function startMsgPolling(contact){
           const exists = (convos[cid]||[]).find(m=>m.ts===data.ts&&m.from!=='me');
           if(exists) return;
           if(!convos[cid]) convos[cid]=[];
-          convos[cid].push({
+          const incomingMsg = {
             from: cid,
             text: data.text||'',
             time: new Date(data.ts).toLocaleTimeString('ar',{hour:'2-digit',minute:'2-digit'}),
             ts: data.ts,
             read: 'read',
-          });
+          };
+          // دعم الصور الواردة
+          if(data.imgs && data.imgs.length) {
+            incomingMsg.type='images';
+            incomingMsg.imgs=data.imgs;
+          }
+          convos[cid].push(incomingMsg);
           // بعث read_receipt للمرسل
           if(activeChat && activeChat.id===cid && data.from){
             const myId2=(me&&me.pulseId)||(me&&me.phone)||'unknown';
