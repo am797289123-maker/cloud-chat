@@ -4081,6 +4081,8 @@ document.addEventListener('DOMContentLoaded', ()=>{
 
   // Try to restore saved session
   if (loadFromStorage()) {
+    document.getElementById('mainWrap').classList.add('visible');
+    document.getElementById('mainWrap').style.opacity = '1';
     applyLang(curLang);
     document.body.setAttribute('data-theme', curTheme);
     applyThemeVars(THEMES.find(th=>th.id===curTheme)||THEMES[0]);
@@ -4574,8 +4576,10 @@ document.addEventListener('DOMContentLoaded', function initLoginSetup(){
 
 
 function launch(){
-  document.getElementById('mainWrap').style.opacity='';
-  document.getElementById('mainWrap').classList.remove('hidden');
+  const mw = document.getElementById('mainWrap');
+  mw.classList.add('visible');
+  mw.classList.remove('hidden');
+  mw.style.opacity = '1';
   updateMeNav();
   renderChatList();
   renderFriends();
