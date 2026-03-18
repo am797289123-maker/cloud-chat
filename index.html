@@ -4902,6 +4902,17 @@ function renderMsgs(cid){
     else if(m.type==='liveLocation') bubContent=renderLiveLocMsg(m);
     else if(m.type==='game') bubContent=`<div class="game-embed"><div class="game-header"><span class="game-ico">🎮</span><span class="game-title">خمّن الرقم</span></div><div class="game-body"><div style="font-size:13px;color:var(--t2);">${m.text}</div>${!m.solved?`<button class="game-play-btn" onclick="guessNumber(${idx},'${cid}')">خمّن</button>`:'<div style="color:#22c55e;font-weight:700;margin-top:6px;">✅ تم!</div>'}</div></div>`;
     else if(m.type==='images') bubContent=renderMultiImages(m.imgs||[]);
+    else if(m.type==='image'&&(m.src||m.img)){
+      const iSrc=m.src||m.img;
+      bubContent='<div style="position:relative;display:inline-block;"><img src="'+iSrc+'" style="max-width:220px;max-height:280px;border-radius:12px;display:block;cursor:pointer;object-fit:cover;" onclick="openImgViewer(this.src)"></div>';
+    }
+    else if(m.type==='video'&&(m.src||m.img)){
+      const vSrc=m.src||m.img;
+      bubContent='<video src="'+vSrc+'" controls style="max-width:220px;border-radius:12px;display:block;"></video>';
+    }
+    else if(m.type==='file'){
+      bubContent='<div style="display:flex;align-items:center;gap:8px;padding:4px 0;"><span style="font-size:24px;">📎</span><span style="font-size:13px;color:var(--t1);">'+(m.fileName||'ملف')+'</span></div>';
+    }
     else if(m.img) bubContent=`
       <div style="position:relative;display:inline-block;">
         <img src="${m.img}" style="max-width:220px;border-radius:12px;display:block;cursor:pointer;" onclick="openImgViewer('${m.img}')">
@@ -12168,47 +12179,75 @@ function reactToMsg(msgId, emoji){
 // ═══════════════════════════════════
 // FILE SHARING HELPER
 // ═══════════════════════════════════
-function sendFileMsg(cid, file){
+// Compress image and return base64 under maxBytes
+function compressImg(file, maxBytes){
+  return new Promise(resolve=>{
+    const img=new Image(), reader=new FileReader();
+    reader.onload=e=>{
+      img.onload=()=>{
+        let q=0.85, w=img.width, h=img.height;
+        // Resize if very large
+        const maxDim=800;
+        if(w>maxDim||h>maxDim){ const r=Math.min(maxDim/w,maxDim/h); w=Math.floor(w*r); h=Math.floor(h*r); }
+        const cv=document.createElement('canvas'); cv.width=w; cv.height=h;
+        const ctx=cv.getContext('2d'); ctx.drawImage(img,0,0,w,h);
+        let data=cv.toDataURL('image/jpeg',q);
+        while(data.length>maxBytes && q>0.3){ q-=0.15; data=cv.toDataURL('image/jpeg',q); }
+        resolve(data);
+      };
+      img.src=e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+async function sendFileMsg(cid, file){
   const isImg = file.type.startsWith('image/');
   const isVid = file.type.startsWith('video/');
-  const r = new FileReader();
-  r.onload = ev=>{
-    const ts = Date.now();
-    if(!convos[cid]) convos[cid]=[];
-    const msg = {
-      from:'me', time:now(), ts,
-      type: isImg?'image': isVid?'video':'file',
-      src: ev.target.result,
-      fileName: file.name,
-      fileSize: (file.size/1024 > 1024 ? (file.size/1048576).toFixed(1)+' MB' : (file.size/1024).toFixed(0)+' KB'),
-      read:'sent', status:'sent'
-    };
-    convos[cid].push(msg);
-    const ct = contacts.find(x=>x.id===cid);
-    if(ct){ ct.lastMsg = isImg?'📷 صورة': isVid?'🎥 فيديو':'📎 '+file.name; ct.lastTime=now(); }
-    renderChatList();
-    if(activeChat && activeChat.id===cid) renderMsgs(cid);
-    saveToStorage();
-    // إرسال عبر Supabase للأصدقاء الحقيقيين
-    const cr = getChatRoom(cid);
-    if(cr && cr.isReal){
-      // صور صغيرة نبعتها base64، كبيرة نبعت اسم الملف فقط
-      const preview = isImg && ev.target.result.length < 60000 ? ev.target.result : null;
-      sbCloud('messages',{method:'POST',body:JSON.stringify({
-        room: cr.room, name: me?me.name:'', role: 'chat_msg',
-        msg: JSON.stringify({
-          text: isImg?'📷 صورة': isVid?'🎥 فيديو':'📎 '+file.name,
-          type: isImg?'image': isVid?'video':'file',
-          src: preview,
-          fileName: file.name,
-          from: cr.myId, fromName: me?me.name:'', ts,
-        }),
-        img: preview,
-        ts,
-      })}).catch(()=>{});
-    }
+  const ts = Date.now();
+
+  // Show locally first
+  const readData = await new Promise(res=>{ const r=new FileReader(); r.onload=e=>res(e.target.result); r.readAsDataURL(file); });
+  if(!convos[cid]) convos[cid]=[];
+  const msg = {
+    from:'me', time:now(), ts,
+    type: isImg?'image': isVid?'video':'file',
+    src: readData,
+    fileName: file.name,
+    fileSize: (file.size/1024>1024?(file.size/1048576).toFixed(1)+' MB':(file.size/1024).toFixed(0)+' KB'),
+    read:'sent', status:'sent'
   };
-  r.readAsDataURL(file);
+  convos[cid].push(msg);
+  const ct = contacts.find(x=>x.id===cid);
+  if(ct){ ct.lastMsg=isImg?'📷 صورة':isVid?'🎥 فيديو':'📎 '+file.name; ct.lastTime=now(); }
+  renderChatList();
+  if(activeChat && activeChat.id===cid) renderMsgs(cid);
+  saveToStorage();
+
+  // Send via Supabase (compress image to fit)
+  const cr = getChatRoom(cid);
+  if(!cr || !cr.isReal) return;
+
+  let srcToSend = null;
+  if(isImg){
+    // Compress to ~80KB max for Supabase row
+    srcToSend = await compressImg(file, 80000);
+  }
+
+  sbCloud('messages',{method:'POST',body:JSON.stringify({
+    room: cr.room, name: me?me.name:'', role: 'chat_msg',
+    msg: JSON.stringify({
+      text: isImg?'📷 صورة':isVid?'🎥 فيديو':'📎 '+file.name,
+      type: isImg?'image':isVid?'video':'file',
+      src: srcToSend,
+      fileName: file.name,
+      from: cr.myId, fromName: me?me.name:'', ts,
+    }),
+    ts,
+  })}).then(r=>{
+    if(!r.ok) console.error('[IMG] Supabase error:', r.status);
+    else console.log('[IMG] Sent successfully');
+  }).catch(e=>console.error('[IMG] Send failed:', e));
 }
 
 // ═══════════════════════════════════
