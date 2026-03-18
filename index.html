@@ -8045,9 +8045,18 @@ async function openCallScreen(contact){
   const myId = (me&&me.pulseId)||(me&&me.phone)||'unknown';
   _rtcCallRoom = [myId, targetId].sort().join('__');
 
-  await rtcSignal(_rtcCallRoom, 'call_invite', {
-    from:myId, fromName:me?me.name:'', fromColor:me?me.color:'C', to:targetId, ts:Date.now(),
-  });
+  // إرسال الاتصال لـ inbox الشخص التاني مباشرة
+  const targetInbox = 'cloud_callinbox_' + targetId;
+  await sbCloud('messages',{method:'POST',body:JSON.stringify({
+    room: targetInbox,
+    name: me ? me.name : '',
+    role: 'call_invite',
+    msg: JSON.stringify({
+      from:myId, fromName:me?me.name:'', fromColor:me?me.color:'C',
+      to:targetId, room:_rtcCallRoom, ts:Date.now(),
+    }),
+    ts: Date.now(),
+  })});
 
   var answered = false;
   rtcPoll(_rtcCallRoom, async (row)=>{
@@ -8114,26 +8123,29 @@ async function startWebRTCCaller(){
 function startIncomingCallPoll(){
   if(!me) return;
   const myId = me.pulseId||me.phone; if(!myId) return;
+  // كل مستخدم عنده room خاص باستقبال الاتصالات باسمه
+  const inboxRoom = 'cloud_callinbox_' + myId;
+  var lastCallTs = Date.now() - 5000;
+
   setInterval(async ()=>{
     if(document.getElementById('callScreen').classList.contains('on')) return;
     if(document.getElementById('incomingCallScreen').style.display==='flex') return;
     try{
-      const since=Date.now()-8000;
-      const enc=encodeURIComponent(myId);
-      const r=await sbCloud('messages?room=like.cloud_call_*&ts=gt.'+since+'&order=ts.desc&limit=10');
-      const rows=await r.json();
-      if(!Array.isArray(rows)) return;
+      const r = await sbCloud('messages?room=eq.'+encodeURIComponent(inboxRoom)+'&role=eq.call_invite&ts=gt.'+lastCallTs+'&order=ts.desc&limit=3');
+      const rows = await r.json();
+      if(!Array.isArray(rows)||!rows.length) return;
       for(const row of rows){
-        if(row.role==='call_invite'){
-          const sig=JSON.parse(row.msg||'{}');
-          if(sig.to===myId && Date.now()-sig.ts<30000){
-            showIncomingCall(sig, row.room.replace('cloud_call_',''));
+        lastCallTs = row.ts;
+        try{
+          const sig = JSON.parse(row.msg||'{}');
+          if(Date.now()-sig.ts < 35000){
+            showIncomingCall(sig, sig.room);
             break;
           }
-        }
+        }catch(e){}
       }
     }catch(e){}
-  },3000);
+  }, 3000);
 }
 
 function showIncomingCall(sig, room){
@@ -11357,7 +11369,8 @@ function startMsgPolling(contact){
   _msgPollTimers[cid] = setInterval(async ()=>{
     try{
       const since = _msgLastTs[chatRoom];
-      const r = await sbCloud('messages?room=eq.'+chatRoom+'&role=eq.chat_msg&ts=gt.'+since+'&order=ts.asc&limit=20');
+      // Poll for new messages
+      const r = await sbCloud('messages?room=eq.'+chatRoom+'&role=in.(chat_msg,read_receipt)&ts=gt.'+since+'&order=ts.asc&limit=30');
       const rows = await r.json();
       if(!Array.isArray(rows)||!rows.length) return;
       let gotNew = false;
@@ -11366,6 +11379,20 @@ function startMsgPolling(contact){
         try{
           const data = JSON.parse(row.msg||'{}');
           // تجاهل رسائلنا نحن
+          // handle read receipts
+          if(row.role==='read_receipt'){
+            const readData=JSON.parse(row.msg||'{}');
+            // Mark our sent messages as read
+            if(convos[cid]){
+              convos[cid].forEach(m=>{
+                if(m.from==='me' && m.ts<=readData.msgTs && m.read!=='read'){
+                  m.read='read';
+                }
+              });
+              if(activeChat&&activeChat.id===cid) renderMsgs(cid);
+            }
+            return;
+          }
           if(data.from === myId) return;
           // تجاهل لو موجودة بالفعل
           const exists = (convos[cid]||[]).find(m=>m.ts===data.ts&&m.from!=='me');
@@ -11378,6 +11405,17 @@ function startMsgPolling(contact){
             ts: data.ts,
             read: 'read',
           });
+          // بعث read_receipt للمرسل
+          if(activeChat && activeChat.id===cid && data.from){
+            const myId2=(me&&me.pulseId)||(me&&me.phone)||'unknown';
+            const chatRoom2=[myId2,data.from].sort().join('__chat__');
+            sbCloud('messages',{method:'POST',body:JSON.stringify({
+              room: chatRoom2,
+              role: 'read_receipt',
+              msg: JSON.stringify({readBy:myId2, msgTs:data.ts, ts:Date.now()}),
+              ts: Date.now(),
+            })}).catch(()=>{});
+          }
           // تحديث آخر رسالة
           const ct = contacts.find(c=>c.id===cid);
           if(ct){ ct.lastMsg=data.text||''; ct.lastTime='الآن'; ct.unread=(ct.unread||0)+(activeChat&&activeChat.id===cid?0:1); }
