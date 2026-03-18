@@ -4608,6 +4608,8 @@ function launch(){
   setTimeout(renderHomeStats, 300);
   // Start real friend request polling
   setTimeout(startFriendSystem, 1000);
+  // Start incoming call poll
+  setTimeout(startIncomingCallPoll, 2000);
 }
 
 // ═══════════════════════════════════
@@ -7963,13 +7965,58 @@ var _callStream=null;
 var _callVideoOn=false;
 var _screenShareStream=null;
 
-function openCallScreen(contact){
+// ══════════════════════════════════════════════
+// REAL CALL SYSTEM - WebRTC + Supabase Signaling
+// ══════════════════════════════════════════════
+var _rtcPeer = null;
+var _rtcCallRoom = null;
+var _rtcPollTimer = null;
+var _rtcLocalStream = null;
+var _rtcIsCallerRole = false;
+var _rtcIncomingData = null;
+var _rtcCallContact = null;
+
+var STUN_SERVERS = {
+  iceServers:[
+    {urls:'stun:stun.l.google.com:19302'},
+    {urls:'stun:stun1.l.google.com:19302'},
+  ]
+};
+
+function rtcSignal(room, type, data){
+  return sbCloud('messages',{method:'POST',body:JSON.stringify({
+    room: 'cloud_call_' + room,
+    name: me ? me.name : '',
+    phone: me ? me.phone : '',
+    role: type,
+    msg: JSON.stringify(data),
+    ts: Date.now(),
+  })});
+}
+
+function rtcPoll(room, callback){
+  var since = Date.now() - 3000;
+  _rtcPollTimer = setInterval(async ()=>{
+    try{
+      const r = await sbCloud('messages?room=eq.cloud_call_'+room+'&ts=gt.'+since+'&order=ts.asc');
+      const rows = await r.json();
+      if(Array.isArray(rows)) rows.forEach(row=>{ since=row.ts+1; callback(row); });
+    }catch(e){}
+  }, 1500);
+}
+
+function rtcStopPoll(){
+  if(_rtcPollTimer){ clearInterval(_rtcPollTimer); _rtcPollTimer=null; }
+}
+
+async function openCallScreen(contact){
+  _rtcCallContact = contact;
+  _rtcIsCallerRole = true;
   const screen=document.getElementById('callScreen');
   const av=document.getElementById('callAv');
   const nameEl=document.getElementById('callName');
   const statusEl=document.getElementById('callStatus');
   const timerEl=document.getElementById('callTimerEl');
-
   av.textContent=contact.name.charAt(0).toUpperCase();
   av.style.background=AVCOLS[contact.color]||'#4F8EF7';
   av.classList.add('ringing');
@@ -7978,109 +8025,204 @@ function openCallScreen(contact){
   timerEl.style.display='none';
   screen.classList.add('on');
   _callSecs=0; _callMuted=false; _callSpeaker=false; _callVideoOn=false; _callFacing='user';
-
-  // Hide video elements initially
   const localVid=document.getElementById('callLocalVideo');
-  const remoteVid=document.getElementById('callRemoteVideo');
   if(localVid) localVid.style.display='none';
-  if(remoteVid) remoteVid.style.display='none';
+
+  const targetId = contact.pulseId || contact.phone || String(contact.id);
+  const myId = (me&&me.pulseId)||(me&&me.phone)||'unknown';
+  _rtcCallRoom = [myId, targetId].sort().join('__');
+
+  await rtcSignal(_rtcCallRoom, 'call_invite', {
+    from:myId, fromName:me?me.name:'', fromColor:me?me.color:'C', to:targetId, ts:Date.now(),
+  });
+
+  var answered = false;
+  rtcPoll(_rtcCallRoom, async (row)=>{
+    try{
+      const sig = JSON.parse(row.msg||'{}');
+      if(row.role==='call_answer' && !answered){
+        answered = true;
+        av.classList.remove('ringing');
+        statusEl.textContent='متصل';
+        timerEl.style.display='block';
+        _callTimer=setInterval(()=>{
+          _callSecs++;
+          const m=Math.floor(_callSecs/60),s=_callSecs%60;
+          timerEl.textContent=String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');
+        },1000);
+        await startWebRTCCaller();
+      } else if(row.role==='call_reject'){
+        rtcStopPoll();
+        av.classList.remove('ringing');
+        statusEl.textContent='رفض المكالمة';
+        setTimeout(()=>endCall(),2000);
+      } else if(row.role==='webrtc_answer'){
+        if(_rtcPeer && sig.sdp) await _rtcPeer.setRemoteDescription(new RTCSessionDescription(sig.sdp)).catch(()=>{});
+      } else if(row.role==='webrtc_ice'){
+        if(_rtcPeer && sig.candidate) await _rtcPeer.addIceCandidate(new RTCIceCandidate(sig.candidate)).catch(()=>{});
+      } else if(row.role==='call_end'){
+        endCall();
+      }
+    }catch(e){}
+  });
 
   setTimeout(()=>{
-    av.classList.remove('ringing');
-    statusEl.textContent='متصل';
-    timerEl.style.display='block';
-    _callTimer=setInterval(()=>{
-      _callSecs++;
-      const m=Math.floor(_callSecs/60), s=_callSecs%60;
-      timerEl.textContent=`${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
-    },1000);
-  },2000);
+    if(!answered && screen.classList.contains('on')){
+      statusEl.textContent='لا يوجد رد';
+      rtcStopPoll();
+      setTimeout(()=>endCall(),2000);
+    }
+  },30000);
 
   logCall(contact.id,'out');
 }
 
-async function toggleCallVideoReal(){
-  _callVideoOn=!_callVideoOn;
-  const btn=document.getElementById('callVideoBtn');
-  const localVid=document.getElementById('callLocalVideo');
-  if(!localVid) return;
+async function startWebRTCCaller(){
+  try{
+    _rtcLocalStream=await navigator.mediaDevices.getUserMedia({audio:true,video:false});
+    _rtcPeer=new RTCPeerConnection(STUN_SERVERS);
+    _rtcLocalStream.getTracks().forEach(t=>_rtcPeer.addTrack(t,_rtcLocalStream));
+    _rtcPeer.ontrack=e=>{
+      var a=document.getElementById('rtcAudio');
+      if(!a){a=document.createElement('audio');a.id='rtcAudio';a.autoplay=true;document.body.appendChild(a);}
+      a.srcObject=e.streams[0];
+    };
+    _rtcPeer.onicecandidate=e=>{
+      if(e.candidate) rtcSignal(_rtcCallRoom,'webrtc_ice',{candidate:e.candidate});
+    };
+    const offer=await _rtcPeer.createOffer();
+    await _rtcPeer.setLocalDescription(offer);
+    await rtcSignal(_rtcCallRoom,'webrtc_offer',{sdp:offer});
+  }catch(e){
+    toast('⚠️ '+e.message);
+  }
+}
 
-  if(_callVideoOn){
+function startIncomingCallPoll(){
+  if(!me) return;
+  const myId = me.pulseId||me.phone; if(!myId) return;
+  setInterval(async ()=>{
+    if(document.getElementById('callScreen').classList.contains('on')) return;
+    if(document.getElementById('incomingCallScreen').style.display==='flex') return;
     try{
-      _callStream=await navigator.mediaDevices.getUserMedia({
-        video:{facingMode:_callFacing, width:{ideal:640}, height:{ideal:480}},
-        audio:false
-      });
-      localVid.srcObject=_callStream;
-      localVid.style.display='block';
-      btn && btn.classList.add('on');
-      toast('📹 الكاميرا مفعّلة');
-    }catch(e){
-      _callVideoOn=false;
-      toast('❌ تعذّر تشغيل الكاميرا');
-    }
-  } else {
-    if(_callStream){ _callStream.getTracks().forEach(t=>t.stop()); _callStream=null; }
-    localVid.style.display='none';
-    btn && btn.classList.remove('on');
-    toast('📹 الكاميرا مغلقة');
-  }
+      const since=Date.now()-8000;
+      const enc=encodeURIComponent(myId);
+      const r=await sbCloud('messages?room=like.cloud_call_*&ts=gt.'+since+'&order=ts.desc&limit=10');
+      const rows=await r.json();
+      if(!Array.isArray(rows)) return;
+      for(const row of rows){
+        if(row.role==='call_invite'){
+          const sig=JSON.parse(row.msg||'{}');
+          if(sig.to===myId && Date.now()-sig.ts<30000){
+            showIncomingCall(sig, row.room.replace('cloud_call_',''));
+            break;
+          }
+        }
+      }
+    }catch(e){}
+  },3000);
 }
 
-async function flipCamera(){
-  if(!_callVideoOn){ toast('🎥 شغّل الكاميرا أولاً'); return; }
-  _callFacing = _callFacing==='user'?'environment':'user';
-  if(_callStream){ _callStream.getTracks().forEach(t=>t.stop()); _callStream=null; }
-  const localVid=document.getElementById('callLocalVideo');
+function showIncomingCall(sig, room){
+  _rtcIncomingData={sig,room};
+  _rtcCallRoom=room;
+  var screen=document.getElementById('incomingCallScreen');
+  document.getElementById('inCallAv').textContent=(sig.fromName||'?').charAt(0).toUpperCase();
+  document.getElementById('inCallAv').style.background=AVCOLS[sig.fromColor]||'#4F8EF7';
+  document.getElementById('inCallName').textContent=sig.fromName||'مجهول';
+  document.getElementById('inCallType').textContent='مكالمة واردة...';
+  screen.style.display='flex';
   try{
-    _callStream=await navigator.mediaDevices.getUserMedia({
-      video:{facingMode:_callFacing, width:{ideal:640}, height:{ideal:480}},
-      audio:false
-    });
-    if(localVid){ localVid.srcObject=_callStream; }
-    toast(_callFacing==='user'?'🤳 الكاميرا الأمامية':'📷 الكاميرا الخلفية');
-  }catch(e){
-    toast('❌ تعذّر تبديل الكاميرا');
-  }
+    var ctx=new(window.AudioContext||window.webkitAudioContext)();
+    function beep(t){
+      var o=ctx.createOscillator(),g=ctx.createGain();
+      o.connect(g);g.connect(ctx.destination);o.frequency.value=880;
+      g.gain.setValueAtTime(.3,t);g.gain.exponentialRampToValueAtTime(.001,t+.4);
+      o.start(t);o.stop(t+.4);
+    }
+    beep(ctx.currentTime);beep(ctx.currentTime+.7);beep(ctx.currentTime+1.4);
+  }catch(e){}
 }
 
-async function startScreenShare(){
-  const btn=document.getElementById('callShareBtn');
-  if(_screenShareStream){
-    _screenShareStream.getTracks().forEach(t=>t.stop());
-    _screenShareStream=null;
-    btn && btn.classList.remove('on');
-    toast('🖥️ توقف مشاركة الشاشة');
-    return;
-  }
+async function acceptIncomingCall(){
+  document.getElementById('incomingCallScreen').style.display='none';
+  if(!_rtcIncomingData) return;
+  const sig=_rtcIncomingData.sig, room=_rtcIncomingData.room;
+  const screen=document.getElementById('callScreen');
+  const av=document.getElementById('callAv');
+  av.textContent=(sig.fromName||'?').charAt(0).toUpperCase();
+  av.style.background=AVCOLS[sig.fromColor]||'#4F8EF7';
+  document.getElementById('callName').textContent=sig.fromName||'مجهول';
+  document.getElementById('callStatus').textContent='متصل';
+  const timerEl=document.getElementById('callTimerEl');
+  timerEl.style.display='block';
+  screen.classList.add('on');
+  _callSecs=0;
+  _callTimer=setInterval(()=>{
+    _callSecs++;
+    const m=Math.floor(_callSecs/60),s=_callSecs%60;
+    timerEl.textContent=String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');
+  },1000);
+
+  const myId=(me&&me.pulseId)||(me&&me.phone)||'unknown';
+  await rtcSignal(room,'call_answer',{from:myId,ts:Date.now()});
+
   try{
-    _screenShareStream=await navigator.mediaDevices.getDisplayMedia({video:true, audio:false});
-    const localVid=document.getElementById('callLocalVideo');
-    if(localVid){
-      localVid.srcObject=_screenShareStream;
-      localVid.style.display='block';
-    }
-    btn && btn.classList.add('on');
-    toast('🖥️ مشاركة الشاشة نشطة');
-    _screenShareStream.getVideoTracks()[0].addEventListener('ended',()=>{
-      _screenShareStream=null;
-      if(localVid) localVid.style.display=_callVideoOn?'block':'none';
-      btn && btn.classList.remove('on');
-      toast('🖥️ توقفت مشاركة الشاشة');
+    _rtcLocalStream=await navigator.mediaDevices.getUserMedia({audio:true,video:false});
+    _rtcPeer=new RTCPeerConnection(STUN_SERVERS);
+    _rtcLocalStream.getTracks().forEach(t=>_rtcPeer.addTrack(t,_rtcLocalStream));
+    _rtcPeer.ontrack=e=>{
+      var a=document.getElementById('rtcAudio');
+      if(!a){a=document.createElement('audio');a.id='rtcAudio';a.autoplay=true;document.body.appendChild(a);}
+      a.srcObject=e.streams[0];
+    };
+    _rtcPeer.onicecandidate=e=>{
+      if(e.candidate) rtcSignal(room,'webrtc_ice',{candidate:e.candidate});
+    };
+    rtcPoll(room, async (row)=>{
+      try{
+        const data=JSON.parse(row.msg||'{}');
+        if(row.role==='webrtc_offer'&&data.sdp){
+          await _rtcPeer.setRemoteDescription(new RTCSessionDescription(data.sdp));
+          const ans=await _rtcPeer.createAnswer();
+          await _rtcPeer.setLocalDescription(ans);
+          await rtcSignal(room,'webrtc_answer',{sdp:ans});
+        } else if(row.role==='webrtc_ice'&&data.candidate){
+          await _rtcPeer.addIceCandidate(new RTCIceCandidate(data.candidate)).catch(()=>{});
+        } else if(row.role==='call_end'){
+          endCall();
+        }
+      }catch(e){}
     });
-  }catch(e){
-    toast('❌ تعذّرت مشاركة الشاشة');
-  }
+  }catch(e){ toast('⚠️ '+e.message); }
 }
+
+function rejectIncomingCall(){
+  document.getElementById('incomingCallScreen').style.display='none';
+  if(_rtcIncomingData){
+    rtcSignal(_rtcIncomingData.room,'call_reject',{from:(me&&me.pulseId)||(me&&me.phone)||''});
+  }
+  _rtcIncomingData=null; _rtcCallRoom=null;
+}
+
 
 function endCall(){
   clearInterval(_callTimer);
+  rtcStopPoll();
+  // Signal end to other party
+  if(_rtcCallRoom){ rtcSignal(_rtcCallRoom,'call_end',{ts:Date.now()}).catch(()=>{}); }
+  // Stop streams
+  if(_rtcLocalStream){ _rtcLocalStream.getTracks().forEach(t=>t.stop()); _rtcLocalStream=null; }
   if(_callStream){ _callStream.getTracks().forEach(t=>t.stop()); _callStream=null; }
   if(_screenShareStream){ _screenShareStream.getTracks().forEach(t=>t.stop()); _screenShareStream=null; }
+  if(_rtcPeer){ _rtcPeer.close(); _rtcPeer=null; }
   const vid=document.getElementById('callLocalVideo');
   if(vid){ vid.style.display='none'; vid.srcObject=null; }
+  const remAudio=document.getElementById('rtcAudio');
+  if(remAudio){ remAudio.srcObject=null; }
   document.getElementById('callScreen').classList.remove('on');
-  const dur=_callSecs>0?`${Math.floor(_callSecs/60)}:${String(_callSecs%60).padStart(2,'0')}`:'';
+  _rtcCallRoom=null; _rtcIncomingData=null;
+  const dur=_callSecs>0?Math.floor(_callSecs/60)+':'+String(_callSecs%60).padStart(2,'0'):'';
   if(dur) toast('📞 انتهت المكالمة · '+dur);
 }
 
@@ -11871,6 +12013,39 @@ var _origSendMsg = null;
       </div>
     </div>
   </div>
+
+<!-- ══ INCOMING CALL SCREEN ══ -->
+<div id="incomingCallScreen" style="display:none;position:fixed;inset:0;z-index:9999;
+  background:linear-gradient(180deg,#1a1a2e 0%,#16213e 100%);
+  flex-direction:column;align-items:center;justify-content:center;gap:24px;">
+  <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 50% 30%,rgba(79,142,247,.15),transparent 70%);"></div>
+  <div id="inCallAv" style="width:100px;height:100px;border-radius:50%;background:#4F8EF7;
+    display:flex;align-items:center;justify-content:center;font-size:40px;font-weight:800;color:#fff;
+    box-shadow:0 0 0 12px rgba(79,142,247,.2),0 0 0 24px rgba(79,142,247,.1);
+    animation:callPulse 1.5s infinite;position:relative;z-index:1;">A</div>
+  <div style="text-align:center;position:relative;z-index:1;">
+    <div id="inCallName" style="font-size:24px;font-weight:800;color:#fff;margin-bottom:6px;">اسم</div>
+    <div id="inCallType" style="font-size:14px;color:rgba(255,255,255,.6);">مكالمة واردة...</div>
+  </div>
+  <div style="display:flex;gap:48px;position:relative;z-index:1;margin-top:20px;">
+    <div style="display:flex;flex-direction:column;align-items:center;gap:8px;">
+      <button onclick="rejectIncomingCall()" style="width:68px;height:68px;border-radius:50%;
+        background:#EF4444;border:none;font-size:26px;cursor:pointer;
+        box-shadow:0 4px 20px rgba(239,68,68,.4);">📵</button>
+      <span style="font-size:12px;color:rgba(255,255,255,.6);">رفض</span>
+    </div>
+    <div style="display:flex;flex-direction:column;align-items:center;gap:8px;">
+      <button onclick="acceptIncomingCall()" style="width:68px;height:68px;border-radius:50%;
+        background:#22c55e;border:none;font-size:26px;cursor:pointer;
+        box-shadow:0 4px 20px rgba(34,197,94,.4);">📞</button>
+      <span style="font-size:12px;color:rgba(255,255,255,.6);">رد</span>
+    </div>
+  </div>
+</div>
+<style>
+@keyframes callPulse{0%,100%{box-shadow:0 0 0 12px rgba(79,142,247,.2),0 0 0 24px rgba(79,142,247,.1);}
+50%{box-shadow:0 0 0 18px rgba(79,142,247,.15),0 0 0 36px rgba(79,142,247,.05);}}
+</style>
 </div>
 
 <!-- ══ DND BANNER ══ -->
