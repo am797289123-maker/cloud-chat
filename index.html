@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <title>Cloud</title>
 <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
-
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jsQR/1.4.0/jsQR.min.js">
 </script>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
@@ -2440,6 +2439,64 @@ body[data-font="mono"] .bub{font-family:'Space Grotesk',monospace!important;}
 }
 
 </style>
+
+<script>
+/* ── Real QR Code Generator (pure JS) ── */
+/* ── Minimal QR Code generator (pure JS, no deps) ── */
+(function(root){
+'use strict';
+var QRErrorCorrectionLevel={L:1,M:0,Q:3,H:2};
+var QRMaskPattern={PATTERN000:0,PATTERN001:1,PATTERN010:2,PATTERN011:3,PATTERN100:4,PATTERN101:5,PATTERN110:6,PATTERN111:7};
+var QRUtil={PATTERN_POSITION_TABLE:[[],[6,18],[6,22],[6,26],[6,30],[6,34],[6,22,38],[6,24,42],[6,26,46],[6,28,50],[6,30,54],[6,32,58],[6,34,62],[6,26,46,66],[6,26,48,70],[6,26,50,74],[6,30,54,78],[6,30,56,82],[6,30,58,86],[6,34,62,90],[6,28,50,72,94],[6,26,50,74,98],[6,30,54,78,102],[6,28,54,80,106],[6,32,58,84,110],[6,30,58,86,114],[6,34,62,90,118],[6,26,50,74,98,122],[6,30,54,78,102,126],[6,26,52,78,104,130],[6,30,56,82,108,134],[6,34,60,86,112,138],[6,30,58,86,114,142],[6,34,62,90,118,146],[6,30,54,78,102,126,150],[6,24,50,76,102,128,154],[6,28,54,80,106,132,158],[6,32,58,84,110,136,162],[6,26,54,82,110,138,166],[6,30,58,86,114,142,170]],G15:(1<<10)|(1<<8)|(1<<5)|(1<<4)|(1<<2)|(1<<1)|(1<<0),G18:(1<<12)|(1<<11)|(1<<10)|(1<<9)|(1<<8)|(1<<5)|(1<<2)|(1<<0),G15_MASK:(1<<14)|(1<<12)|(1<<10)|(1<<4)|(1<<1),
+getBCHTypeInfo:function(data){var d=data<<10;while(QRUtil.getBCHDigit(d)-QRUtil.getBCHDigit(QRUtil.G15)>=0){d^=(QRUtil.G15<<(QRUtil.getBCHDigit(d)-QRUtil.getBCHDigit(QRUtil.G15)));}return((data<<10)|d)^QRUtil.G15_MASK;},
+getBCHTypeNumber:function(data){var d=data<<12;while(QRUtil.getBCHDigit(d)-QRUtil.getBCHDigit(QRUtil.G18)>=0){d^=(QRUtil.G18<<(QRUtil.getBCHDigit(d)-QRUtil.getBCHDigit(QRUtil.G18)));}return(data<<12)|d;},
+getBCHDigit:function(data){var digit=0;while(data!=0){digit++;data>>>=1;}return digit;},
+getPatternPosition:function(typeNumber){return QRUtil.PATTERN_POSITION_TABLE[typeNumber-1];},
+getMask:function(maskPattern,i,j){switch(maskPattern){case QRMaskPattern.PATTERN000:return(i+j)%2==0;case QRMaskPattern.PATTERN001:return i%2==0;case QRMaskPattern.PATTERN010:return j%3==0;case QRMaskPattern.PATTERN011:return(i+j)%3==0;case QRMaskPattern.PATTERN100:return(Math.floor(i/2)+Math.floor(j/3))%2==0;case QRMaskPattern.PATTERN101:return(i*j)%2+(i*j)%3==0;case QRMaskPattern.PATTERN110:return((i*j)%2+(i*j)%3)%2==0;case QRMaskPattern.PATTERN111:return((i*j)%3+(i+j)%2)%2==0;default:throw new Error('bad maskPattern:'+maskPattern);}},
+getErrorCorrectPolynomial:function(errorCorrectLength){var a=new QRPolynomial([1],0);for(var i=0;i<errorCorrectLength;i++){a=a.multiply(new QRPolynomial([1,QRMath.gexp(i)],0));}return a;},
+getLengthInBits:function(mode,type){if(1<=type&&type<10){switch(mode){case QRMode.MODE_NUMBER:return 10;case QRMode.MODE_ALPHA_NUM:return 9;case QRMode.MODE_8BIT_BYTE:return 8;case QRMode.MODE_KANJI:return 8;default:throw new Error('mode:'+mode);}}else if(type<27){switch(mode){case QRMode.MODE_NUMBER:return 12;case QRMode.MODE_ALPHA_NUM:return 11;case QRMode.MODE_8BIT_BYTE:return 16;case QRMode.MODE_KANJI:return 10;default:throw new Error('mode:'+mode);}}else if(type<41){switch(mode){case QRMode.MODE_NUMBER:return 14;case QRMode.MODE_ALPHA_NUM:return 13;case QRMode.MODE_8BIT_BYTE:return 16;case QRMode.MODE_KANJI:return 12;default:throw new Error('mode:'+mode);}}else{throw new Error('type:'+type);}},
+getLostPoint:function(qrCode){var moduleCount=qrCode.getModuleCount();var lostPoint=0;for(var row=0;row<moduleCount;row++){for(var col=0;col<moduleCount;col++){var sameCount=0;var dark=qrCode.isDark(row,col);for(var r=-1;r<=1;r++){if(row+r<0||moduleCount<=row+r){continue;}for(var c=-1;c<=1;c++){if(col+c<0||moduleCount<=col+c){continue;}if(r==0&&c==0){continue;}if(dark==qrCode.isDark(row+r,col+c)){sameCount++;}}}if(sameCount>5){lostPoint+=(3+sameCount-5);}}}for(var row=0;row<moduleCount-1;row++){for(var col=0;col<moduleCount-1;col++){var count=0;if(qrCode.isDark(row,col))count++;if(qrCode.isDark(row+1,col))count++;if(qrCode.isDark(row,col+1))count++;if(qrCode.isDark(row+1,col+1))count++;if(count==0||count==4){lostPoint+=3;}}}for(var row=0;row<moduleCount;row++){for(var col=0;col<moduleCount-6;col++){if(qrCode.isDark(row,col)&&!qrCode.isDark(row,col+1)&&qrCode.isDark(row,col+2)&&qrCode.isDark(row,col+3)&&qrCode.isDark(row,col+4)&&!qrCode.isDark(row,col+5)&&qrCode.isDark(row,col+6)){lostPoint+=40;}}}for(var col=0;col<moduleCount;col++){for(var row=0;row<moduleCount-6;row++){if(qrCode.isDark(row,col)&&!qrCode.isDark(row+1,col)&&qrCode.isDark(row+2,col)&&qrCode.isDark(row+3,col)&&qrCode.isDark(row+4,col)&&!qrCode.isDark(row+5,col)&&qrCode.isDark(row+6,col)){lostPoint+=40;}}}var darkCount=0;for(var col=0;col<moduleCount;col++){for(var row=0;row<moduleCount;row++){if(qrCode.isDark(row,col)){darkCount++;}}}var ratio=Math.abs(100*darkCount/moduleCount/moduleCount-50)/5;lostPoint+=ratio*10;return lostPoint;}};
+var QRMath={glog:function(n){if(n<1){throw new Error('glog('+n+')');}return QRMath.LOG_TABLE[n];},gexp:function(n){while(n<0){n+=255;}while(n>=256){n-=255;}return QRMath.EXP_TABLE[n];},EXP_TABLE:new Array(256),LOG_TABLE:new Array(256)};
+for(var i=0;i<8;i++){QRMath.EXP_TABLE[i]=1<<i;}
+for(var i=8;i<256;i++){QRMath.EXP_TABLE[i]=QRMath.EXP_TABLE[i-4]^QRMath.EXP_TABLE[i-5]^QRMath.EXP_TABLE[i-6]^QRMath.EXP_TABLE[i-8];}
+for(var i=0;i<255;i++){QRMath.LOG_TABLE[QRMath.EXP_TABLE[i]]=i;}
+function QRPolynomial(num,shift){if(num.length==undefined){throw new Error(num.length+'/'+shift);}var offset=0;while(offset<num.length&&num[offset]==0){offset++;}this.num=new Array(num.length-offset+shift);for(var i=0;i<num.length-offset;i++){this.num[i]=num[i+offset];}}
+QRPolynomial.prototype={get:function(index){return this.num[index];},getLength:function(){return this.num.length;},multiply:function(e){var num=new Array(this.getLength()+e.getLength()-1);for(var i=0;i<this.getLength();i++){for(var j=0;j<e.getLength();j++){num[i+j]^=QRMath.gexp(QRMath.glog(this.get(i))+QRMath.glog(e.get(j)));}}return new QRPolynomial(num,0);},mod:function(e){if(this.getLength()-e.getLength()<0){return this;}var ratio=QRMath.glog(this.get(0))-QRMath.glog(e.get(0));var num=new Array(this.getLength());for(var i=0;i<this.getLength();i++){num[i]=this.get(i);}for(var i=0;i<e.getLength();i++){num[i]^=QRMath.gexp(QRMath.glog(e.get(i))+ratio);}return new QRPolynomial(num,0).mod(e);}};
+
+function QRRSBlock(totalCount,dataCount){this.totalCount=totalCount;this.dataCount=dataCount;}
+var QRRSBlockHelper={RS_BLOCK_TABLE:[[1,26,19],[1,26,16],[1,26,13],[1,26,9],[1,44,34],[1,44,28],[1,44,22],[1,44,16],[1,70,55],[1,70,44],[2,35,17],[2,35,13],[1,100,80],[2,50,32],[2,50,24],[4,25,9],[1,134,108],[2,67,43],[2,33,15,2,34,16],[2,33,11,2,34,12],[2,86,68],[4,43,27],[4,43,19],[4,43,15],[2,98,78],[4,49,31],[2,32,14,4,33,15],[4,39,13,1,40,14],[2,121,97],[2,60,38,2,61,39],[4,40,18,2,41,19],[4,40,14,2,41,15],[2,146,116],[3,58,36,2,59,37],[4,36,16,4,37,17],[4,36,12,4,37,13],[2,86,68,2,87,69],[4,69,43,1,70,44],[6,43,19,2,44,20],[6,43,15,2,44,16],[4,101,81],[1,80,50,4,81,51],[4,50,22,4,51,23],[3,36,12,8,37,13],[2,116,92,2,117,93],[6,58,36,2,59,37],[4,46,20,6,47,21],[7,42,14,4,43,15],[4,133,107],[8,59,37,1,60,38],[8,44,20,4,45,21],[12,33,11,4,34,12],[3,145,115,1,146,116],[4,64,40,5,65,41],[11,36,16,5,37,17],[11,36,12,5,37,13],[5,109,87,1,110,88],[5,65,41,5,66,42],[5,54,24,7,55,25],[11,36,12],[5,122,98,1,123,99],[7,73,45,3,74,46],[15,43,19,2,44,20],[3,45,15,13,46,16],[1,135,107,5,136,108],[10,74,46,1,75,47],[1,50,22,15,51,23],[2,42,14,17,43,15],[5,150,120,1,151,121],[9,69,43,4,70,44],[17,50,22,1,51,23],[2,42,14,19,43,15],[3,141,113,4,142,114],[3,70,44,11,71,45],[17,47,21,4,48,22],[9,39,13,16,40,14],[3,135,107,5,136,108],[3,67,41,13,68,42],[15,54,24,5,55,25],[15,43,15,10,44,16],[4,144,116,4,145,117],[17,68,42],[17,50,22,6,51,23],[19,46,16,6,47,17],[2,139,111,7,140,112],[17,74,46],[7,54,24,16,55,25],[34,37,13],[4,151,121,5,152,122],[4,75,47,14,76,48],[11,54,24,14,55,25],[16,45,15,14,46,16],[6,147,117,4,148,118],[6,73,45,14,74,46],[11,54,24,16,55,25],[30,46,16,2,47,17],[8,132,106,4,133,107],[8,75,47,13,76,48],[7,54,24,22,55,25],[22,45,15,13,46,16],[10,142,114,2,143,115],[19,74,46,4,75,47],[28,50,22,6,51,23],[33,46,16,4,47,17],[8,152,122,4,153,123],[22,73,45,3,74,46],[8,53,23,26,54,24],[12,45,15,28,46,16],[3,147,117,10,148,118],[3,73,45,23,74,46],[4,54,24,31,55,25],[11,45,15,31,46,16],[7,146,116,7,147,117],[21,73,45,7,74,46],[1,53,23,37,54,24],[19,45,15,26,46,16],[5,145,115,10,146,116],[19,75,47,10,76,48],[15,54,24,25,55,25],[23,45,15,25,46,16],[13,145,115,3,146,116],[2,74,46,29,75,47],[42,54,24,1,55,25],[23,45,15,28,46,16],[17,145,115],[10,74,46,23,75,47],[10,54,24,35,55,25],[19,45,15,35,46,16],[17,145,115,1,146,116],[14,74,46,21,75,47],[29,54,24,19,55,25],[11,45,15,46,46,16],[13,145,115,6,146,116],[14,74,46,23,75,47],[44,54,24,7,55,25],[59,46,16,1,47,17],[12,151,121,7,152,122],[12,75,47,26,76,48],[39,54,24,14,55,25],[22,45,15,41,46,16],[6,151,121,14,152,122],[6,75,47,34,76,48],[46,54,24,10,55,25],[2,45,15,64,46,16],[17,152,122,4,153,123],[29,74,46,14,75,47],[49,54,24,10,55,25],[24,45,15,46,46,16],[4,152,122,18,153,123],[13,74,46,32,75,47],[48,54,24,14,55,25],[42,45,15,32,46,16],[20,147,117,4,148,118],[40,75,47,7,76,48],[43,54,24,22,55,25],[10,45,15,67,46,16],[19,148,118,6,149,119],[18,75,47,31,76,48],[34,54,24,34,55,25],[20,45,15,61,46,16]],getRSBlocks:function(typeNumber,errorCorrectionLevel){var rsBlock=QRRSBlockHelper.getRsBlockTable(typeNumber,errorCorrectionLevel);if(rsBlock==undefined){throw new Error('bad rs block @ typeNumber:'+typeNumber+'/errorCorrectionLevel:'+errorCorrectionLevel);}var length=rsBlock.length/3;var list=[];for(var i=0;i<length;i++){var count=rsBlock[i*3+0];var totalCount=rsBlock[i*3+1];var dataCount=rsBlock[i*3+2];for(var j=0;j<count;j++){list.push(new QRRSBlock(totalCount,dataCount));}}return list;},getRsBlockTable:function(typeNumber,errorCorrectionLevel){switch(errorCorrectionLevel){case QRErrorCorrectionLevel.L:return QRRSBlockHelper.RS_BLOCK_TABLE[(typeNumber-1)*4+0];case QRErrorCorrectionLevel.M:return QRRSBlockHelper.RS_BLOCK_TABLE[(typeNumber-1)*4+1];case QRErrorCorrectionLevel.Q:return QRRSBlockHelper.RS_BLOCK_TABLE[(typeNumber-1)*4+2];case QRErrorCorrectionLevel.H:return QRRSBlockHelper.RS_BLOCK_TABLE[(typeNumber-1)*4+3];default:return undefined;}}};
+function QRBitBuffer(){this.buffer=[];this.length=0;}
+QRBitBuffer.prototype={get:function(index){var bufIndex=Math.floor(index/8);return((this.buffer[bufIndex]>>>(7-index%8))&1)==1;},put:function(num,length){for(var i=0;i<length;i++){this.putBit(((num>>>(length-i-1))&1)==1);}},getLengthInBits:function(){return this.length;},putBit:function(bit){var bufIndex=Math.floor(this.length/8);if(this.buffer.length<=bufIndex){this.buffer.push(0);}if(bit){this.buffer[bufIndex]|=(0x80>>>(this.length%8));}this.length++;}};
+var QRMode={MODE_NUMBER:1<<0,MODE_ALPHA_NUM:1<<1,MODE_8BIT_BYTE:1<<2,MODE_KANJI:1<<3};
+function QR8bitByte(data){this.mode=QRMode.MODE_8BIT_BYTE;this.data=data;this.parsedData=[];for(var i=0;i<data.length;i++){var byteArray=[];var code=data.charCodeAt(i);if(code>0x10000){byteArray[0]=0xF0|((code&0x1C0000)>>>18);byteArray[1]=0x80|((code&0x3F000)>>>12);byteArray[2]=0x80|((code&0xFC0)>>>6);byteArray[3]=0x80|(code&0x3F);}else if(code>0x800){byteArray[0]=0xE0|((code&0xF000)>>>12);byteArray[1]=0x80|((code&0xFC0)>>>6);byteArray[2]=0x80|(code&0x3F);}else if(code>0x80){byteArray[0]=0xC0|((code&0x7C0)>>>6);byteArray[1]=0x80|(code&0x3F);}else{byteArray[0]=code;}this.parsedData.push(byteArray);}this.parsedData=Array.prototype.concat.apply([],this.parsedData);if(this.parsedData.length!=this.data.length){this.parsedData.unshift(0xEF);this.parsedData.unshift(0xBB);this.parsedData.unshift(0xBF);}}
+QR8bitByte.prototype={getMode:function(){return QRMode.MODE_8BIT_BYTE;},getLength:function(buffer){return this.parsedData.length;},write:function(buffer){for(var i=0;i<this.parsedData.length;i++){buffer.put(this.parsedData[i],8);}}};
+function QRCodeModel(typeNumber,errorCorrectionLevel){this.typeNumber=typeNumber;this.errorCorrectionLevel=errorCorrectionLevel;this.modules=null;this.moduleCount=0;this.dataCache=null;this.dataList=[];}
+QRCodeModel.prototype={addData:function(data){var newData=new QR8bitByte(data);this.dataList.push(newData);this.dataCache=null;},isDark:function(row,col){if(row<0||this.moduleCount<=row||col<0||this.moduleCount<=col){throw new Error(row+','+col);}return this.modules[row][col];},getModuleCount:function(){return this.moduleCount;},make:function(){this.makeImpl(false,this.getBestMaskPattern());},makeImpl:function(test,maskPattern){this.moduleCount=this.typeNumber*4+17;this.modules=function(moduleCount){var modules=new Array(moduleCount);for(var row=0;row<moduleCount;row++){modules[row]=new Array(moduleCount);for(var col=0;col<moduleCount;col++){modules[row][col]=null;}}return modules;}(this.moduleCount);this.setupPositionProbePattern(0,0);this.setupPositionProbePattern(this.moduleCount-7,0);this.setupPositionProbePattern(0,this.moduleCount-7);this.setupPositionAdjustPattern();this.setupTimingPattern();this.setupTypeInfo(test,maskPattern);if(this.typeNumber>=7){this.setupTypeNumber(test);}if(this.dataCache==null){this.dataCache=QRCodeModel.createData(this.typeNumber,this.errorCorrectionLevel,this.dataList);}this.mapData(this.dataCache,maskPattern);},setupPositionProbePattern:function(row,col){for(var r=-1;r<=7;r++){if(row+r<=-1||this.moduleCount<=row+r)continue;for(var c=-1;c<=7;c++){if(col+c<=-1||this.moduleCount<=col+c)continue;if((0<=r&&r<=6&&c==0)||(0<=r&&r<=6&&c==6)||(r==0&&0<=c&&c<=6)||(r==6&&0<=c&&c<=6)||(2<=r&&r<=4&&2<=c&&c<=4)){this.modules[row+r][col+c]=true;}else{this.modules[row+r][col+c]=false;}}}},getBestMaskPattern:function(){var minLostPoint=0;var pattern=0;for(var i=0;i<8;i++){this.makeImpl(true,i);var lostPoint=QRUtil.getLostPoint(this);if(i==0||minLostPoint>lostPoint){minLostPoint=lostPoint;pattern=i;}}return pattern;},setupTimingPattern:function(){for(var r=8;r<this.moduleCount-8;r++){if(this.modules[r][6]!=null)continue;this.modules[r][6]=(r%2==0);}for(var c=8;c<this.moduleCount-8;c++){if(this.modules[6][c]!=null)continue;this.modules[6][c]=(c%2==0);}},setupPositionAdjustPattern:function(){var pos=QRUtil.getPatternPosition(this.typeNumber);for(var i=0;i<pos.length;i++){for(var j=0;j<pos.length;j++){var row=pos[i];var col=pos[j];if(this.modules[row][col]!=null)continue;for(var r=-2;r<=2;r++){for(var c=-2;c<=2;c++){if(r==-2||r==2||c==-2||c==2||(r==0&&c==0)){this.modules[row+r][col+c]=true;}else{this.modules[row+r][col+c]=false;}}}}}},setupTypeNumber:function(test){var bits=QRUtil.getBCHTypeNumber(this.typeNumber);for(var i=0;i<18;i++){var mod=(!test&&((bits>>i)&1)==1);this.modules[Math.floor(i/3)][i%3+this.moduleCount-8-3]=mod;}for(var i=0;i<18;i++){var mod=(!test&&((bits>>i)&1)==1);this.modules[i%3+this.moduleCount-8-3][Math.floor(i/3)]=mod;}},setupTypeInfo:function(test,maskPattern){var data=(this.errorCorrectionLevel<<3)|maskPattern;var bits=QRUtil.getBCHTypeInfo(data);for(var i=0;i<15;i++){var mod=(!test&&((bits>>i)&1)==1);if(i<6){this.modules[i][8]=mod;}else if(i<8){this.modules[i+1][8]=mod;}else{this.modules[this.moduleCount-15+i][8]=mod;}}for(var i=0;i<15;i++){var mod=(!test&&((bits>>i)&1)==1);if(i<8){this.modules[8][this.moduleCount-i-1]=mod;}else if(i<9){this.modules[8][15-i-1+1]=mod;}else{this.modules[8][15-i-1]=mod;}}this.modules[this.moduleCount-8][8]=(!test);},mapData:function(data,maskPattern){var inc=-1;var row=this.moduleCount-1;var bitIndex=7;var byteIndex=0;for(var col=this.moduleCount-1;col>0;col-=2){if(col==6)col--;while(true){for(var c=0;c<2;c++){if(this.modules[row][col-c]==null){var dark=false;if(byteIndex<data.length){dark=(((data[byteIndex])>>>(bitIndex))&1)==1;}var mask=QRUtil.getMask(maskPattern,row,col-c);if(mask)dark=!dark;this.modules[row][col-c]=dark;bitIndex--;if(bitIndex==-1){byteIndex++;bitIndex=7;}}}row+=inc;if(row<0||this.moduleCount<=row){row-=inc;inc=-inc;break;}}}},};
+QRCodeModel.PAD0=0xEC;QRCodeModel.PAD1=0x11;
+QRCodeModel.createData=function(typeNumber,errorCorrectionLevel,dataList){var rsBlocks=QRRSBlockHelper.getRSBlocks(typeNumber,errorCorrectionLevel);var buffer=new QRBitBuffer();for(var i=0;i<dataList.length;i++){var data=dataList[i];buffer.put(data.getMode(),4);buffer.put(data.getLength(buffer),QRUtil.getLengthInBits(data.getMode(),typeNumber));data.write(buffer);}var totalDataCount=0;for(var i=0;i<rsBlocks.length;i++){totalDataCount+=rsBlocks[i].dataCount;}if(buffer.getLengthInBits()>totalDataCount*8){throw new Error('code length overflow. ('+buffer.getLengthInBits()+'>'+totalDataCount*8+')');}if(buffer.getLengthInBits()+4<=totalDataCount*8){buffer.put(0,4);}while(buffer.getLengthInBits()%8!=0){buffer.putBit(false);}while(true){if(buffer.getLengthInBits()>=totalDataCount*8)break;buffer.put(QRCodeModel.PAD0,8);if(buffer.getLengthInBits()>=totalDataCount*8)break;buffer.put(QRCodeModel.PAD1,8);}return QRCodeModel.createBytes(buffer,rsBlocks);};
+QRCodeModel.createBytes=function(buffer,rsBlocks){var offset=0;var maxDcCount=0;var maxEcCount=0;var dcdata=new Array(rsBlocks.length);var ecdata=new Array(rsBlocks.length);for(var r=0;r<rsBlocks.length;r++){var dcCount=rsBlocks[r].dataCount;var ecCount=rsBlocks[r].totalCount-dcCount;maxDcCount=Math.max(maxDcCount,dcCount);maxEcCount=Math.max(maxEcCount,ecCount);dcdata[r]=new Array(dcCount);for(var i=0;i<dcdata[r].length;i++){dcdata[r][i]=0xff&buffer.buffer[i+offset];}offset+=dcCount;var rsPoly=QRUtil.getErrorCorrectPolynomial(ecCount);var rawPoly=new QRPolynomial(dcdata[r],rsPoly.getLength()-1);var modPoly=rawPoly.mod(rsPoly);ecdata[r]=new Array(rsPoly.getLength()-1);for(var i=0;i<ecdata[r].length;i++){var modIndex=i+modPoly.getLength()-ecdata[r].length;ecdata[r][i]=(modIndex>=0)?modPoly.get(modIndex):0;}}var totalCodeCount=0;for(var i=0;i<rsBlocks.length;i++){totalCodeCount+=rsBlocks[i].totalCount;}var data=new Array(totalCodeCount);var index=0;for(var i=0;i<maxDcCount;i++){for(var r=0;r<rsBlocks.length;r++){if(i<dcdata[r].length){data[index++]=dcdata[r][i];}}}for(var i=0;i<maxEcCount;i++){for(var r=0;r<rsBlocks.length;r++){if(i<ecdata[r].length){data[index++]=ecdata[r][i];}}}return data;};
+function _getTypeNumber(sText,nCorrectLevel){var nType=1;var length=_getUTF8Length(sText);for(var i=0;i<40;i++){var rsBlocks=QRRSBlockHelper.getRSBlocks(i+1,nCorrectLevel);var maxDataCount=0;for(var j=0;j<rsBlocks.length;j++){maxDataCount+=rsBlocks[j].dataCount;}if(maxDataCount>=length+3){nType=i+1;break;}}return nType;}
+function _getUTF8Length(sText){var replacedText=encodeURI(sText).toString();return replacedText.length+(replacedText.length!=sText.length?3:0);}
+function QRCode(el,vOption){this._htOption={width:256,height:256,typeNumber:4,colorDark:'#000000',colorLight:'#ffffff',correctLevel:QRErrorCorrectionLevel.H};if(typeof vOption==='string'){vOption={text:vOption};}if(vOption){for(var i in vOption){this._htOption[i]=vOption[i];}}if(typeof el==='string'){el=document.getElementById(el);}this._el=el;this._oQRCode=null;this._oDrawing=new Drawing(el,this._htOption);if(this._htOption.text){this.makeCode(this._htOption.text);}}
+QRCode.prototype={makeCode:function(sText){this._oQRCode=new QRCodeModel(_getTypeNumber(sText,this._htOption.correctLevel),this._htOption.correctLevel);this._oQRCode.addData(sText);this._oQRCode.make();this._oDrawing.draw(this._oQRCode);},makeImage:function(){if(typeof this._oDrawing.makeImage==='function'){this._oDrawing.makeImage();}},clear:function(){this._oDrawing.clear();}};
+QRCode.CorrectLevel=QRErrorCorrectionLevel;
+function Drawing(el,htOption){this._el=el;this._htOption=htOption;}
+Drawing.prototype={draw:function(oQRCode){var _htOption=this._htOption;var _el=this._el;var nCount=oQRCode.getModuleCount();var nWidth=Math.floor(_htOption.width/nCount);var nHeight=Math.floor(_htOption.height/nCount);var htOption=this._htOption;var canvas=document.createElement('canvas');canvas.width=_htOption.width;canvas.height=_htOption.height;var ctx=canvas.getContext('2d');ctx.fillStyle=_htOption.colorLight;ctx.fillRect(0,0,canvas.width,canvas.height);for(var row=0;row<nCount;row++){for(var col=0;col<nCount;col++){ctx.fillStyle=oQRCode.isDark(row,col)?_htOption.colorDark:_htOption.colorLight;var nLeft=col*nWidth;var nTop=row*nHeight;ctx.fillRect(nLeft,nTop,nWidth,nHeight);}}while(_el.firstChild){_el.removeChild(_el.firstChild);}this._elCanvas=canvas;_el.appendChild(canvas);},clear:function(){if(this._elCanvas){this._el.removeChild(this._elCanvas);}},makeImage:function(){}};
+root.QRCode=QRCode;
+// Export all needed globals for drawQR
+root.QRCodeModel=QRCodeModel;
+root.QRErrorCorrectionLevel=QRErrorCorrectionLevel;
+root.QRRSBlock=QRRSBlockHelper;
+root.QRUtil=QRUtil;
+root.QRMath=QRMath;
+root.QR8bitByte=QR8bitByte;
+root.QRBitBuffer=QRBitBuffer;
+root.QRPolynomial=QRPolynomial;
+root._getTypeNumber=_getTypeNumber;
+root._getUTF8Length=_getUTF8Length;
+})(window);
+
+</script>
 </head>
 <body data-theme="gold">
 
@@ -6248,47 +6305,289 @@ function deleteContact(id){
 // ═══════════════════════════════════
 // QR CODE
 // ═══════════════════════════════════
+// ── Real QR Generator (uses QRCodeModel from index-2) ──
 function drawQR(canvas, text, size){
-  size = size||180;
-  canvas.width=size; canvas.height=size;
-  var ctx=canvas.getContext('2d');
+  size = size||220;
+  canvas.width = size; canvas.height = size;
+  var ctx = canvas.getContext('2d');
   ctx.fillStyle='#fff'; ctx.fillRect(0,0,size,size);
-  // Google Charts QR - simple, reliable, no library needed
-  var url = "https://chart.googleapis.com/chart?chs="+size+"x"+size+"&cht=qr&chld=H|1&chl="+encodeURIComponent(text);
-  var img = new Image();
-  img.crossOrigin = "anonymous";
-  img.onload = function(){
-    ctx.drawImage(img, 0, 0, size, size);
-    // Logo in center
-    var r=size*0.11, cx=size/2, cy=size/2;
-    var acc=getComputedStyle(document.body).getPropertyValue('--acc').trim()||'#D4A843';
-    ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(cx,cy,r+4,0,Math.PI*2); ctx.fill();
-    ctx.fillStyle=acc; ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2); ctx.fill();
-    ctx.fillStyle='#fff';
-    ctx.font='bold '+Math.floor(r*1.15)+'px sans-serif';
-    ctx.textAlign='center'; ctx.textBaseline='middle';
-    ctx.fillText('💬', cx, cy+1);
-  };
-  img.onerror = function(){
-    ctx.fillStyle='#555'; ctx.font='12px sans-serif';
-    ctx.textAlign='center'; ctx.textBaseline='middle';
-    ctx.fillText('تحقق من الاتصال', size/2, size/2);
-  };
-  img.src = url;
+  try{
+    // QRCode is exported to window — use it via QRCode.makeCode → Drawing → internal canvas
+    if(typeof window.QRCode === 'undefined') throw new Error('QRCode not loaded');
+    // Use _getTypeNumber + QRCodeModel directly — both exported to window
+    var lvl = window.QRErrorCorrectionLevel ? window.QRErrorCorrectionLevel.H : 2;
+    var tn  = window._getTypeNumber ? window._getTypeNumber(text, lvl) : 5;
+    var qr  = new window.QRCodeModel(tn, lvl);
+    qr.addData(text); qr.make();
+    var n = qr.getModuleCount();
+    var cell = Math.floor(size/(n+2));
+    var pad  = Math.floor((size - cell*n)/2);
+    ctx.fillStyle='#fff'; ctx.fillRect(0,0,size,size);
+    for(var r=0;r<n;r++){
+      for(var c2=0;c2<n;c2++){
+        ctx.fillStyle = qr.isDark(r,c2)?'#000':'#fff';
+        ctx.fillRect(pad+c2*cell, pad+r*cell, cell, cell);
+      }
+    }
+    _drawQRLogo(ctx, size);
+  }catch(e1){
+    // Fallback: use QRCode class via a hidden div
+    try{
+      var tmp=document.createElement('div');
+      tmp.style.cssText='position:fixed;left:-9999px;top:-9999px;width:'+size+'px;height:'+size+'px;';
+      document.body.appendChild(tmp);
+      new window.QRCode(tmp,{text:text,width:size,height:size,
+        colorDark:'#000000',colorLight:'#ffffff',correctLevel:2});
+      var qcvs=tmp.querySelector('canvas');
+      if(qcvs){ ctx.drawImage(qcvs,0,0,size,size); _drawQRLogo(ctx,size); }
+      else{
+        var qi=tmp.querySelector('img');
+        if(qi){ var im=new Image(); im.onload=function(){ctx.drawImage(im,0,0,size,size);_drawQRLogo(ctx,size);}; im.src=qi.src; }
+      }
+      tmp.remove();
+    }catch(e2){
+      console.error('drawQR both methods failed:',e1.message,e2.message);
+      ctx.fillStyle='#888'; ctx.font='11px sans-serif'; ctx.textAlign='center';
+      ctx.textBaseline='middle'; ctx.fillText('QR unavailable',size/2,size/2);
+    }
+  }
 }
-function qrData(c){return `cloud://add?name=${encodeURIComponent(c.name)}&phone=${encodeURIComponent(c.phone||'')}&status=${encodeURIComponent(c.status||'')}&color=${c.color}&id=${encodeURIComponent(c.pulseId||c.id||'')}&avatar=${encodeURIComponent(c.avatar||'')}`;}
 
+function _drawQRLogo(ctx, size){
+  // Draw ☁️ logo in center like WhatsApp style
+  var r = size * 0.11;
+  var cx = size/2, cy = size/2;
+  var acc = getComputedStyle(document.body).getPropertyValue('--acc').trim() || '#D4A843';
+  // White border ring
+  ctx.fillStyle = '#ffffff';
+  ctx.beginPath(); ctx.arc(cx, cy, r+4, 0, Math.PI*2); ctx.fill();
+  // Accent circle
+  ctx.fillStyle = acc;
+  ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI*2); ctx.fill();
+  // Cloud emoji
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold ' + Math.floor(r*1.15) + 'px sans-serif';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText('☁️', cx, cy+1);
+}
+
+function qrData(c){
+  return 'cloud://add?name='+encodeURIComponent(c.name||'')
+    +'&phone='+encodeURIComponent(c.phone||'')
+    +'&status='+encodeURIComponent(c.status||'')
+    +'&color='+(c.color||'B')
+    +'&id='+encodeURIComponent(c.pulseId||c.id||'')
+    +'&avatar='+encodeURIComponent(c.avatar||'');
+}
 
 function openMyQR(){
-  const b=document.getElementById('profileShBody');
-  document.getElementById('profileShTitle').textContent=t('myQR');
-  b.innerHTML='';
-  const wrap=document.createElement('div');wrap.className='qr-wrap';
-  const canvas=document.createElement('canvas');
-  const lbl=document.createElement('div');lbl.className='qr-lbl';lbl.textContent=t('qrHint');
-  wrap.appendChild(canvas);wrap.appendChild(lbl);b.appendChild(wrap);
-  setTimeout(()=>drawQR(canvas,qrData({name:me.name,phone:me.phone||'',status:me.status||'',color:me.color}),180),50);
+  const b = document.getElementById('profileShBody');
+  document.getElementById('profileShTitle').textContent = '☁️ '+t('myQR');
+  const myData = qrData({name:me.name, phone:me.phone||'', status:me.status||'', color:me.color, pulseId:me.pulseId||''});
+
+  b.innerHTML = `
+    <!-- WhatsApp-style tabs -->
+    <div style="display:flex;border-bottom:1px solid var(--br);margin-bottom:0;">
+      <div id="qrTabMy" onclick="qrSwitchTab('my')"
+        style="flex:1;text-align:center;padding:13px 0;font-size:13px;font-weight:800;cursor:pointer;
+        color:var(--acc);border-bottom:2.5px solid var(--acc);">
+        كودي
+      </div>
+      <div id="qrTabScan" onclick="qrSwitchTab('scan')"
+        style="flex:1;text-align:center;padding:13px 0;font-size:13px;font-weight:700;cursor:pointer;
+        color:var(--t3);border-bottom:2.5px solid transparent;">
+        مسح كود
+      </div>
+    </div>
+
+    <!-- MY CODE tab -->
+    <div id="qrMyPanel" style="display:flex;flex-direction:column;align-items:center;padding:20px 16px 24px;">
+      <!-- Avatar + Name card (WhatsApp style) -->
+      <div style="background:#fff;border-radius:20px;padding:20px 24px;text-align:center;
+        box-shadow:0 4px 24px rgba(0,0,0,.12);width:100%;max-width:280px;margin-bottom:16px;">
+        <!-- Avatar -->
+        <div style="width:64px;height:64px;border-radius:50%;margin:0 auto 10px;overflow:hidden;
+          display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:800;
+          background:${me.avatar?'transparent':AVCOLS[me.color]||'#888'};color:#fff;">
+          ${me.avatar?`<img src="${me.avatar}" style="width:100%;height:100%;object-fit:cover;">`
+            :me.name.charAt(0).toUpperCase()}
+        </div>
+        <div style="font-size:17px;font-weight:800;color:#111;margin-bottom:4px;">${me.name}</div>
+        <div style="font-size:12px;color:#888;margin-bottom:16px;">Cloud contact</div>
+        <!-- Real QR -->
+        <canvas id="myQrCanvas" style="border-radius:4px;display:block;margin:0 auto;width:220px;height:220px;"></canvas>
+      </div>
+      <!-- hint -->
+      <div style="font-size:12px;color:var(--t3);text-align:center;max-width:260px;line-height:1.6;margin-bottom:12px;">
+        🔒 كودك QR خاص — شاركه مع أصدقائك ليضيفوك مباشرةً
+      </div>
+      <!-- Share + Download buttons -->
+      <div style="display:flex;gap:10px;width:100%;max-width:280px;">
+        <button onclick="shareMyQR()" style="flex:1;padding:12px;border-radius:12px;background:var(--acc);color:var(--bme-t);border:none;font-family:var(--fa);font-size:13px;font-weight:700;cursor:pointer;">
+          📤 مشاركة
+        </button>
+        <button onclick="downloadMyQR()" style="flex:1;padding:12px;border-radius:12px;background:var(--s2);color:var(--t0);border:1px solid var(--br);font-family:var(--fa);font-size:13px;font-weight:700;cursor:pointer;">
+          💾 تحميل
+        </button>
+      </div>
+    </div>
+
+    <!-- SCAN tab -->
+    <div id="qrScanPanel" style="display:none;padding:16px;">
+      <div class="scan-area">
+        <div class="scan-frame" id="qrScanFrame" style="margin-bottom:12px;">
+          <video id="qrScanVid" autoplay playsinline muted style="width:100%;height:100%;object-fit:cover;display:none;"></video>
+          <canvas id="qrScanCvs" style="width:100%;height:100%;display:none;"></canvas>
+          <div id="qrScanPh" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:8px;background:#0A0A0A;">
+            <span style="font-size:48px;">📷</span>
+            <span style="font-size:12px;color:#aaa;">وجّه الكاميرا نحو QR Code</span>
+          </div>
+          <div class="scan-corners"><div class="sc-tl"></div><div class="sc-br"></div></div>
+          <div class="scan-line" id="qrScanLine" style="display:none;"></div>
+        </div>
+        <div id="qrScanStatus" style="font-size:13px;color:var(--t2);text-align:center;min-height:20px;margin-bottom:10px;"></div>
+        <button id="qrScanStartBtn" onclick="startQRScanInSheet()" class="sh-btn" style="max-width:200px;">
+          📷 تشغيل الكاميرا
+        </button>
+        <div style="display:flex;align-items:center;gap:10px;width:100%;max-width:280px;margin:8px 0;">
+          <div style="flex:1;height:1px;background:var(--br);"></div>
+          <span style="font-size:12px;color:var(--t3);">أو</span>
+          <div style="flex:1;height:1px;background:var(--br);"></div>
+        </div>
+        <label style="display:flex;align-items:center;gap:8px;padding:11px 20px;border-radius:13px;cursor:pointer;background:var(--s2);border:1.5px solid var(--br);font-size:13px;font-weight:600;color:var(--t1);max-width:280px;width:100%;justify-content:center;">
+          🖼️ رفع صورة QR
+          <input type="file" accept="image/*" id="qrUploadIn" style="display:none;" onchange="handleQRUploadInSheet(this)">
+        </label>
+      </div>
+    </div>
+  `;
+
   openOv('ovProfile');
+  // Draw the real QR after DOM ready
+  // Try multiple times in case DOM isn't ready
+  var _qrAttempts = 0;
+  function _tryDrawQR(){
+    var cv = document.getElementById('myQrCanvas');
+    if(!cv){ if(++_qrAttempts<10) setTimeout(_tryDrawQR,100); return; }
+    try{ drawQR(cv, myData, 220); }
+    catch(e){ console.error('QR draw failed:', e); }
+  }
+  setTimeout(_tryDrawQR, 100);
+}
+
+var _qrSheetScanStream = null, _qrSheetScanInterval = null;
+
+function qrSwitchTab(tab){
+  const myP = document.getElementById('qrMyPanel');
+  const scP = document.getElementById('qrScanPanel');
+  const tabMy = document.getElementById('qrTabMy');
+  const tabSc = document.getElementById('qrTabScan');
+  if(!myP) return;
+  if(tab==='my'){
+    myP.style.display='flex'; scP.style.display='none';
+    tabMy.style.color='var(--acc)'; tabMy.style.borderBottomColor='var(--acc)';
+    tabSc.style.color='var(--t3)';  tabSc.style.borderBottomColor='transparent';
+    stopQRScanInSheet();
+  } else {
+    myP.style.display='none'; scP.style.display='block';
+    tabSc.style.color='var(--acc)'; tabSc.style.borderBottomColor='var(--acc)';
+    tabMy.style.color='var(--t3)';  tabMy.style.borderBottomColor='transparent';
+  }
+}
+
+async function startQRScanInSheet(){
+  const st=document.getElementById('qrScanStatus'), btn=document.getElementById('qrScanStartBtn');
+  try{
+    if(st) st.textContent='⏳ جاري تشغيل الكاميرا...';
+    if(btn) btn.style.display='none';
+    _qrSheetScanStream = await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}});
+    const v = document.getElementById('qrScanVid');
+    const ph = document.getElementById('qrScanPh');
+    const line = document.getElementById('qrScanLine');
+    v.srcObject = _qrSheetScanStream;
+    await v.play();
+    v.style.display='block';
+    if(ph) ph.style.display='none';
+    if(line) line.style.display='block';
+    if(st) st.textContent='🔍 وجّه نحو QR Code...';
+
+    if('BarcodeDetector' in window){
+      const det = new BarcodeDetector({formats:['qr_code']});
+      _qrSheetScanInterval = setInterval(async()=>{
+        try{
+          const r = await det.detect(v);
+          if(r&&r.length){ clearInterval(_qrSheetScanInterval); stopQRScanInSheet(); handleScan(r[0].rawValue); closeOv('ovProfile'); }
+        }catch(e){}
+      },300);
+    } else if(typeof jsQR!=='undefined'){
+      const cvs=document.getElementById('qrScanCvs'); cvs.width=300; cvs.height=300;
+      const ctx=cvs.getContext('2d');
+      _qrSheetScanInterval = setInterval(()=>{
+        if(!v.videoWidth) return;
+        ctx.drawImage(v,0,0,300,300);
+        const id=ctx.getImageData(0,0,300,300);
+        const r=jsQR(id.data,id.width,id.height,{inversionAttempts:'attemptBoth'});
+        if(r&&r.data){ clearInterval(_qrSheetScanInterval); stopQRScanInSheet(); handleScan(r.data); closeOv('ovProfile'); }
+      },200);
+    } else {
+      if(st) st.textContent='⚠️ ارفع صورة بدلاً من ذلك';
+      if(btn){ btn.style.display='block'; }
+    }
+  }catch(e){
+    if(st) st.textContent='❌ تعذّر الوصول للكاميرا';
+    if(btn) btn.style.display='block';
+  }
+}
+
+function stopQRScanInSheet(){
+  if(_qrSheetScanInterval){ clearInterval(_qrSheetScanInterval); _qrSheetScanInterval=null; }
+  if(_qrSheetScanStream){ _qrSheetScanStream.getTracks().forEach(t=>t.stop()); _qrSheetScanStream=null; }
+}
+
+function handleQRUploadInSheet(inp){
+  const f=inp?.files?.[0]; if(!f) return;
+  const r=new FileReader();
+  r.onload=ev=>{
+    const img=new Image();
+    img.onload=()=>{
+      const cvs=document.createElement('canvas');
+      cvs.width=img.width; cvs.height=img.height;
+      const ctx=cvs.getContext('2d'); ctx.drawImage(img,0,0);
+      const id=ctx.getImageData(0,0,cvs.width,cvs.height);
+      const result=typeof jsQR!=='undefined'?jsQR(id.data,id.width,id.height,{inversionAttempts:'attemptBoth'}):null;
+      if(result&&result.data){ handleScan(result.data); closeOv('ovProfile'); }
+      else { const s=document.getElementById('qrScanStatus'); if(s) s.textContent='⚠️ لم يُعثر على QR في الصورة'; }
+    };
+    img.src=ev.target.result;
+  };
+  r.readAsDataURL(f);
+  inp.value='';
+}
+
+function shareMyQR(){
+  const cv=document.getElementById('myQrCanvas');
+  if(!cv) return;
+  cv.toBlob(blob=>{
+    if(navigator.share && navigator.canShare){
+      const file=new File([blob],'cloud-qr.png',{type:'image/png'});
+      if(navigator.canShare({files:[file]})){
+        navigator.share({files:[file], title:me.name+' — Cloud QR'}).catch(()=>{});
+        return;
+      }
+    }
+    // fallback: download
+    downloadMyQR();
+  },'image/png');
+}
+
+function downloadMyQR(){
+  const cv=document.getElementById('myQrCanvas');
+  if(!cv) return;
+  const a=document.createElement('a');
+  a.download='cloud-qr-'+me.name+'.png';
+  a.href=cv.toDataURL('image/png',1.0);
+  a.click();
+  toast('📥 تم تحميل QR Code');
 }
 
 // ═══════════════════════════════════
@@ -6908,74 +7207,54 @@ function renderAddScan(){
 let scanInterval=null;
 
 async function startScan(){
-  const st=document.getElementById('scanSt'), btn=document.getElementById('scanStart');
+  const st=document.getElementById('scanSt'),btn=document.getElementById('scanStart');
   try{
-    if(st) st.textContent = t('opening');
-    if(btn) btn.style.display = 'none';
-
-    scanStream = await navigator.mediaDevices.getUserMedia({
-      video:{ facingMode:'environment', width:{ideal:1280}, height:{ideal:720} }
-    });
-
-    const v       = document.getElementById('svid');
-    const ph      = document.getElementById('scanPlaceholder');
-    const scanLine= document.getElementById('scanLineEl');
-
-    v.srcObject = scanStream;
+    st.textContent=t('opening');btn.style.display='none';
+    scanStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment',width:{ideal:640},height:{ideal:640}}});
+    const v=document.getElementById('svid');
+    const ph=document.getElementById('scanPlaceholder');
+    const cvs=document.getElementById('scanCanvas');
+    const scanLine=document.getElementById('scanLineEl');
+    v.srcObject=scanStream;
     await v.play();
-    v.style.display = 'block';
-    if(ph)       ph.style.display = 'none';
-    if(scanLine) scanLine.style.display = 'block';
-    if(st)       st.textContent = t('cameraOn');
+    v.style.display='block';
+    if(ph) ph.style.display='none';
+    if(scanLine) scanLine.style.display='block';
+    st.textContent=t('cameraOn');
 
-    // ── BarcodeDetector (Chrome/Android native — أسرع) ──
+    // Use BarcodeDetector if available, otherwise jsQR via canvas
     if('BarcodeDetector' in window){
-      const det = new BarcodeDetector({formats:['qr_code']});
-      scanInterval = setInterval(async()=>{
+      const det=new BarcodeDetector({formats:['qr_code']});
+      scanInterval=setInterval(async()=>{
         try{
-          const r = await det.detect(v);
-          if(r && r.length){
-            clearInterval(scanInterval); scanInterval = null;
-            if(st) st.textContent = '✅ ' + t('scanned');
-            setTimeout(()=>handleScan(r[0].rawValue), 150);
-          }
+          const r=await det.detect(v);
+          if(r&&r.length){clearInterval(scanInterval);scanInterval=null;handleScan(r[0].rawValue);}
         }catch(e){}
-      }, 250);
-
-    // ── jsQR fallback ──
+      },300);
     } else if(typeof jsQR !== 'undefined'){
-      // offscreen canvas — مش داخل الـ DOM عشان ما يتأثرش
-      const off = document.createElement('canvas');
-      const octx = off.getContext('2d');
-
-      scanInterval = setInterval(()=>{
-        const vw = v.videoWidth, vh = v.videoHeight;
-        if(!vw || !vh) return;
-
-        off.width  = vw;
-        off.height = vh;
-        octx.drawImage(v, 0, 0, vw, vh);
-
-        const imgData = octx.getImageData(0, 0, vw, vh);
-        const result  = jsQR(imgData.data, vw, vh, {inversionAttempts:'attemptBoth'});
-
-        if(result && result.data){
-          clearInterval(scanInterval); scanInterval = null;
-          if(st) st.textContent = '✅ ' + t('scanned');
-          setTimeout(()=>handleScan(result.data), 150);
+      // Use jsQR with canvas
+      cvs.width=320;cvs.height=320;
+      const ctx=cvs.getContext('2d');
+      scanInterval=setInterval(()=>{
+        if(!v.videoWidth) return;
+        ctx.drawImage(v,0,0,320,320);
+        const id=ctx.getImageData(0,0,320,320);
+        const result=jsQR(id.data,id.width,id.height,{inversionAttempts:'attemptBoth'});
+        if(result&&result.data){
+          clearInterval(scanInterval);scanInterval=null;
+          // Flash success
+          if(st) st.textContent='✅ '+(t('scanned'));
+          setTimeout(()=>handleScan(result.data),300);
         }
-      }, 200);
-
+      },200);
     } else {
-      if(st)  st.textContent  = '⚠️ ' + t('scanNotSupported');
-      if(btn) btn.style.display = 'block';
+      st.textContent='⚠️ '+(t('scanNotSupported'));
+      btn.style.display='block';
     }
-
-  } catch(e){
-    const st2  = document.getElementById('scanSt');
-    const btn2 = document.getElementById('scanStart');
-    if(st2)  st2.textContent   = t('cameraErr') + ' (' + e.message + ')';
-    if(btn2) btn2.style.display = 'block';
+  }catch(e){
+    const st=document.getElementById('scanSt'),btn=document.getElementById('scanStart');
+    if(st) st.textContent=t('cameraErr');
+    if(btn) btn.style.display='block';
   }
 }
 
@@ -7002,7 +7281,6 @@ function handleScan(raw){
           status: p.get('status') ||'',
           pulseId:p.get('id')     ||'',
           color:  p.get('color')  ||'B',
-          avatar: p.get('avatar') ||null,
         };
         closeOv('ovAdd');
         showScannedContactPreview(contactData);
@@ -7090,28 +7368,13 @@ function showScannedContactPreview(contactData){
 
 function confirmAddScanned(data, sheetEl){
   sheetEl?.remove();
-  // Send real friend request via Supabase
-  const fakeContact = {
-    id:      'qr_' + Date.now(),
-    name:    data.name,
-    phone:   data.phone   || '',
-    pulseId: data.pulseId || '',
-    color:   data.color   || 'C',
-    avatar:  data.avatar  || null,
-    status:  data.status  || '',
-    friendStatus: 'pending',
-    unread: 0, lastMsg: '', lastTime: '',
-  };
-  // Check not already in contacts
-  const existing = contacts.find(c =>
-    (c.pulseId && c.pulseId === fakeContact.pulseId) ||
-    (c.phone   && c.phone   === fakeContact.phone)
-  );
-  if (!existing) contacts.push(fakeContact);
-  sendFriendRequest({...fakeContact, greeting: 'مسح QR Code — أريد إضافتك 👋'});
+  addContact(data);
   switchTab('friends');
-  renderFriends();
-  renderChatList();
+  toast('✅ تمت إضافة '+data.name);
+  // Also send friend request if pulseId
+  if(data.pulseId){
+    simulateIncomingRequest({...data, greeting:'مرحباً! أضفني من QR Code'});
+  }
 }
 
 // ═══════════════════════════════════
@@ -7202,7 +7465,7 @@ function openThemeSheet(){
 // OVERLAY HELPERS
 // ═══════════════════════════════════
 function openOv(id){document.getElementById(id).classList.add('on');}
-function closeOv(id){document.getElementById(id).classList.remove('on');if(id==='ovAdd')stopScan();}
+function closeOv(id){document.getElementById(id).classList.remove('on');if(id==='ovAdd')stopScan();stopQRScanInSheet&&stopQRScanInSheet();}
 
 document.querySelectorAll('.overlay').forEach(ov=>{ov.addEventListener('click',e=>{if(e.target===ov)closeOv(ov.id);});});
 document.querySelectorAll('[data-close]').forEach(btn=>{btn.addEventListener('click',()=>closeOv(btn.dataset.close));});
@@ -10512,8 +10775,8 @@ function clearLiveTrack(){
 
 // Supabase config (shared public instance)
 var CLOUD_SB = {
-  url: 'https://gjowraahfzexxzgwvyrb.supabase.co',
-  key: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdqb3dyYWFoZnpleHh6Z3d2eXJiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM3NzQ5OTMsImV4cCI6MjA4OTM1MDk5M30.i_lSfKa3swzP6pXIXHYIn2oJmFgWXqNtl90tw4xhUpM',
+  url: 'https://ulfevadtqbbdparvzfgp.supabase.co',
+  key: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVsZmV2YWR0cWJiZHBhcnZ6ZmdwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMwMTI1ODIsImV4cCI6MjA4ODU4ODU4Mn0.Hz1VoDySjBkAbqNuJdBryyc7pmAmoPoLXY-_Idyy2NY',
 };
 
 var _frPollTimer = null;
@@ -10545,17 +10808,16 @@ function sendFriendRequest(data){
     phone: me?.phone || '',
     role:  'user',
     msg: JSON.stringify({
-      type:        'friend_req',
-      to:          contact.pulseId || contact.phone || contact.id,
-      toPhone:     contact.phone || '',
-      fromName:    me?.name    || 'مستخدم',
-      fromPhone:   me?.phone   || '',
-      fromColor:   me?.color   || 'B',
-      fromAvatar:  me?.avatar  || null,
-      fromStatus:  me?.status  || '',
-      fromPulseId: me?.pulseId || '',
-      greeting:    data.greeting || 'أهلاً! أريد إضافتك 👋',
-      toName:      contact.name,
+      type:       'friend_req',
+      to:         contact.phone || contact.id,
+      fromName:   me?.name    || 'مستخدم',
+      fromPhone:  me?.phone   || '',
+      fromColor:  me?.color   || 'B',
+      fromAvatar: me?.avatar  || null,
+      fromStatus: me?.status  || '',
+      fromPulseId:me?.pulseId || '',
+      greeting:   data.greeting || 'أهلاً! أريد إضافتك 👋',
+      toName:     contact.name,
     }),
     img: null,
     ts:  Date.now(),
@@ -10630,14 +10892,12 @@ function acceptRequest(rid, allowPosts){
     phone: me?.phone || '',
     role:  'user',
     msg: JSON.stringify({
-      type:        'friend_accept',
-      to:          req.pulseId || req.phone || req.name,
-      toPhone:     req.phone || '',
-      fromName:    me?.name    || 'مستخدم',
-      fromPhone:   me?.phone   || '',
-      fromColor:   me?.color   || 'B',
-      fromAvatar:  me?.avatar  || null,
-      fromPulseId: me?.pulseId || '',
+      type:       'friend_accept',
+      to:         req.phone || req.name,
+      fromName:   me?.name    || 'مستخدم',
+      fromPhone:  me?.phone   || '',
+      fromColor:  me?.color   || 'B',
+      fromAvatar: me?.avatar  || null,
     }),
     img: null,
     ts:  Date.now(),
@@ -10698,12 +10958,11 @@ function pollFriendRequests(){
           const myName  = me?.name  || '';
 
           // ── طلب إضافة وارد لي ──
-          const myPulseId = me?.pulseId || '';
           if(data.type === 'friend_req' &&
-            (data.to === myPhone || data.to === myName || (myPulseId && data.to === myPulseId)) &&
+            (data.to === myPhone || data.to === myName) &&
             data.fromPhone !== myPhone && data.fromName !== myName){
 
-            const already = contacts.find(c => c.phone === data.fromPhone || c.name === data.fromName || (c.pulseId && c.pulseId === data.fromPulseId));
+            const already = contacts.find(c => c.phone === data.fromPhone || c.name === data.fromName);
             const alreadyPend = friendReqs.find(r => r.phone === data.fromPhone || r.name === data.fromName);
             if(already || alreadyPend) return;
 
@@ -10735,7 +10994,7 @@ function pollFriendRequests(){
 
           // ── قبول طلب مني ──
           if(data.type === 'friend_accept' &&
-            (data.to === myPhone || data.to === myName || (myPulseId && data.to === myPulseId)) &&
+            (data.to === myPhone || data.to === myName) &&
             data.fromPhone !== myPhone){
 
             const c = contacts.find(x => x.phone === data.fromPhone || x.name === data.fromName);
