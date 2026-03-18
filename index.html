@@ -6158,18 +6158,18 @@ function copyMyId(){
 
 function searchById(){
   const query = (document.getElementById('idSearchIn')?.value || '').trim().toLowerCase();
-  const area = document.getElementById('idResultArea');
+  const area  = document.getElementById('idResultArea');
   if(!area) return;
   if(!query){ toast('⚠️ أدخل Cloud ID'); return; }
 
-  // Check if it's own ID
+  // نفس الـ ID
   if(me && query === (me.pulseId||'').toLowerCase()){
     area.innerHTML = `<div class="id-result-card not-found"><div style="font-size:32px;">😅</div><div>هذا ID الخاص بك!</div></div>`;
     return;
   }
 
-  // Check if already added
-  const existing = contacts.find(c=> (c.pulseId||'').toLowerCase() === query || (c.name||'').toLowerCase() === query);
+  // مضاف مسبقاً
+  const existing = contacts.find(c=> (c.pulseId||'').toLowerCase() === query);
   if(existing){
     area.innerHTML = `
       <div class="id-result-card">
@@ -6183,42 +6183,59 @@ function searchById(){
     return;
   }
 
-  // Simulate a "found" user from the ID (demo: generate a user)
-  // In real app this would be a server lookup
-  const demoUsers = [
-    {pulseId:'ahmed_22', name:'أحمد محمد', status:'مرحباً! 👋', color:'B', phone:'+966 5X XXX XXXX'},
-    {pulseId:'sara_kh', name:'سارة خالد', status:'متاحة الآن', color:'F', phone:'+20 10X XXX XXXX'},
-    {pulseId:'omar_y99', name:'عمر يوسف', status:'مشغول 🎮', color:'C', phone:'+971 5X XXX XXXX'},
-    {pulseId:'nour_h', name:'نور حسن', status:'Hello! 👋', color:'A', phone:'+966 5X XXX XXXX'},
-    {pulseId:'lena_2025', name:'لينا أحمد', status:'في العمل 💼', color:'D', phone:'+20 11X XXX XXXX'},
-  ];
+  // البحث في Supabase عن المستخدم
+  area.innerHTML = `<div style="text-align:center;padding:20px;color:var(--t3);font-size:13px;">⏳ جاري البحث...</div>`;
 
-  const found = demoUsers.find(u => u.pulseId.toLowerCase() === query || u.name.includes(query));
+  sbCloud('messages?room=eq.cloud_user_reg&order=ts.desc&limit=200')
+    .then(r => r.json())
+    .then(rows => {
+      if(!Array.isArray(rows)) throw new Error('no data');
 
-  if(found){
-    area.innerHTML = `
-      <div class="id-result-card">
-        <div class="av av-m" style="background:${AVCOLS[found.color]||'#888'};color:#fff;font-size:18px;flex-shrink:0;">${found.name.charAt(0).toUpperCase()}</div>
-        <div style="flex:1;min-width:0;">
-          <div style="font-size:15px;font-weight:700;color:var(--t0);">${found.name}</div>
-          <div style="font-size:12px;color:var(--t3);margin-top:2px;">🪪 ${found.pulseId}</div>
-          <div style="font-size:12px;color:var(--t2);margin-top:1px;">${found.status}</div>
-        </div>
-        <button onclick="addFromId('${found.pulseId}','${found.name}','${found.status}','${found.color}','${found.phone}')"
-          style="background:var(--acc);color:var(--bme-t);border:none;border-radius:12px;
-                 padding:8px 14px;font-family:var(--fa);font-size:13px;font-weight:700;
-                 cursor:pointer;white-space:nowrap;flex-shrink:0;">
-          ➕ إضافة
-        </button>
-      </div>`;
-  } else {
-    area.innerHTML = `
-      <div class="id-result-card not-found">
-        <div style="font-size:36px;">🔍</div>
-        <div style="font-size:14px;font-weight:600;">لم يُعثر على مستخدم</div>
-        <div style="font-size:12px;">تحقق من الـ ID وحاول مرة أخرى</div>
-      </div>`;
-  }
+      let found = null;
+      for(const row of rows){
+        try{
+          const u = JSON.parse(row.msg||'{}');
+          if((u.pulseId||'').toLowerCase() === query){
+            found = u; break;
+          }
+        }catch(e){}
+      }
+
+      if(found){
+        const col = found.color || 'C';
+        const initial = (found.name||'?').charAt(0).toUpperCase();
+        area.innerHTML = `
+          <div class="id-result-card">
+            <div class="av av-m" style="background:${AVCOLS[col]||'#888'};color:#fff;font-size:18px;flex-shrink:0;">${initial}</div>
+            <div style="flex:1;min-width:0;">
+              <div style="font-size:15px;font-weight:700;color:var(--t0);">${found.name||''}</div>
+              <div style="font-size:12px;color:var(--t3);margin-top:2px;">🪪 ${found.pulseId}</div>
+              <div style="font-size:12px;color:var(--t2);margin-top:1px;">${found.status||''}</div>
+            </div>
+            <button onclick="addFromId('${found.pulseId}','${(found.name||'').replace(/'/g,"\'")}','${(found.status||'').replace(/'/g,"\'")}','${col}','${(found.phone||'').replace(/'/g,"\'")}')"
+              style="background:var(--acc);color:var(--bme-t);border:none;border-radius:12px;
+                     padding:8px 14px;font-family:var(--fa);font-size:13px;font-weight:700;
+                     cursor:pointer;white-space:nowrap;flex-shrink:0;">
+              ➕ إضافة
+            </button>
+          </div>`;
+      } else {
+        area.innerHTML = `
+          <div class="id-result-card not-found">
+            <div style="font-size:36px;">🔍</div>
+            <div style="font-size:14px;font-weight:600;">لم يُعثر على مستخدم</div>
+            <div style="font-size:12px;color:var(--t3);">تأكد من الـ ID وإن الشخص مسجّل</div>
+          </div>`;
+      }
+    })
+    .catch(() => {
+      area.innerHTML = `
+        <div class="id-result-card not-found">
+          <div style="font-size:36px;">⚠️</div>
+          <div style="font-size:14px;font-weight:600;">تعذّر الاتصال</div>
+          <div style="font-size:12px;color:var(--t3);">تحقق من الإنترنت وحاول مجدداً</div>
+        </div>`;
+    });
 }
 
 function addFromId(pulseId, name, status, color, phone){
@@ -11063,6 +11080,26 @@ setInterval(()=>{
 // Start polling when user logs in
 function startFriendSystem(){
   startFriendReqPoll();
+  // سجّل المستخدم في Supabase عشان الناس تلاقيه بالـ ID
+  if(me && me.pulseId){
+    const payload = {
+      room: 'cloud_user_reg',
+      name: me.name||'',
+      phone: me.phone||'',
+      role: 'user',
+      msg: JSON.stringify({
+        pulseId: me.pulseId,
+        name:    me.name||'',
+        phone:   me.phone||'',
+        status:  me.status||'',
+        color:   me.color||'C',
+        ts:      Date.now(),
+      }),
+      img: null,
+      ts: Date.now(),
+    };
+    sbCloud('messages', {method:'POST', body:JSON.stringify(payload)}).catch(()=>{});
+  }
 }
 
 // ── QR friend request ──
