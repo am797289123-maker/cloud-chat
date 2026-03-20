@@ -4585,8 +4585,8 @@ function launch(){
   setTimeout(renderHomeStats, 300);
   // Start real friend request polling
   setTimeout(startFriendSystem, 1000);
-  // Start call polling
-  setTimeout(startCallPoll, 1500);
+  // Start call inbox poll (WebRTC)
+  setTimeout(startCallInboxPoll, 1500);
 }
 
 // ═══════════════════════════════════
@@ -10877,7 +10877,7 @@ var CITY_COORDS={
   'FR':{x:37,y:17,city:'باريس'},  'DE':{x:39,y:15,city:'برلين'},
   'TR':{x:44,y:20,city:'إسطنبول'},'IN':{x:67,y:30,city:'نيودلهي'},
 };
-var COUNTRIES=Object.keys(CITY_COORDS);
+var MAP_COUNTRY_KEYS=Object.keys(CITY_COORDS); // لا تـoverride قائمة الدول الأصلية
 
 function openFriendsMap(){
   const screen=document.getElementById('friendsMapScreen');
@@ -10898,7 +10898,7 @@ function renderFriendsMap(){
 
   contacts.forEach((c,i)=>{
     // Assign random but deterministic country to each contact
-    const countryKey=COUNTRIES[c.name.charCodeAt(0)%COUNTRIES.length];
+    const countryKey=MAP_COUNTRY_KEYS[c.name.charCodeAt(0)%MAP_COUNTRY_KEYS.length];
     const pos=CITY_COORDS[countryKey]||{x:50,y:50,city:'غير معروف'};
     c._mapCountry=countryKey;
     c._mapCity=pos.city;
@@ -11409,6 +11409,423 @@ function _downloadFileMsg(el){
   } else {
     toast('⚠️ الملف غير متاح للتحميل');
   }
+}
+
+// ════════════════════════════════════════════════════════════════
+// 📞 WebRTC VOICE CALL SYSTEM
+// اتصال صوتي حقيقي عبر الإنترنت — بدون خط تليفون
+// Signaling: Supabase | Audio: WebRTC P2P | STUN: Google
+// ════════════════════════════════════════════════════════════════
+
+var _rtc = {
+  pc:        null,   // RTCPeerConnection
+  local:     null,   // MediaStream (mic)
+  remote:    null,   // Remote audio element
+  room:      null,   // Supabase signaling room
+  myId:      null,
+  peerId:    null,
+  isCaller:  false,
+  pollTimer: null,
+  lastSigTs: 0,
+  callContact: null,
+  state:     'idle', // idle | calling | ringing | connected
+};
+
+var STUN_SERVERS = {
+  iceServers:[
+    {urls:'stun:stun.l.google.com:19302'},
+    {urls:'stun:stun1.l.google.com:19302'},
+    {urls:'stun:stun2.l.google.com:19302'},
+  ]
+};
+
+// ── Get my unique call ID ──
+function _getMyCallId(){
+  return (me&&me.pulseId)||(me&&me.phone)||'user_'+Math.random().toString(36).slice(2,8);
+}
+
+// ── Signaling via Supabase ──
+async function _sigSend(type, data){
+  try{
+    await sbCloud('messages',{method:'POST',body:JSON.stringify({
+      room:  _rtc.room,
+      name:  me&&me.name||'',
+      phone: me&&me.phone||'',
+      role:  'webrtc_sig',
+      msg:   JSON.stringify({type, from:_rtc.myId, to:_rtc.peerId, data, ts:Date.now()}),
+      ts:    Date.now(),
+    })});
+  }catch(e){ console.error('sig send error:',e); }
+}
+
+async function _sigPoll(){
+  try{
+    const since = _rtc.lastSigTs||Date.now()-30000;
+    const r = await sbCloud('messages?room=eq.'+encodeURIComponent(_rtc.room)+'&role=eq.webrtc_sig&ts=gt.'+since+'&order=ts.asc&limit=20');
+    const rows = await r.json();
+    if(!Array.isArray(rows)||!rows.length) return;
+    for(const row of rows){
+      if(row.ts) _rtc.lastSigTs = row.ts+1;
+      try{
+        const sig = JSON.parse(row.msg||'{}');
+        if(sig.from === _rtc.myId) continue; // skip own messages
+        if(sig.to && sig.to !== _rtc.myId) continue; // not for me
+        await _handleSignal(sig);
+      }catch(e){}
+    }
+  }catch(e){}
+}
+
+async function _handleSignal(sig){
+  switch(sig.type){
+    case 'offer':
+      if(_rtc.state!=='ringing') return;
+      if(!_rtc.pc) _createPeerConnection();
+      await _rtc.pc.setRemoteDescription(new RTCSessionDescription(sig.data));
+      const answer = await _rtc.pc.createAnswer();
+      await _rtc.pc.setLocalDescription(answer);
+      await _sigSend('answer', answer);
+      _rtc.state='connected';
+      _onCallConnected();
+      break;
+
+    case 'answer':
+      if(!_rtc.pc||_rtc.state!=='calling') return;
+      await _rtc.pc.setRemoteDescription(new RTCSessionDescription(sig.data));
+      _rtc.state='connected';
+      _onCallConnected();
+      break;
+
+    case 'ice':
+      if(_rtc.pc && sig.data){
+        try{ await _rtc.pc.addIceCandidate(new RTCIceCandidate(sig.data)); }catch(e){}
+      }
+      break;
+
+    case 'call_request':
+      // Incoming call signal
+      _rtc.room    = sig.data.room;
+      _rtc.myId    = _getMyCallId();
+      _rtc.peerId  = sig.from;
+      _rtc.isCaller = false;
+      _rtc.lastSigTs = 0;
+      _rtc.state   = 'ringing';
+      showIncomingCall({
+        fromName:   sig.data.fromName,
+        fromPhone:  sig.data.fromPhone,
+        fromColor:  sig.data.fromColor||'B',
+        fromAvatar: sig.data.fromAvatar||null,
+        fromPulseId:sig.from,
+        room:       _rtc.room,
+      });
+      // Start polling for WebRTC signals
+      _startSigPoll();
+      break;
+
+    case 'call_end':
+      _rtcHangup(true);
+      break;
+
+    case 'call_declined':
+      if(_rtc.state==='calling'){
+        _rtcHangup(true);
+        toast('📵 '+(sig.data&&sig.data.name||'الشخص')+' رفض المكالمة');
+      }
+      break;
+  }
+}
+
+function _createPeerConnection(){
+  _rtc.pc = new RTCPeerConnection(STUN_SERVERS);
+
+  // Add local audio tracks
+  if(_rtc.local){
+    _rtc.local.getTracks().forEach(t=>_rtc.pc.addTrack(t,_rtc.local));
+  }
+
+  // Receive remote audio
+  _rtc.pc.ontrack = e=>{
+    if(!_rtc.remote){
+      _rtc.remote = document.createElement('audio');
+      _rtc.remote.autoplay = true;
+      _rtc.remote.style.display = 'none';
+      document.body.appendChild(_rtc.remote);
+    }
+    _rtc.remote.srcObject = e.streams[0];
+  };
+
+  // Send ICE candidates via Supabase
+  _rtc.pc.onicecandidate = e=>{
+    if(e.candidate){
+      _sigSend('ice', e.candidate);
+    }
+  };
+
+  _rtc.pc.onconnectionstatechange = ()=>{
+    const state = _rtc.pc&&_rtc.pc.connectionState;
+    if(state==='connected') _onCallConnected();
+    if(state==='disconnected'||state==='failed') _rtcHangup(false);
+  };
+}
+
+function _startSigPoll(){
+  clearInterval(_rtc.pollTimer);
+  _rtc.pollTimer = setInterval(_sigPoll, 1500);
+  _sigPoll(); // immediate
+}
+
+function _stopSigPoll(){
+  clearInterval(_rtc.pollTimer);
+  _rtc.pollTimer = null;
+}
+
+function _onCallConnected(){
+  callConnected(); // update UI
+}
+
+// ── Start Outgoing Call ──
+async function startWebRTCCall(contact){
+  try{
+    const myId   = _getMyCallId();
+    const peerId = contact.pulseId||contact.phone||String(contact.id);
+    const room   = 'wrtc_'+[myId,peerId].sort().join('_');
+
+    _rtc.myId    = myId;
+    _rtc.peerId  = peerId;
+    _rtc.room    = room;
+    _rtc.isCaller = true;
+    _rtc.state   = 'calling';
+    _rtc.lastSigTs = Date.now()-5000;
+    _rtc.callContact = contact;
+
+    // Get microphone
+    _rtc.local = await navigator.mediaDevices.getUserMedia({audio:true, video:false});
+
+    // Create peer connection
+    _createPeerConnection();
+
+    // Create offer
+    const offer = await _rtc.pc.createOffer({offerToReceiveAudio:true});
+    await _rtc.pc.setLocalDescription(offer);
+
+    // Send call_request to callee's inbox
+    const calleeInbox = 'callinbox_'+peerId;
+    await sbCloud('messages',{method:'POST',body:JSON.stringify({
+      room:  calleeInbox,
+      name:  me&&me.name||'',
+      phone: me&&me.phone||'',
+      role:  'webrtc_sig',
+      msg:   JSON.stringify({
+        type:'call_request',
+        from:myId, to:peerId,
+        data:{
+          room, offer,
+          fromName:  me&&me.name||'',
+          fromPhone: me&&me.phone||'',
+          fromColor: me&&me.color||'B',
+          fromAvatar:me&&me.avatar||null,
+        },
+        ts:Date.now(),
+      }),
+      ts:Date.now(),
+    })});
+
+    // Also send the offer on the shared room
+    await _sigSend('offer', offer);
+
+    // Start polling for answer
+    _startSigPoll();
+
+    // Show outgoing call screen
+    openCallScreen(contact);
+
+  }catch(e){
+    console.error('WebRTC call error:',e);
+    if(e.name==='NotAllowedError'){
+      toast('⚠️ يجب السماح بالوصول للميكروفون');
+    } else {
+      toast('⚠️ تعذّر بدء المكالمة: '+e.message);
+    }
+    _rtcCleanup();
+  }
+}
+
+// ── Answer Incoming Call ──
+async function answerWebRTCCall(callData){
+  try{
+    _rtc.room    = callData.room;
+    _rtc.isCaller = false;
+    _rtc.state   = 'ringing';
+
+    // Get microphone
+    _rtc.local = await navigator.mediaDevices.getUserMedia({audio:true, video:false});
+
+    // Create peer connection
+    _createPeerConnection();
+
+    // If offer was included in call_request, set it now
+    if(callData.offer){
+      await _rtc.pc.setRemoteDescription(new RTCSessionDescription(callData.offer));
+      const answer = await _rtc.pc.createAnswer();
+      await _rtc.pc.setLocalDescription(answer);
+      await _sigSend('answer', answer);
+      _rtc.state = 'connected';
+      _onCallConnected();
+    }
+  }catch(e){
+    console.error('answerWebRTCCall error:',e);
+    toast('⚠️ تعذّر الرد: '+e.message);
+    _rtcCleanup();
+  }
+}
+
+// ── Hang Up ──
+function _rtcHangup(remote=false){
+  if(_rtc.state==='idle') return;
+  if(!remote){
+    // Notify peer
+    _sigSend('call_end', {name:me&&me.name||''}).catch(()=>{});
+  }
+  _rtcCleanup();
+  endCall();
+  if(remote) toast('📵 انتهت المكالمة');
+}
+
+function _rtcCleanup(){
+  _stopSigPoll();
+  if(_rtc.pc){ try{_rtc.pc.close();}catch(e){} _rtc.pc=null; }
+  if(_rtc.local){ _rtc.local.getTracks().forEach(t=>t.stop()); _rtc.local=null; }
+  if(_rtc.remote){ try{_rtc.remote.srcObject=null; _rtc.remote.remove();}catch(e){} _rtc.remote=null; }
+  _rtc.state='idle';
+}
+
+// ── Poll for incoming call requests ──
+var _callInboxTimer = null;
+function startCallInboxPoll(){
+  if(_callInboxTimer) clearInterval(_callInboxTimer);
+  _callInboxTimer = setInterval(_pollCallInbox, 2000);
+  _pollCallInbox();
+}
+
+var _callInboxLastTs = Date.now()-10000;
+async function _pollCallInbox(){
+  if(_rtc.state!=='idle') return; // already in call
+  try{
+    const myId = _getMyCallId();
+    const inbox = 'callinbox_'+myId;
+    const r = await sbCloud('messages?room=eq.'+encodeURIComponent(inbox)+'&role=eq.webrtc_sig&ts=gt.'+_callInboxLastTs+'&order=ts.asc&limit=5');
+    const rows = await r.json();
+    if(!Array.isArray(rows)||!rows.length) return;
+    for(const row of rows){
+      if(row.ts) _callInboxLastTs = row.ts+1;
+      try{
+        const sig = JSON.parse(row.msg||'{}');
+        if(sig.type==='call_request' && sig.data){
+          // Store call data for when user answers
+          _rtc.myId   = myId;
+          _rtc.peerId = sig.from;
+          _rtc.room   = sig.data.room;
+          _rtc.isCaller = false;
+          _rtc.state  = 'ringing';
+          _rtc.lastSigTs = Date.now()-5000;
+          // Show incoming call UI
+          showIncomingCall({
+            fromName:   sig.data.fromName,
+            fromPhone:  sig.data.fromPhone,
+            fromColor:  sig.data.fromColor||'B',
+            fromAvatar: sig.data.fromAvatar||null,
+            room:       sig.data.room,
+            offer:      sig.data.offer,
+          });
+          _startSigPoll();
+          break;
+        }
+      }catch(e){}
+    }
+  }catch(e){}
+}
+
+// ── Override answerIncomingCall to use WebRTC ──
+function answerIncomingCall(dataStr){
+  document.getElementById('incomingCallPopup')&&document.getElementById('incomingCallPopup').remove();
+  var data = typeof dataStr==='string' ? JSON.parse(dataStr) : dataStr;
+
+  var callerContact={
+    id:'caller_'+(data.fromPhone||data.fromPulseId||Date.now()),
+    name:data.fromName||'مجهول',
+    color:data.fromColor||'B',
+    avatar:data.fromAvatar||null,
+    phone:data.fromPhone||'',
+    pulseId:data.fromPulseId||'',
+  };
+
+  // Show call screen UI
+  var screen=document.getElementById('callScreen');
+  var av=document.getElementById('callAv');
+  var nameEl=document.getElementById('callName');
+  var statusEl=document.getElementById('callStatus');
+  var timerEl=document.getElementById('callTimerEl');
+  if(data.fromAvatar){ av.innerHTML='<img src="'+data.fromAvatar+'" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">'; }
+  else { av.innerHTML=''; av.textContent=(data.fromName||'?').charAt(0).toUpperCase(); }
+  av.style.background=AVCOLS[data.fromColor||'B']||'#4F8EF7';
+  nameEl.textContent=data.fromName||'مجهول';
+  statusEl.textContent='جاري الاتصال...';
+  timerEl.style.display='none';
+  screen.classList.add('on');
+  _callSecs=0; clearInterval(_callTimer);
+
+  // Start WebRTC answer
+  answerWebRTCCall(data).catch(e=>{
+    toast('⚠️ خطأ في الرد: '+e.message);
+    endCall();
+  });
+}
+
+// ── Override openCallScreen to use WebRTC ──
+var _origOpenCallScreen = openCallScreen;
+function openCallScreen(contact){
+  // If called directly (from chat topbar), initiate WebRTC
+  if(_rtc.state==='idle' && contact && !contact._skipWebRTC){
+    startWebRTCCall(contact);
+    return;
+  }
+  // Otherwise just show UI (already handled by startWebRTCCall)
+  var screen=document.getElementById('callScreen');
+  var av=document.getElementById('callAv');
+  var nameEl=document.getElementById('callName');
+  var statusEl=document.getElementById('callStatus');
+  var timerEl=document.getElementById('callTimerEl');
+  if(!screen) return;
+  if(contact.avatar){ av.innerHTML='<img src="'+contact.avatar+'" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">'; }
+  else { av.innerHTML=''; av.textContent=(contact.name||'?').charAt(0).toUpperCase(); }
+  av.style.background=AVCOLS[contact.color||'B']||'#4F8EF7';
+  av.classList.add('ringing');
+  nameEl.textContent=contact.name||'';
+  statusEl.textContent='جاري الاتصال...';
+  timerEl.style.display='none';
+  screen.classList.add('on');
+  _callSecs=0; clearInterval(_callTimer);
+}
+
+// ── Override endCall to cleanup WebRTC ──
+var _origEndCall = endCall;
+function endCall(){
+  _rtcHangup(false);
+  clearInterval(_callTimer);
+  var screen=document.getElementById('callScreen');
+  if(screen) screen.classList.remove('on');
+  var dur=_callSecs>0?Math.floor(_callSecs/60)+':'+String(_callSecs%60).padStart(2,'0'):'';
+  if(dur) toast('📞 انتهت المكالمة · '+dur);
+  _rtcCleanup();
+}
+
+// ── Mute mic ──
+function toggleCallMute(){
+  _callMuted=!_callMuted;
+  if(_rtc.local) _rtc.local.getAudioTracks().forEach(t=>t.enabled=!_callMuted);
+  var btn=document.getElementById('callMuteBtn');
+  if(btn){ btn.textContent=_callMuted?'🔇':'🎙️'; btn.classList.toggle('on',_callMuted); }
+  toast(_callMuted?'🔇 الميكروفون مكتوم':'🎙️ الميكروفون مفعّل');
 }
 
 
