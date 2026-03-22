@@ -4587,6 +4587,8 @@ function launch(){
   setTimeout(startFriendSystem, 1000);
   // Start call inbox poll (WebRTC)
   setTimeout(startCallInboxPoll, 1500);
+  // Init new features
+  setTimeout(initNewFeatures, 500);
 }
 
 // ═══════════════════════════════════
@@ -4788,6 +4790,7 @@ function openChat(contact){
       <span>🖊️ تعديل الرسالة</span>
       <button class="edit-mode-bar-close" onclick="cancelEditMsg()">✕</button>
     </div>
+    <div id="typingRealEl" style="display:none;padding:4px 16px;"></div>
     <div class="typing-row" id="typRow">
       <div class="typing-bubble" id="typingBubble">
         <div class="typing-av" id="typingAv" style="background:${AVCOLS[contact.color]||'#888'};">${contact.name.charAt(0).toUpperCase()}</div>
@@ -4814,6 +4817,14 @@ function openChat(contact){
   document.getElementById('ctbSearch').onclick=()=>openChatSearch();
   document.getElementById('ctbWall').onclick=()=>openWallpaperPicker(contact.id);
   document.getElementById('ctbCall').onclick=()=>openCallScreen(contact);
+  // Long press for video call
+  let _vcallTimer;
+  const ctbCallBtn=document.getElementById('ctbCall');
+  if(ctbCallBtn){
+    ctbCallBtn.addEventListener('contextmenu',e=>{e.preventDefault();_openVideoCallForContact(contact);});
+    ctbCallBtn.addEventListener('touchstart',()=>{_vcallTimer=setTimeout(()=>_openVideoCallForContact(contact),600);},{passive:true});
+    ctbCallBtn.addEventListener('touchend',()=>clearTimeout(_vcallTimer));
+  }
   document.getElementById('recordBtn').onclick=()=>toggleRecording(contact.id);
   document.getElementById('ctbProf').onclick=()=>openProfileSheet(contact.id);
   document.getElementById('emoBtn').onclick=()=>{attachOpen=false;document.getElementById('attachPanel').classList.remove('on');document.getElementById('attachBtn').classList.remove('on');toggleEmo();};
@@ -4843,6 +4854,9 @@ function openChat(contact){
   setTimeout(()=>applySavedWallpaper(contact.id),50);
   // Start real-time message polling for this contact
   if(contact.pulseId || contact.phone) startMsgPolling(contact);
+  // Start typing indicator polling
+  clearInterval(_typingPollTimer);
+  startTypingPoll(contact.id);
   slideToChatView();
   setTimeout(showHint,600);
 }
@@ -4953,6 +4967,7 @@ function sendStk(s){
   activeChat.lastMsg=s;renderChatList();renderMsgs(activeChat.id);toggleStk();
 }
 function toggleEmo(){emoOpen=!emoOpen;stkOpen=false;attachOpen=false;document.getElementById('emoStrip')?.classList.toggle('on',emoOpen);document.getElementById('stkStrip')?.classList.remove('on');document.getElementById('emoBtn')?.classList.toggle('on',emoOpen);document.getElementById('attachPanel')?.classList.remove('on');document.getElementById('attachBtn')?.classList.remove('on');}
+function openCustomStk(){ openCustomStickerPicker(); }
 function toggleStk(){stkOpen=!stkOpen;emoOpen=false;attachOpen=false;document.getElementById('stkStrip')?.classList.toggle('on',stkOpen);document.getElementById('emoStrip')?.classList.remove('on');document.getElementById('stkBtn')?.classList.toggle('on',stkOpen);document.getElementById('attachPanel')?.classList.remove('on');document.getElementById('attachBtn')?.classList.remove('on');}
 
 function toggleAttach(){
@@ -5819,6 +5834,15 @@ function openNearbySheet(){
 // PROFILE SCREEN
 // ═══════════════════════════════════
 function renderProfile(){
+  // Update feature status badges
+  setTimeout(()=>{
+    const at=document.getElementById('autoTransStatus');
+    if(at) at.textContent=_autoTranslateEnabled?'✅ مفعّل':'';
+    const ps=document.getElementById('pushStatus');
+    if(ps) ps.textContent=(typeof Notification!=='undefined'&&Notification.permission==='granted')?'✅ مفعّل':'';
+    const sc=document.getElementById('stickerCount');
+    if(sc&&customStickers.length) sc.textContent=customStickers.length+' ستيكر';
+  },100);
   if(!me)return;
   const sc=document.getElementById('profileScroll');sc.innerHTML='';
   const myPosts=posts.filter(p=>p.uid==='me').length;
@@ -5918,6 +5942,30 @@ function renderProfile(){
       <div class="menu-ico" style="background:rgba(251,191,36,.12);">⏰</div>
       <div class="menu-lbl">الرسائل المجدولة</div>
       <div class="menu-val" id="schedMsgCount"></div>
+      <div class="menu-arr">›</div>
+    </div>
+    <div class="menu-item" onclick="openArchivedChats()">
+      <div class="menu-ico" style="background:rgba(107,114,128,.12);">🗂️</div>
+      <div class="menu-lbl">المحادثات المؤرشفة</div>
+      <div class="menu-val"></div>
+      <div class="menu-arr">›</div>
+    </div>
+    <div class="menu-item" onclick="toggleAutoTranslate()">
+      <div class="menu-ico" style="background:rgba(59,130,246,.12);">🌐</div>
+      <div class="menu-lbl">ترجمة تلقائية بـ AI</div>
+      <div class="menu-val" id="autoTransStatus" style="font-size:11px;color:var(--acc);"></div>
+      <div class="menu-arr">›</div>
+    </div>
+    <div class="menu-item" onclick="setupPushNotifications()">
+      <div class="menu-ico" style="background:rgba(245,158,11,.12);">🔔</div>
+      <div class="menu-lbl">إشعارات Push حقيقية</div>
+      <div class="menu-val" id="pushStatus" style="font-size:11px;"></div>
+      <div class="menu-arr">›</div>
+    </div>
+    <div class="menu-item" onclick="openCustomStickerPicker()">
+      <div class="menu-ico" style="background:rgba(139,92,246,.12);">🎨</div>
+      <div class="menu-lbl">ستيكراتي المخصصة</div>
+      <div class="menu-val" id="stickerCount" style="font-size:11px;color:var(--t3);"></div>
       <div class="menu-arr">›</div>
     </div>
     <div class="menu-item" onclick="openChatStats()">
@@ -6179,87 +6227,124 @@ function copyMyId(){
   }
 }
 
-function searchById(){
-  const query = (document.getElementById('idSearchIn')?.value || '').trim().toLowerCase();
-  const area = document.getElementById('idResultArea');
+async function searchById(){
+  const query = (document.getElementById('idSearchIn')?.value || '').trim();
+  const area  = document.getElementById('idResultArea');
   if(!area) return;
-  if(!query){ toast('⚠️ أدخل Cloud ID'); return; }
+  if(!query){ toast('⚠️ أدخل Cloud ID أو الاسم'); return; }
 
-  // Check if it's own ID
-  if(me && query === (me.pulseId||'').toLowerCase()){
-    area.innerHTML = `<div class="id-result-card not-found"><div style="font-size:32px;">😅</div><div>هذا ID الخاص بك!</div></div>`;
+  // Check own ID
+  if(me && query.toLowerCase() === (me.pulseId||'').toLowerCase()){
+    area.innerHTML = '<div class="id-result-card not-found"><div style="font-size:32px;">😅</div><div>هذا ID الخاص بك!</div></div>';
     return;
   }
 
-  // Check if already added
-  const existing = contacts.find(c=> (c.pulseId||'').toLowerCase() === query || (c.name||'').toLowerCase() === query);
+  // Check if already added locally
+  const existing = contacts.find(c=>
+    (c.pulseId||'').toLowerCase()===query.toLowerCase() ||
+    (c.phone||'').includes(query) ||
+    (c.name||'').toLowerCase().includes(query.toLowerCase())
+  );
   if(existing){
     area.innerHTML = `
       <div class="id-result-card">
-        <div class="av av-m" style="background:${AVCOLS[existing.color]||'#888'};color:#fff;font-size:16px;flex-shrink:0;">${existing.name.charAt(0).toUpperCase()}</div>
+        ${avHTML(existing,'av-m')}
         <div style="flex:1;">
           <div style="font-size:15px;font-weight:700;color:var(--t0);">${existing.name}</div>
-          <div style="font-size:12px;color:var(--t3);">${existing.pulseId||''}</div>
+          <div style="font-size:12px;color:var(--t3);">🪪 ${existing.pulseId||existing.phone||''}</div>
         </div>
         <div style="font-size:12px;color:var(--acc);font-weight:700;">✅ مضاف</div>
       </div>`;
     return;
   }
 
-  // Simulate a "found" user from the ID (demo: generate a user)
-  // In real app this would be a server lookup
-  const demoUsers = [
-    {pulseId:'ahmed_22', name:'أحمد محمد', status:'مرحباً! 👋', color:'B', phone:'+966 5X XXX XXXX'},
-    {pulseId:'sara_kh', name:'سارة خالد', status:'متاحة الآن', color:'F', phone:'+20 10X XXX XXXX'},
-    {pulseId:'omar_y99', name:'عمر يوسف', status:'مشغول 🎮', color:'C', phone:'+971 5X XXX XXXX'},
-    {pulseId:'nour_h', name:'نور حسن', status:'Hello! 👋', color:'A', phone:'+966 5X XXX XXXX'},
-    {pulseId:'lena_2025', name:'لينا أحمد', status:'في العمل 💼', color:'D', phone:'+20 11X XXX XXXX'},
-  ];
+  // Show loading
+  area.innerHTML = '<div style="text-align:center;padding:24px;color:var(--t3);"><div style="width:24px;height:24px;border:2px solid var(--br);border-top-color:var(--acc);border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 8px;"></div>جاري البحث...</div>';
 
-  const found = demoUsers.find(u => u.pulseId.toLowerCase() === query || u.name.includes(query));
+  try{
+    // Search Supabase registry
+    const since = Date.now() - 30*24*60*60*1000; // آخر 30 يوم
+    const r = await sbCloud('messages?room=eq.cloud_user_registry&role=eq.user_reg&ts=gt.'+since+'&order=ts.desc&limit=200');
+    const rows = await r.json();
 
-  if(found){
-    area.innerHTML = `
-      <div class="id-result-card">
-        <div class="av av-m" style="background:${AVCOLS[found.color]||'#888'};color:#fff;font-size:18px;flex-shrink:0;">${found.name.charAt(0).toUpperCase()}</div>
-        <div style="flex:1;min-width:0;">
-          <div style="font-size:15px;font-weight:700;color:var(--t0);">${found.name}</div>
-          <div style="font-size:12px;color:var(--t3);margin-top:2px;">🪪 ${found.pulseId}</div>
-          <div style="font-size:12px;color:var(--t2);margin-top:1px;">${found.status}</div>
-        </div>
-        <button onclick="addFromId('${found.pulseId}','${found.name}','${found.status}','${found.color}','${found.phone}')"
-          style="background:var(--acc);color:var(--bme-t);border:none;border-radius:12px;
-                 padding:8px 14px;font-family:var(--fa);font-size:13px;font-weight:700;
-                 cursor:pointer;white-space:nowrap;flex-shrink:0;">
-          ➕ إضافة
-        </button>
-      </div>`;
-  } else {
-    area.innerHTML = `
-      <div class="id-result-card not-found">
-        <div style="font-size:36px;">🔍</div>
-        <div style="font-size:14px;font-weight:600;">لم يُعثر على مستخدم</div>
-        <div style="font-size:12px;">تحقق من الـ ID وحاول مرة أخرى</div>
-      </div>`;
+    if(!Array.isArray(rows)){
+      throw new Error('invalid response');
+    }
+
+    // Search through registered users
+    const q = query.toLowerCase();
+    let found = null;
+    const seen = new Set();
+
+    for(const row of rows){
+      try{
+        const u = JSON.parse(row.msg||'{}');
+        if(!u.pulseId || seen.has(u.pulseId)) continue;
+        seen.add(u.pulseId);
+        if(u.pulseId.toLowerCase()===q ||
+           (u.name||'').toLowerCase().includes(q) ||
+           (u.phone||'').includes(query)){
+          found = u; break;
+        }
+      }catch(e){}
+    }
+
+    if(found){
+      const bg = AVCOLS[found.color||'B']||'#888';
+      const avHtml = found.avatar
+        ? `<div class="av av-m" style="flex-shrink:0;overflow:hidden;"><img src="${found.avatar}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;"></div>`
+        : `<div class="av av-m" style="background:${bg};color:#fff;font-size:18px;flex-shrink:0;">${(found.name||'?').charAt(0).toUpperCase()}</div>`;
+
+      area.innerHTML = `
+        <div class="id-result-card">
+          ${avHtml}
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:15px;font-weight:700;color:var(--t0);">${found.name||'مستخدم'}</div>
+            <div style="font-size:12px;color:var(--t3);margin-top:2px;">🪪 ${found.pulseId}</div>
+            <div style="font-size:12px;color:var(--t2);margin-top:1px;">${found.status||''}</div>
+          </div>
+          <button onclick="addFromId(${JSON.stringify(found).replace(/"/g,'&quot;')})"
+            style="background:var(--acc);color:var(--bme-t);border:none;border-radius:12px;
+                   padding:8px 14px;font-family:var(--fa);font-size:13px;font-weight:700;
+                   cursor:pointer;white-space:nowrap;flex-shrink:0;">
+            ➕ إضافة
+          </button>
+        </div>`;
+    } else {
+      area.innerHTML = `
+        <div class="id-result-card not-found">
+          <div style="font-size:36px;">🔍</div>
+          <div style="font-size:14px;font-weight:600;">لم يُعثر على مستخدم</div>
+          <div style="font-size:12px;color:var(--t3);">تأكد من الـ ID أو الاسم وحاول مجدداً</div>
+        </div>`;
+    }
+  }catch(e){
+    area.innerHTML = '<div class="id-result-card not-found"><div style="font-size:32px;">⚠️</div><div>تعذّر البحث — تحقق من الإنترنت</div></div>';
   }
 }
 
-function addFromId(pulseId, name, status, color, phone){
+function addFromId(userObj){
+  // Support both object (new) and individual params (legacy)
+  if(typeof userObj === 'string') userObj = {pulseId:userObj, name:arguments[1], status:arguments[2], color:arguments[3], phone:arguments[4]};
   const id = Date.now();
   contacts.push({
-    id, name, phone, status, color, avatar: null,
-    online: Math.random() > 0.5,
+    id,
+    name:    userObj.name||'مستخدم',
+    phone:   userObj.phone||'',
+    status:  userObj.status||'',
+    color:   userObj.color||'B',
+    avatar:  userObj.avatar||null,
+    pulseId: userObj.pulseId||'',
+    online:  false,
     unread: 0, lastMsg: '', lastTime: '',
     friendStatus: 'accepted',
     seePosts: true,
-    pulseId,
   });
   convos[id] = [];
   renderChatList(); renderFriends(); renderProfile();
   saveToStorage();
   closeOv('ovAdd');
-  toast('✅ تمت إضافة ' + name);
-  if(typeof addNotif === 'function') addNotif('👤', 'تمت الإضافة', name + ' انضم لجهات اتصالك', null);
+  toast('✅ تمت إضافة ' + (userObj.name||'المستخدم'));
 }
 
 // ═══════════════════════════════════
@@ -6330,50 +6415,32 @@ function deleteContact(id){
 // ═══════════════════════════════════
 // ── Real QR Generator (uses QRCodeModel from index-2) ──
 function drawQR(canvas, text, size){
+  // Use Google Charts API — guaranteed to work on all devices
   size = size||220;
   canvas.width = size; canvas.height = size;
   var ctx = canvas.getContext('2d');
-  ctx.fillStyle='#fff'; ctx.fillRect(0,0,size,size);
-  try{
-    // QRCode is exported to window — use it via QRCode.makeCode → Drawing → internal canvas
-    if(typeof window.QRCode === 'undefined') throw new Error('QRCode not loaded');
-    // Use _getTypeNumber + QRCodeModel directly — both exported to window
-    var lvl = window.QRErrorCorrectionLevel ? window.QRErrorCorrectionLevel.H : 2;
-    var tn  = window._getTypeNumber ? window._getTypeNumber(text, lvl) : 5;
-    var qr  = new window.QRCodeModel(tn, lvl);
-    qr.addData(text); qr.make();
-    var n = qr.getModuleCount();
-    var cell = Math.floor(size/(n+2));
-    var pad  = Math.floor((size - cell*n)/2);
+  ctx.fillStyle='#f0f0f0';
+  ctx.fillRect(0,0,size,size);
+  ctx.fillStyle='#aaa'; ctx.font='12px sans-serif';
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText('جاري تحميل QR...', size/2, size/2);
+
+  var encoded = encodeURIComponent(text);
+  var url = 'https://chart.googleapis.com/chart?cht=qr&chs='+size+'x'+size+'&chl='+encoded+'&choe=UTF-8&chld=H|1';
+  var img = new Image();
+  img.crossOrigin = 'anonymous';
+  img.onload = function(){
+    ctx.clearRect(0,0,size,size);
+    ctx.drawImage(img,0,0,size,size);
+    _drawQRLogo(ctx,size);
+  };
+  img.onerror = function(){
     ctx.fillStyle='#fff'; ctx.fillRect(0,0,size,size);
-    for(var r=0;r<n;r++){
-      for(var c2=0;c2<n;c2++){
-        ctx.fillStyle = qr.isDark(r,c2)?'#000':'#fff';
-        ctx.fillRect(pad+c2*cell, pad+r*cell, cell, cell);
-      }
-    }
-    _drawQRLogo(ctx, size);
-  }catch(e1){
-    // Fallback: use QRCode class via a hidden div
-    try{
-      var tmp=document.createElement('div');
-      tmp.style.cssText='position:fixed;left:-9999px;top:-9999px;width:'+size+'px;height:'+size+'px;';
-      document.body.appendChild(tmp);
-      new window.QRCode(tmp,{text:text,width:size,height:size,
-        colorDark:'#000000',colorLight:'#ffffff',correctLevel:2});
-      var qcvs=tmp.querySelector('canvas');
-      if(qcvs){ ctx.drawImage(qcvs,0,0,size,size); _drawQRLogo(ctx,size); }
-      else{
-        var qi=tmp.querySelector('img');
-        if(qi){ var im=new Image(); im.onload=function(){ctx.drawImage(im,0,0,size,size);_drawQRLogo(ctx,size);}; im.src=qi.src; }
-      }
-      tmp.remove();
-    }catch(e2){
-      console.error('drawQR both methods failed:',e1.message,e2.message);
-      ctx.fillStyle='#888'; ctx.font='11px sans-serif'; ctx.textAlign='center';
-      ctx.textBaseline='middle'; ctx.fillText('QR unavailable',size/2,size/2);
-    }
-  }
+    ctx.fillStyle='#bbb'; ctx.font='11px sans-serif';
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText('QR — تأكد من الإنترنت', size/2, size/2);
+  };
+  img.src = url;
 }
 
 function _drawQRLogo(ctx, size){
@@ -6437,8 +6504,20 @@ function openMyQR(){
         </div>
         <div style="font-size:17px;font-weight:800;color:#111;margin-bottom:4px;">${me.name}</div>
         <div style="font-size:12px;color:#888;margin-bottom:16px;">Cloud contact</div>
-        <!-- Real QR -->
-        <canvas id="myQrCanvas" style="border-radius:4px;display:block;margin:0 auto;width:220px;height:220px;"></canvas>
+        <!-- Real QR — Google Charts API (works on all devices) -->
+        <div id="myQrWrap" style="position:relative;display:inline-block;margin:0 auto;width:220px;height:220px;background:#f5f5f5;border-radius:8px;overflow:hidden;">
+          <div id="myQrLoading" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:8px;">
+            <div style="width:32px;height:32px;border:3px solid #ddd;border-top-color:#888;border-radius:50%;animation:spin 1s linear infinite;"></div>
+            <span style="font-size:11px;color:#aaa;">جاري التحميل...</span>
+          </div>
+          <img id="myQrImg" alt="QR Code"
+            style="width:220px;height:220px;border-radius:4px;display:none;position:relative;z-index:1;">
+          <!-- Cloud logo overlay -->
+          <div id="myQrLogo" style="display:none;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:2;
+            width:46px;height:46px;border-radius:50%;border:4px solid #fff;
+            align-items:center;justify-content:center;
+            font-size:22px;box-shadow:0 2px 8px rgba(0,0,0,.3);background:#D4A843;">☁️</div>
+        </div>
       </div>
       <!-- hint -->
       <div style="font-size:12px;color:var(--t3);text-align:center;max-width:260px;line-height:1.6;margin-bottom:12px;">
@@ -6486,16 +6565,24 @@ function openMyQR(){
   `;
 
   openOv('ovProfile');
-  // Draw the real QR after DOM ready
-  // Try multiple times in case DOM isn't ready
-  var _qrAttempts = 0;
-  function _tryDrawQR(){
-    var cv = document.getElementById('myQrCanvas');
-    if(!cv){ if(++_qrAttempts<10) setTimeout(_tryDrawQR,100); return; }
-    try{ drawQR(cv, myData, 220); }
-    catch(e){ console.error('QR draw failed:', e); }
-  }
-  setTimeout(_tryDrawQR, 100);
+  // Load QR via Google Charts
+  setTimeout(function(){
+    var img     = document.getElementById('myQrImg');
+    var logo    = document.getElementById('myQrLogo');
+    var loading = document.getElementById('myQrLoading');
+    if(!img) return;
+    var encoded = encodeURIComponent(myData);
+    var url = 'https://chart.googleapis.com/chart?cht=qr&chs=440x440&chl='+encoded+'&choe=UTF-8&chld=H|1';
+    img.onload = function(){
+      img.style.display = 'block';
+      if(loading) loading.style.display = 'none';
+      if(logo){ logo.style.display='flex'; }
+    };
+    img.onerror = function(){
+      if(loading) loading.innerHTML = '<span style="font-size:28px;">❌</span><span style="font-size:11px;color:#aaa;text-align:center;">تعذّر التحميل<br>تأكد من الإنترنت</span>';
+    };
+    img.src = url;
+  }, 50);
 }
 
 var _qrSheetScanStream = null, _qrSheetScanInterval = null;
@@ -6588,29 +6675,42 @@ function handleQRUploadInSheet(inp){
 }
 
 function shareMyQR(){
-  const cv=document.getElementById('myQrCanvas');
-  if(!cv) return;
-  cv.toBlob(blob=>{
-    if(navigator.share && navigator.canShare){
-      const file=new File([blob],'cloud-qr.png',{type:'image/png'});
-      if(navigator.canShare({files:[file]})){
-        navigator.share({files:[file], title:me.name+' — Cloud QR'}).catch(()=>{});
-        return;
-      }
-    }
-    // fallback: download
+  var img=document.getElementById('myQrImg');
+  if(!img||!img.src) return;
+  // Try Web Share with URL
+  if(navigator.share){
+    navigator.share({
+      title: (me&&me.name||'Cloud')+' — Cloud QR',
+      text:  'أضفني على Cloud: '+qrData({name:me.name,phone:me.phone||'',color:me.color,pulseId:me.pulseId||''}),
+      url:   img.src,
+    }).catch(()=>{ downloadMyQR(); });
+  } else {
     downloadMyQR();
-  },'image/png');
+  }
 }
 
 function downloadMyQR(){
-  const cv=document.getElementById('myQrCanvas');
-  if(!cv) return;
-  const a=document.createElement('a');
-  a.download='cloud-qr-'+me.name+'.png';
-  a.href=cv.toDataURL('image/png',1.0);
-  a.click();
-  toast('📥 تم تحميل QR Code');
+  var img=document.getElementById('myQrImg');
+  if(!img||!img.src){ toast('⚠️ QR غير جاهز'); return; }
+  // Draw on canvas then download
+  var cv=document.createElement('canvas');
+  cv.width=220; cv.height=220;
+  var ctx=cv.getContext('2d');
+  var tmpImg=new Image();
+  tmpImg.crossOrigin='anonymous';
+  tmpImg.onload=function(){
+    ctx.drawImage(tmpImg,0,0,220,220);
+    var a=document.createElement('a');
+    a.download='cloud-qr-'+(me&&me.name||'user')+'.png';
+    a.href=cv.toDataURL('image/png');
+    a.click();
+    toast('📥 تم تحميل QR Code');
+  };
+  tmpImg.onerror=function(){
+    // fallback: open image in new tab
+    window.open(img.src,'_blank');
+  };
+  tmpImg.src=img.src;
 }
 
 // ═══════════════════════════════════
@@ -9006,7 +9106,7 @@ function replyFromPush(){
 
 function requestPushPermission(){
   if('Notification' in window){
-    Notification.requestPermission().then(p=>{
+    if(typeof Notification!=='undefined') Notification.requestPermission().then(p=>{
       if(p==='granted'){toast('🔔 تم تفعيل الإشعارات!');new Notification('Cloud',{body:'الإشعارات مفعّلة الآن 🎉'});}
       else toast('❌ تم رفض الإشعارات');
     });
@@ -11828,6 +11928,482 @@ function toggleCallMute(){
   toast(_callMuted?'🔇 الميكروفون مكتوم':'🎙️ الميكروفون مفعّل');
 }
 
+// ════════════════════════════════════════════════════════════
+// 📹 VIDEO CALL — WebRTC بالكاميرا
+// ════════════════════════════════════════════════════════════
+var _vcall = {
+  pc: null, localStream: null, timer: null, secs: 0,
+  room: null, myId: null, peerId: null, isVideo: true,
+  facingMode: 'user',
+};
+
+async function startVideoCall(contact){
+  try{
+    const myId  = _getMyCallId();
+    const toId  = contact.pulseId||contact.phone||String(contact.id);
+    const room  = 'vcall_'+[myId,toId].sort().join('_');
+    _vcall.myId=myId; _vcall.peerId=toId; _vcall.room=room; _vcall.secs=0;
+
+    // Get camera + mic
+    _vcall.localStream = await navigator.mediaDevices.getUserMedia({audio:true,video:{facingMode:'user'}});
+    const lv=document.getElementById('localVideoEl');
+    if(lv) lv.srcObject=_vcall.localStream;
+
+    // Show UI
+    const screen=document.getElementById('videoCallScreen');
+    const nameEl=document.getElementById('vcallName');
+    if(screen) screen.classList.add('on');
+    if(nameEl) nameEl.textContent=contact.name;
+
+    // Create PeerConnection
+    _vcall.pc=new RTCPeerConnection({iceServers:[{urls:'stun:stun.l.google.com:19302'}]});
+    _vcall.localStream.getTracks().forEach(t=>_vcall.pc.addTrack(t,_vcall.localStream));
+    _vcall.pc.ontrack=e=>{
+      const rv=document.getElementById('remoteVideoEl');
+      if(rv) rv.srcObject=e.streams[0];
+    };
+    _vcall.pc.onicecandidate=e=>{if(e.candidate) _vcallSig('vice',e.candidate);};
+
+    // Create offer
+    const offer=await _vcall.pc.createOffer({offerToReceiveAudio:true,offerToReceiveVideo:true});
+    await _vcall.pc.setLocalDescription(offer);
+
+    // Send call_request with video flag
+    await sbCloud('messages',{method:'POST',body:JSON.stringify({
+      room:'callinbox_'+toId, name:me&&me.name||'', phone:me&&me.phone||'', role:'webrtc_sig',
+      msg:JSON.stringify({type:'call_request',from:myId,to:toId,data:{
+        room,offer,isVideo:true,
+        fromName:me&&me.name||'',fromPhone:me&&me.phone||'',
+        fromColor:me&&me.color||'B',fromAvatar:me&&me.avatar||null,
+      },ts:Date.now()}),
+      ts:Date.now(),
+    })});
+    _vcallSig('voffer',offer);
+    _startVCallPoll();
+
+    // Start timer
+    clearInterval(_vcall.timer);
+    _vcall.timer=setInterval(()=>{
+      _vcall.secs++;
+      const m=Math.floor(_vcall.secs/60),s=_vcall.secs%60;
+      const el=document.getElementById('vcallTimer');
+      if(el) el.textContent=(m<10?'0':'')+m+':'+(s<10?'0':'')+s;
+    },1000);
+  }catch(e){
+    toast('⚠️ تعذّر بدء الفيديو: '+(e.message.includes('NotAllowed')?'السماح بالكاميرا مطلوب':e.message));
+    _vcallCleanup();
+  }
+}
+
+function _vcallSig(type,data){
+  sbCloud('messages',{method:'POST',body:JSON.stringify({
+    room:_vcall.room, name:me&&me.name||'', phone:me&&me.phone||'', role:'vcall_sig',
+    msg:JSON.stringify({type,from:_vcall.myId,to:_vcall.peerId,data,ts:Date.now()}),
+    ts:Date.now(),
+  })}).catch(()=>{});
+}
+
+var _vcallPollTimer=null, _vcallLastTs=0;
+function _startVCallPoll(){
+  clearInterval(_vcallPollTimer);
+  _vcallLastTs=Date.now()-5000;
+  _vcallPollTimer=setInterval(_pollVCallSig,1500);
+}
+async function _pollVCallSig(){
+  try{
+    const r=await sbCloud('messages?room=eq.'+encodeURIComponent(_vcall.room)+'&role=eq.vcall_sig&ts=gt.'+_vcallLastTs+'&order=ts.asc&limit=20');
+    const rows=await r.json(); if(!Array.isArray(rows)||!rows.length) return;
+    for(const row of rows){
+      if(row.ts) _vcallLastTs=row.ts+1;
+      try{
+        const sig=JSON.parse(row.msg||'{}');
+        if(sig.from===_vcall.myId) continue;
+        if(sig.type==='vans'&&_vcall.pc){
+          await _vcall.pc.setRemoteDescription(new RTCSessionDescription(sig.data));
+        } else if(sig.type==='vice'&&_vcall.pc&&sig.data){
+          await _vcall.pc.addIceCandidate(new RTCIceCandidate(sig.data));
+        } else if(sig.type==='vend'){ endVideoCall(true); }
+      }catch(e){}
+    }
+  }catch(e){}
+}
+
+async function answerVideoCall(callData){
+  try{
+    _vcall.room=callData.room; _vcall.myId=_getMyCallId(); _vcall.secs=0;
+    _vcall.localStream=await navigator.mediaDevices.getUserMedia({audio:true,video:{facingMode:'user'}});
+    const lv=document.getElementById('localVideoEl');
+    if(lv) lv.srcObject=_vcall.localStream;
+
+    const screen=document.getElementById('videoCallScreen');
+    const nameEl=document.getElementById('vcallName');
+    if(screen) screen.classList.add('on');
+    if(nameEl) nameEl.textContent=callData.fromName||'مكالمة فيديو';
+
+    _vcall.pc=new RTCPeerConnection({iceServers:[{urls:'stun:stun.l.google.com:19302'}]});
+    _vcall.localStream.getTracks().forEach(t=>_vcall.pc.addTrack(t,_vcall.localStream));
+    _vcall.pc.ontrack=e=>{const rv=document.getElementById('remoteVideoEl');if(rv)rv.srcObject=e.streams[0];};
+    _vcall.pc.onicecandidate=e=>{if(e.candidate)_vcallSig('vice',e.candidate);};
+
+    if(callData.offer){
+      await _vcall.pc.setRemoteDescription(new RTCSessionDescription(callData.offer));
+      const ans=await _vcall.pc.createAnswer();
+      await _vcall.pc.setLocalDescription(ans);
+      _vcallSig('vans',ans);
+    }
+    _startVCallPoll();
+    clearInterval(_vcall.timer);
+    _vcall.timer=setInterval(()=>{
+      _vcall.secs++;
+      const m=Math.floor(_vcall.secs/60),s=_vcall.secs%60;
+      const el=document.getElementById('vcallTimer');
+      if(el) el.textContent=(m<10?'0':'')+m+':'+(s<10?'0':'')+s;
+    },1000);
+  }catch(e){ toast('⚠️ خطأ في الرد: '+e.message); _vcallCleanup(); }
+}
+
+function endVideoCall(remote=false){
+  if(!remote) _vcallSig('vend',{});
+  _vcallCleanup();
+  if(remote) toast('📹 انتهت مكالمة الفيديو');
+}
+function _vcallCleanup(){
+  clearInterval(_vcall.timer); clearInterval(_vcallPollTimer);
+  if(_vcall.pc){try{_vcall.pc.close();}catch(e){} _vcall.pc=null;}
+  if(_vcall.localStream){_vcall.localStream.getTracks().forEach(t=>t.stop());_vcall.localStream=null;}
+  const rv=document.getElementById('remoteVideoEl');if(rv) rv.srcObject=null;
+  const lv=document.getElementById('localVideoEl');if(lv) lv.srcObject=null;
+  document.getElementById('videoCallScreen')?.classList.remove('on');
+  _vcall.secs=0;
+}
+function vcallToggleMute(){
+  if(_vcall.localStream) _vcall.localStream.getAudioTracks().forEach(t=>t.enabled=!t.enabled);
+  const btn=document.getElementById('vcallMuteBtn');
+  if(btn){const muted=!_vcall.localStream?.getAudioTracks()[0]?.enabled;btn.textContent=muted?'🔇':'🎙️';btn.style.background=muted?'rgba(239,68,68,.5)':'rgba(255,255,255,.15)';}
+}
+function vcallToggleCam(){
+  if(_vcall.localStream) _vcall.localStream.getVideoTracks().forEach(t=>t.enabled=!t.enabled);
+  const btn=document.getElementById('vcallCamBtn');
+  if(btn){const off=!_vcall.localStream?.getVideoTracks()[0]?.enabled;btn.textContent=off?'📵':'📹';btn.style.background=off?'rgba(239,68,68,.5)':'rgba(255,255,255,.15)';}
+}
+async function vcallFlipCam(){
+  if(!_vcall.localStream||!_vcall.pc) return;
+  _vcall.facingMode=_vcall.facingMode==='user'?'environment':'user';
+  const newStream=await navigator.mediaDevices.getUserMedia({audio:true,video:{facingMode:_vcall.facingMode}}).catch(()=>null);
+  if(!newStream) return;
+  const newVT=newStream.getVideoTracks()[0];
+  const sender=_vcall.pc.getSenders().find(s=>s.track?.kind==='video');
+  if(sender&&newVT) sender.replaceTrack(newVT);
+  const lv=document.getElementById('localVideoEl');if(lv) lv.srcObject=newStream;
+  _vcall.localStream.getVideoTracks().forEach(t=>t.stop());
+  _vcall.localStream=newStream;
+  toast('🔄 تم التبديل');
+}
+
+// Wire video call button in chat topbar
+function _openVideoCallForContact(contact){
+  if(!contact.pulseId&&!contact.phone){ toast('⚠️ لا يمكن إجراء مكالمة فيديو مع هذا الاتصال'); return; }
+  startVideoCall(contact);
+}
+
+// ════════════════════════════════════════════════════════════
+// 🔔 PUSH NOTIFICATIONS — Web Push API حقيقي
+// ════════════════════════════════════════════════════════════
+var _pushReg = null;
+var VAPID_PUBLIC = 'BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSgSnfckjZkisx8_r1gP2TuBQSzMBpvl9FeM'; // demo key
+
+async function setupPushNotifications(){
+  if(typeof Notification==='undefined'){
+    toast('⚠️ المتصفح لا يدعم الإشعارات');
+    return false;
+  }
+  if(!('serviceWorker' in navigator)){
+    // Fallback: use basic Notification API
+    try{
+    const perm=await (typeof Notification!=='undefined'?Notification.requestPermission():Promise.resolve('denied'));
+      if(p==='granted'){ toast('✅ تم تفعيل الإشعارات!'); return true; }
+      toast('⚠️ لم يُسمح بالإشعارات'); return false;
+    }catch(e){ toast('⚠️ '+e.message); return false; }
+  }
+  try{
+    const perm=await (typeof Notification!=='undefined'?Notification.requestPermission():Promise.resolve('denied'));
+    if(perm!=='granted'){ toast('⚠️ لم يُسمح بالإشعارات'); return false; }
+
+    // Register SW inline
+    const swCode=`
+      self.addEventListener('push',e=>{
+        const d=e.data?e.data.json():{title:'Cloud',body:'رسالة جديدة'};
+        e.waitUntil(self.registration.showNotification(d.title||'Cloud',{
+          body:d.body||'',icon:d.icon||'/favicon.ico',badge:d.badge||'/favicon.ico',
+          vibrate:[200,100,200],tag:d.tag||'cloud-msg',renotify:true,
+          data:{url:d.url||'/'}
+        }));
+      });
+      self.addEventListener('notificationclick',e=>{
+        e.notification.close();
+        e.waitUntil(clients.openWindow(e.notification.data.url||'/'));
+      });
+    `;
+    const blob=new Blob([swCode],{type:'application/javascript'});
+    const swUrl=URL.createObjectURL(blob);
+    const reg=await navigator.serviceWorker.register(swUrl);
+    _pushReg=reg;
+    toast('✅ تم تفعيل الإشعارات الحقيقية!');
+    return true;
+  }catch(e){
+    console.error('Push setup error:',e);
+    toast('⚠️ تعذّر تفعيل الإشعارات: '+e.message);
+    return false;
+  }
+}
+
+function sendBrowserPush(title, body, icon){
+  if(typeof Notification==='undefined') return;
+  if(Notification.permission!=='granted') return;
+  try{
+    if(_pushReg&&_pushReg.active){
+      _pushReg.showNotification(title,{body,icon:icon||'',vibrate:[200,100,200],tag:'cloud-'+Date.now()});
+    } else {
+      new Notification(title,{body,icon:icon||''});
+    }
+  }catch(e){
+    try{ new Notification(title,{body}); }catch(e2){}
+  }
+}
+
+// Auto-setup on launch
+function initPushNotifications(){
+  if(typeof Notification!=='undefined'&&(typeof Notification!=='undefined'&&Notification.permission==='granted')){
+    setupPushNotifications().catch(()=>{});
+  }
+}
+
+// ════════════════════════════════════════════════════════════
+// 🌐 AI AUTO-TRANSLATE MESSAGES
+// ════════════════════════════════════════════════════════════
+var _autoTranslateEnabled = false;
+var _translateCache = {};
+
+async function autoTranslateMsg(text, targetLang){
+  if(!text||text.length<2) return text;
+  const cacheKey=text+'_'+targetLang;
+  if(_translateCache[cacheKey]) return _translateCache[cacheKey];
+  try{
+    const resp=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        model:'claude-sonnet-4-20250514', max_tokens:300,
+        messages:[{role:'user',content:`Translate to ${targetLang==='ar'?'Arabic':'English'}. Reply with ONLY the translation:
+${text}`}]
+      })
+    });
+    const data=await resp.json();
+    const result=data?.content?.[0]?.text?.trim()||text;
+    _translateCache[cacheKey]=result;
+    return result;
+  }catch(e){ return text; }
+}
+
+function toggleAutoTranslate(){
+  _autoTranslateEnabled=!_autoTranslateEnabled;
+  localStorage.setItem('cloud_autoTrans',_autoTranslateEnabled?'1':'0');
+  toast(_autoTranslateEnabled?'🌐 الترجمة التلقائية مفعّلة':'🌐 الترجمة التلقائية مغلقة');
+}
+
+// Hook into message polling
+const _origStartMsgPolling = startMsgPolling;
+function startMsgPolling(contact){
+  _origStartMsgPolling(contact);
+}
+
+// ════════════════════════════════════════════════════════════
+// 🎨 CUSTOM STICKERS — ارفع صورة تبقى ستيكر
+// ════════════════════════════════════════════════════════════
+var customStickers = [];
+
+function loadCustomStickers(){
+  try{ customStickers=JSON.parse(localStorage.getItem('cloud_custom_stickers')||'[]'); }catch(e){ customStickers=[]; }
+}
+function saveCustomStickers(){
+  try{
+    // Store only last 20 stickers and limit size
+    const limited=customStickers.slice(-20);
+    localStorage.setItem('cloud_custom_stickers',JSON.stringify(limited));
+    customStickers=limited;
+  }catch(e){ toast('⚠️ مساحة التخزين ممتلئة'); }
+}
+
+function openCustomStickerPicker(){
+  const panel=document.createElement('div');
+  panel.style.cssText='position:fixed;inset:0;z-index:600;display:flex;align-items:flex-end;justify-content:center;background:rgba(0,0,0,.5);';
+  panel.innerHTML=`
+    <div style="background:var(--s0);width:100%;max-width:430px;border-radius:24px 24px 0 0;padding:16px 0 30px;max-height:60vh;display:flex;flex-direction:column;">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:0 16px 12px;border-bottom:1px solid var(--br);">
+        <div style="font-size:16px;font-weight:800;color:var(--t0);">🎨 ستيكراتي</div>
+        <div style="display:flex;gap:8px;">
+          <button onclick="pickCustomStickerImg(this.closest('div[style]').parentElement)" style="background:var(--acc2);color:var(--acc);border:none;border-radius:10px;padding:6px 12px;font-family:var(--fa);font-size:13px;cursor:pointer;">➕ إضافة صورة</button>
+          <button onclick="this.closest('div[style]').remove()" style="background:var(--s3);border:none;border-radius:10px;padding:6px 12px;font-size:13px;cursor:pointer;color:var(--t2);">✕</button>
+        </div>
+      </div>
+      <div style="overflow-y:auto;flex:1;padding:10px;">
+        ${customStickers.length===0?`<div style="text-align:center;padding:30px;color:var(--t3);">ارفع أي صورة لتبقى ستيكر 🎨</div>`:
+          `<div class="custom-stk-grid">${customStickers.map((src,i)=>`
+            <div class="custom-stk-item" onclick="sendCustomSticker('${src}',this.closest('div[style]').parentElement)">
+              <img src="${src}" loading="lazy">
+              <button class="custom-stk-del" onclick="event.stopPropagation();deleteCustomSticker(${i},this.closest('div[style]').parentElement)">✕</button>
+            </div>`).join('')}</div>`}
+      </div>
+    </div>`;
+  document.body.appendChild(panel);
+}
+
+function pickCustomStickerImg(panelEl){
+  const inp=document.createElement('input');
+  inp.type='file'; inp.accept='image/*'; inp.style.display='none';
+  inp.onchange=e=>{
+    const f=e.target.files[0];if(!f) return;
+    if(f.size>2*1024*1024){ toast('⚠️ الصورة كبيرة — اختر أقل من 2MB'); return; }
+    const r=new FileReader();
+    r.onload=ev=>{
+      customStickers.push(ev.target.result);
+      saveCustomStickers();
+      panelEl?.remove();
+      openCustomStickerPicker();
+      toast('✅ تمت إضافة الستيكر!');
+    };
+    r.readAsDataURL(f); inp.remove();
+  };
+  document.body.appendChild(inp); inp.click();
+}
+
+function deleteCustomSticker(idx, panelEl){
+  customStickers.splice(idx,1); saveCustomStickers();
+  panelEl?.remove(); openCustomStickerPicker();
+}
+
+function sendCustomSticker(src, panelEl){
+  if(!activeChat) return;
+  panelEl?.remove();
+  const cid=activeChat.id;
+  const msg={from:'me',type:'image',img:src,src,text:'',time:now(),ts:Date.now(),read:'sent',isSticker:true};
+  if(!convos[cid]) convos[cid]=[];
+  convos[cid].push(msg);
+  activeChat.lastMsg='🎨 ستيكر'; activeChat.lastTime=now();
+  renderChatList(); renderMsgs(cid); saveToStorage();
+}
+
+// ════════════════════════════════════════════════════════════
+// 🗂️ ARCHIVE CHATS
+// ════════════════════════════════════════════════════════════
+var archivedChats = new Set();
+
+function toggleArchiveChat(cid){
+  if(archivedChats.has(cid)){ archivedChats.delete(cid); toast('📂 تم إلغاء الأرشفة'); }
+  else { archivedChats.add(cid); toast('🗂️ تمت الأرشفة'); }
+  try{ localStorage.setItem('cloud_archived',JSON.stringify([...archivedChats])); }catch(e){}
+  renderChatList(); renderFriends();
+}
+
+function loadArchivedChats(){
+  try{ archivedChats=new Set(JSON.parse(localStorage.getItem('cloud_archived')||'[]')); }catch(e){}
+}
+
+function openArchivedChats(){
+  const b=document.getElementById('profileShBody');
+  document.getElementById('profileShTitle').textContent='🗂️ المحادثات المؤرشفة';
+  const archivedContacts=contacts.filter(c=>archivedChats.has(c.id));
+  if(!archivedContacts.length){
+    b.innerHTML='<div style="text-align:center;padding:50px;color:var(--t3);"><div style="font-size:48px;margin-bottom:12px;">🗂️</div><div>لا توجد محادثات مؤرشفة</div></div>';
+  } else {
+    b.innerHTML=archivedContacts.map(c=>`
+      <div style="display:flex;align-items:center;gap:12px;padding:13px 16px;border-bottom:1px solid var(--br);cursor:pointer;"
+        onclick="closeOv('ovProfile');switchTab('chats');setTimeout(()=>openChat(contacts.find(x=>x.id==='${c.id}')),100)">
+        ${avHTML(c,'av-m')}
+        <div style="flex:1;"><div style="font-size:14px;font-weight:700;color:var(--t0);">${c.name}</div>
+        <div style="font-size:12px;color:var(--t3);">${c.lastMsg||''}</div></div>
+        <button onclick="event.stopPropagation();toggleArchiveChat('${c.id}');openArchivedChats()"
+          style="background:var(--s2);border:1px solid var(--br);border-radius:10px;padding:5px 10px;font-size:12px;cursor:pointer;font-family:var(--fa);color:var(--t2);">إلغاء الأرشفة</button>
+      </div>`).join('');
+  }
+  openOv('ovProfile');
+}
+
+// Add archive to context menu in chat list
+function archiveChatFromSwipe(cid){
+  toggleArchiveChat(cid);
+}
+
+// ════════════════════════════════════════════════════════════
+// 💬 REAL-TIME TYPING INDICATOR — via Supabase
+// ════════════════════════════════════════════════════════════
+var _typingTimeouts = {};
+var _typingPollTimer = null;
+var _isTypingNow = false;
+var _lastTypingSent = 0;
+
+function sendTypingSignal(cid){
+  if(!activeChat||!cid) return;
+  const ct=contacts.find(c=>c.id===cid);
+  if(!ct||!ct.pulseId) return;
+  const now2=Date.now();
+  if(now2-_lastTypingSent<2000) return; // throttle 2s
+  _lastTypingSent=now2;
+  const myId=(me&&me.pulseId)||(me&&me.phone)||'unknown';
+  const toId=ct.pulseId||ct.phone||String(ct.id);
+  sbCloud('messages',{method:'POST',body:JSON.stringify({
+    room:'cloud_typing_'+[myId,toId].sort().join('_'),
+    name:me&&me.name||'', phone:me&&me.phone||'', role:'typing',
+    msg:JSON.stringify({from:myId,fromName:me&&me.name||'',to:toId,ts:now2}),
+    ts:now2,
+  })}).catch(()=>{});
+}
+
+function startTypingPoll(cid){
+  clearInterval(_typingPollTimer);
+  const ct=contacts.find(c=>c.id===cid);
+  if(!ct||!ct.pulseId) return;
+  const myId=(me&&me.pulseId)||(me&&me.phone)||'unknown';
+  const toId=ct.pulseId||ct.phone||String(ct.id);
+  const room='cloud_typing_'+[myId,toId].sort().join('_');
+  var lastTs=Date.now()-5000;
+
+  _typingPollTimer=setInterval(async()=>{
+    try{
+      const r=await sbCloud('messages?room=eq.'+encodeURIComponent(room)+'&role=eq.typing&ts=gt.'+lastTs+'&order=ts.desc&limit=1');
+      const rows=await r.json();
+      if(!Array.isArray(rows)||!rows.length){ hideRemoteTyping(); return; }
+      lastTs=Date.now()-3000;
+      const sig=JSON.parse(rows[0].msg||'{}');
+      if(sig.from===myId){ hideRemoteTyping(); return; }
+      if(Date.now()-rows[0].ts<4000){
+        showRemoteTyping(sig.fromName||'');
+        clearTimeout(_typingTimeouts[cid]);
+        _typingTimeouts[cid]=setTimeout(()=>hideRemoteTyping(),4000);
+      } else { hideRemoteTyping(); }
+    }catch(e){}
+  },2000);
+}
+
+function showRemoteTyping(name){
+  const el=document.getElementById('typingRealEl');
+  if(el){ el.innerHTML=`<div class="typing-pill"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div><span style="font-size:11px;">${name} يكتب...</span></div>`; el.style.display='block'; }
+}
+function hideRemoteTyping(){
+  const el=document.getElementById('typingRealEl');
+  if(el){ el.style.display='none'; el.innerHTML=''; }
+}
+
+// ════════════════════════════════════════════════════════════
+// INIT on launch
+// ════════════════════════════════════════════════════════════
+function initNewFeatures(){
+  loadCustomStickers();
+  loadArchivedChats();
+  initPushNotifications();
+  _autoTranslateEnabled=(localStorage.getItem('cloud_autoTrans')==='1');
+}
+
 
 // ═══════════════════════════════════
 // ⌨️ TYPING & RECORDING INDICATOR
@@ -12128,9 +12704,31 @@ function doLogin(){
   contacts=[]; friendReqs=[]; convos={}; posts=[]; favorites=[]; statuses=[]; callLog=[];
   accounts[activeAccountIdx]={me,contacts,friendReqs,convos,posts,favorites,statuses,callLog,curLang,curTheme};
   saveToStorage();
+  // ── Register this user on Supabase so others can find them ──
+  _registerUserOnCloud(me);
   const ls = document.getElementById('loginScreen');
   ls.classList.add('out');
   setTimeout(()=>{ ls.style.display='none'; launch(); }, 380);
+}
+
+function _registerUserOnCloud(user){
+  if(!user||!user.pulseId) return;
+  sbCloud('messages',{method:'POST',body:JSON.stringify({
+    room:  'cloud_user_registry',
+    name:  user.name||'',
+    phone: user.phone||'',
+    role:  'user_reg',
+    msg:   JSON.stringify({
+      pulseId: user.pulseId,
+      name:    user.name||'',
+      phone:   user.phone||'',
+      status:  user.status||'',
+      color:   user.color||'B',
+      avatar:  user.avatar||null,
+      ts:      Date.now(),
+    }),
+    ts: Date.now(),
+  })}).catch(()=>{});
 }
 
 // ═══════════════════════════════════
@@ -12648,6 +13246,39 @@ var _origSendMsg = null;
     <div id="friendsPins"></div>
   </div>
   <div id="friendsMapList" style="max-height:200px;overflow-y:auto;border-top:1px solid var(--br);"></div>
+</div>
+
+
+<!-- ══ VIDEO CALL SCREEN ══ -->
+<div class="video-call-screen" id="videoCallScreen">
+  <video id="remoteVideoEl" autoplay playsinline></video>
+  <video id="localVideoEl" autoplay playsinline muted></video>
+  <div class="vcall-bar">
+    <div class="vcall-name" id="vcallName">مكالمة فيديو</div>
+    <div class="vcall-timer" id="vcallTimer">00:00</div>
+    <div class="vcall-btns">
+      <div style="display:flex;flex-direction:column;align-items:center;gap:6px;">
+        <button class="vcall-btn" id="vcallMuteBtn" onclick="vcallToggleMute()"
+          style="background:rgba(255,255,255,.15);">🎙️</button>
+        <span style="font-size:10px;color:rgba(255,255,255,.5);">كتم</span>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:6px;">
+        <button class="vcall-btn" id="vcallCamBtn" onclick="vcallToggleCam()"
+          style="background:rgba(255,255,255,.15);">📹</button>
+        <span style="font-size:10px;color:rgba(255,255,255,.5);">كاميرا</span>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:6px;">
+        <button class="vcall-btn" onclick="vcallFlipCam()"
+          style="background:rgba(255,255,255,.15);">🔄</button>
+        <span style="font-size:10px;color:rgba(255,255,255,.5);">عكس</span>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:6px;">
+        <button class="vcall-btn" onclick="endVideoCall()"
+          style="background:#EF4444;box-shadow:0 4px 16px rgba(239,68,68,.5);">📵</button>
+        <span style="font-size:10px;color:rgba(255,255,255,.5);">إنهاء</span>
+      </div>
+    </div>
+  </div>
 </div>
 
 </body>
