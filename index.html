@@ -4968,7 +4968,6 @@ function sendStk(s){
 }
 function toggleEmo(){emoOpen=!emoOpen;stkOpen=false;attachOpen=false;document.getElementById('emoStrip')?.classList.toggle('on',emoOpen);document.getElementById('stkStrip')?.classList.remove('on');document.getElementById('emoBtn')?.classList.toggle('on',emoOpen);document.getElementById('attachPanel')?.classList.remove('on');document.getElementById('attachBtn')?.classList.remove('on');}
 function openCustomStk(){ openCustomStickerPicker(); }
-function toggleStk(){stkOpen=!stkOpen;emoOpen=false;attachOpen=false;document.getElementById('stkStrip')?.classList.toggle('on',stkOpen);document.getElementById('emoStrip')?.classList.remove('on');document.getElementById('stkBtn')?.classList.toggle('on',stkOpen);document.getElementById('attachPanel')?.classList.remove('on');document.getElementById('attachBtn')?.classList.remove('on');}
 
 function toggleAttach(){
   attachOpen=!attachOpen;emoOpen=false;stkOpen=false;
@@ -5715,21 +5714,6 @@ document.getElementById('scPublish').onclick=()=>{
 };
 
 
-function viewStatus(uid){
-  const entry=statuses.find(s=>s.uid===uid);
-  if(!entry||!entry.items.length) return;
-
-  svUid=uid; svIdx=0;
-  const viewer=document.getElementById('statusViewer');
-  viewer.classList.add('on');
-
-  // Setup reply
-  const isMe=uid==='me';
-  const replyBar=viewer.querySelector('.sv-reply');
-  replyBar.style.display=isMe?'none':'flex';
-
-  showStatusItem(uid, 0);
-}
 
 function showStatusItem(uid, idx){
   clearTimeout(svTimer);
@@ -6426,7 +6410,13 @@ function drawQR(canvas, text, size){
   ctx.fillText('جاري تحميل QR...', size/2, size/2);
 
   var encoded = encodeURIComponent(text);
-  var url = 'https://chart.googleapis.com/chart?cht=qr&chs='+size+'x'+size+'&chl='+encoded+'&choe=UTF-8&chld=H|1';
+  // Try multiple QR APIs in case one is blocked
+  var apis = [
+    'https://api.qrserver.com/v1/create-qr-code/?size='+size+'x'+size+'&data='+encoded+'&ecc=H',
+    'https://chart.googleapis.com/chart?cht=qr&chs='+size+'x'+size+'&chl='+encoded+'&choe=UTF-8&chld=H|1',
+    'https://quickchart.io/qr?text='+encoded+'&size='+size+'&ecLevel=H',
+  ];
+  var url = apis[0];
   var img = new Image();
   img.crossOrigin = 'anonymous';
   img.onload = function(){
@@ -6434,11 +6424,14 @@ function drawQR(canvas, text, size){
     ctx.drawImage(img,0,0,size,size);
     _drawQRLogo(ctx,size);
   };
+  var _apiIdx = 0;
   img.onerror = function(){
+    _apiIdx++;
+    if(_apiIdx < apis.length){ img.src = apis[_apiIdx]; return; }
     ctx.fillStyle='#fff'; ctx.fillRect(0,0,size,size);
     ctx.fillStyle='#bbb'; ctx.font='11px sans-serif';
     ctx.textAlign='center'; ctx.textBaseline='middle';
-    ctx.fillText('QR — تأكد من الإنترنت', size/2, size/2);
+    ctx.fillText('تعذّر تحميل QR', size/2, size/2);
   };
   img.src = url;
 }
@@ -6572,14 +6565,22 @@ function openMyQR(){
     var loading = document.getElementById('myQrLoading');
     if(!img) return;
     var encoded = encodeURIComponent(myData);
-    var url = 'https://chart.googleapis.com/chart?cht=qr&chs=440x440&chl='+encoded+'&choe=UTF-8&chld=H|1';
+    var apis2 = [
+    'https://api.qrserver.com/v1/create-qr-code/?size=440x440&data='+encoded+'&ecc=H',
+    'https://chart.googleapis.com/chart?cht=qr&chs=440x440&chl='+encoded+'&choe=UTF-8&chld=H|1',
+    'https://quickchart.io/qr?text='+encoded+'&size=440&ecLevel=H',
+  ];
+  var url = apis2[0];
     img.onload = function(){
       img.style.display = 'block';
       if(loading) loading.style.display = 'none';
       if(logo){ logo.style.display='flex'; }
     };
+    var _myApiIdx = 0;
     img.onerror = function(){
-      if(loading) loading.innerHTML = '<span style="font-size:28px;">❌</span><span style="font-size:11px;color:#aaa;text-align:center;">تعذّر التحميل<br>تأكد من الإنترنت</span>';
+      _myApiIdx++;
+      if(_myApiIdx < apis2.length){ img.src = apis2[_myApiIdx]; return; }
+      if(loading) loading.innerHTML = '<span style="font-size:28px;">❌</span><span style="font-size:11px;color:#aaa;text-align:center;">تعذّر التحميل</span>';
     };
     img.src = url;
   }, 50);
@@ -7035,74 +7036,6 @@ function showFavorites(){
 // ═══════════════════════════════════
 let ctxTarget = null; // {msgObj, msgIdx, cid, el}
 
-function showMsgCtx(msgObj, msgIdx, cid, bubEl){
-  closeCtx();
-  ctxTarget = {msgObj, msgIdx, cid, bubEl};
-  const menu = document.getElementById('msgCtxMenu');
-  const contactName = activeChat?.name || '';
-
-  const actions = [
-    {ico:'📋', lbl:t('copy'),     fn:'ctxCopy'},
-    {ico:'🗑️', lbl:t('delete'),  fn:'ctxDel', cls:'danger'},
-    {ico:'⭐', lbl:t('favorite'), fn:'ctxFav'},
-    {ico:'↗️', lbl:t('forward'),  fn:'ctxFwd'},
-    {ico:'📝', lbl:t('select'),  fn:'ctxSel'},
-    {ico:'🔍', lbl:t('search'),  fn:'ctxSearch'},
-    {ico:'✕',  lbl:t('cancelTr'),fn:'ctxClose'},
-    {ico:'🔔', lbl:t('reminder'),fn:'ctxRemind'},
-    {ico:'❝',  lbl:t('quote'),   fn:'ctxQuote'},
-  ];
-
-  menu.innerHTML = actions.map(a=>`
-    <button class="msg-ctx-btn${a.cls?' '+a.cls:''}" data-fn="${a.fn}">
-      <span class="ctx-ico">${a.ico}</span>${a.lbl}
-    </button>
-  `).join('');
-
-  // Position near bubble
-  const rect = bubEl.getBoundingClientRect();
-  const menuW = 260, menuH = 130;
-  let top  = rect.top - menuH - 12;
-  let left = Math.max(8, Math.min(rect.left, window.innerWidth - menuW - 8));
-  if(top < 60) top = rect.bottom + 8;
-  menu.style.cssText = `display:grid;top:${top}px;left:${left}px;`;
-
-  // Wire actions
-  menu.querySelectorAll('[data-fn]').forEach(btn=>{
-    btn.onclick=()=>{
-      const fn = btn.dataset.fn;
-      if(fn==='ctxCopy'){
-        const text = msgObj.text;
-        if(navigator.clipboard && navigator.clipboard.writeText){
-          navigator.clipboard.writeText(text).then(()=>toast(t('msgCopied'))).catch(()=>{fallbackCopy(text);toast(t('msgCopied'));});
-        } else { fallbackCopy(text); toast(t('msgCopied')); }
-      } else if(fn==='ctxFav'){
-        favorites.push({text:msgObj.text,from:msgObj.from,contact:contactName,time:msgObj.time});
-        toast(t('msgFavorited'));renderProfile();
-      } else if(fn==='ctxDel'){
-        convos[cid].splice(msgIdx,1);
-        renderMsgs(cid);toast(t('msgDeleted'));
-      } else if(fn==='ctxQuote'){
-        quotedMsg={text:msgObj.text,from:msgObj.from==='me'?me.name:contactName};
-        renderQuoteBar();
-      } else if(fn==='ctxFwd'){
-        showForwardSheet(msgObj.text);
-      } else if(fn==='ctxRemind'){
-        toast('🔔 '+t('reminder')+' — '+msgObj.text.slice(0,20));
-      } else if(fn==='ctxSearch'){
-        showMsgSearch(msgObj.text, cid);
-      } else if(fn==='ctxSel'){
-        startMsgSelection(ctxTarget?.cid);
-      } else if(fn==='ctxClose'){
-        // just close
-      }
-      closeCtx();
-    };
-  });
-
-  // Close on outside click
-  setTimeout(()=>document.addEventListener('click',closeCtxOutside),50);
-}
 
 function closeCtx(){
   const menu = document.getElementById('msgCtxMenu');
@@ -8070,32 +8003,6 @@ function playVoiceMsg(btn, url){
 // ═══════════════════════════════════
 var _callTimer=null, _callSecs=0, _callMuted=false, _callSpeaker=false, _callVideo=false;
 
-function openCallScreen(contact){
-  const screen=document.getElementById('callScreen');
-  const av=document.getElementById('callAv');
-  const nameEl=document.getElementById('callName');
-  const statusEl=document.getElementById('callStatus');
-  const timerEl=document.getElementById('callTimerEl');
-
-  if(contact.avatar){
-    av.innerHTML=`<img src="${contact.avatar}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">`;
-  } else {
-    av.innerHTML='';
-    av.textContent=contact.name.charAt(0).toUpperCase();
-  }
-  av.style.background=AVCOLS[contact.color]||'#4F8EF7';
-  av.classList.add('ringing');
-  nameEl.textContent=contact.name;
-  statusEl.textContent='جاري الاتصال...';
-  timerEl.style.display='none';
-  screen.classList.add('on');
-  _callSecs=0; _callMuted=false; _callSpeaker=false;
-  clearInterval(_callTimer);
-
-  // Send call notification to other person — NO auto-connect
-  _sendCallNotification(contact, 'ringing');
-  logCall(contact.id,'out');
-}
 
 function _sendCallNotification(contact, state){
   try{
@@ -8186,26 +8093,6 @@ function showIncomingCall(data){
   },30000);
 }
 
-function answerIncomingCall(dataStr){
-  document.getElementById('incomingCallPopup')&&document.getElementById('incomingCallPopup').remove();
-  var data=JSON.parse(dataStr);
-  var callerContact={id:'caller_'+data.fromPhone,name:data.fromName||'مجهول',color:data.fromColor||'B',avatar:data.fromAvatar||null,phone:data.fromPhone||''};
-  // Show call screen
-  var screen=document.getElementById('callScreen');
-  var av=document.getElementById('callAv');
-  var nameEl=document.getElementById('callName');
-  var statusEl=document.getElementById('callStatus');
-  var timerEl=document.getElementById('callTimerEl');
-  if(callerContact.avatar){ av.innerHTML=`<img src="${callerContact.avatar}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">`; }
-  else{ av.innerHTML=''; av.textContent=callerContact.name.charAt(0).toUpperCase(); }
-  av.style.background=AVCOLS[callerContact.color]||'#4F8EF7';
-  nameEl.textContent=callerContact.name;
-  statusEl.textContent='متصل';
-  timerEl.style.display='block';
-  screen.classList.add('on');
-  _callSecs=0; clearInterval(_callTimer);
-  _callTimer=setInterval(function(){ _callSecs++; var m=Math.floor(_callSecs/60),s=_callSecs%60; timerEl.textContent=(m<10?'0':'')+m+':'+(s<10?'0':'')+s; },1000);
-}
 
 function declineIncomingCall(fromPhone, fromName){
   document.getElementById('incomingCallPopup')&&document.getElementById('incomingCallPopup').remove();
@@ -8244,19 +8131,7 @@ function pollIncomingCalls(){
     }).catch(function(){});
 }
 
-function endCall(){
-  clearInterval(_callTimer);
-  document.getElementById('callScreen').classList.remove('on');
-  const dur=_callSecs>0?`${Math.floor(_callSecs/60)}:${String(_callSecs%60).padStart(2,'0')}`:'';
-  if(dur) toast('📞 انتهت المكالمة · '+dur);
-}
 
-function toggleCallMute(){
-  _callMuted=!_callMuted;
-  const btn=document.getElementById('callMuteBtn');
-  btn.textContent=_callMuted?'🔇':'🎙️';
-  btn.classList.toggle('on',_callMuted);
-}
 function toggleCallSpeaker(){
   _callSpeaker=!_callSpeaker;
   const btn=document.getElementById('callSpeakerBtn');
@@ -11413,65 +11288,6 @@ function sendQRFriendReq(scannedData){
 var _msgPollTimers = {};
 var _msgLastTs = {};
 
-function startMsgPolling(contact){
-  if(!contact) return;
-  const myId = (me&&me.pulseId)||(me&&me.phone)||'unknown';
-  const toId  = contact.pulseId||contact.phone||String(contact.id);
-  if(!toId || toId===myId) return;
-  const chatRoom = [myId,toId].sort().join('__chat__');
-  const cid = contact.id;
-  if(_msgPollTimers[cid]) return;
-  _msgLastTs[chatRoom] = _msgLastTs[chatRoom]||(Date.now()-60000);
-
-  _msgPollTimers[cid] = setInterval(async()=>{
-    try{
-      const since = _msgLastTs[chatRoom];
-      const r = await sbCloud('messages?room=eq.'+encodeURIComponent(chatRoom)+'&role=in.(chat_msg,read_receipt)&ts=gt.'+since+'&order=ts.asc&limit=30');
-      const rows = await r.json();
-      if(!Array.isArray(rows)||!rows.length) return;
-      let gotNew=false;
-      rows.forEach(row=>{
-        _msgLastTs[chatRoom]=row.ts+1;
-        try{
-          const data=JSON.parse(row.msg||'{}');
-          if(row.role==='read_receipt'){
-            if(convos[cid]) convos[cid].forEach(m=>{if(m.from==='me'&&m.ts<=data.msgTs&&m.read!=='read') m.read='read';});
-            if(activeChat&&activeChat.id===cid) renderMsgs(cid);
-            return;
-          }
-          if(data.from===myId) return;
-          const exists=(convos[cid]||[]).find(m=>m.ts===data.ts&&m.from!=='me');
-          if(exists) return;
-          if(!convos[cid]) convos[cid]=[];
-          const inMsg={
-            from:cid, text:data.text||'',
-            time:new Date(data.ts).toLocaleTimeString('ar',{hour:'2-digit',minute:'2-digit'}),
-            ts:data.ts, read:'read',
-          };
-          if(data.type==='image'&&data.src){ inMsg.type='image'; inMsg.src=data.src; inMsg.img=data.src; }
-          else if(data.type==='video'&&data.src){ inMsg.type='video'; inMsg.src=data.src; }
-          else if(data.type==='voice'){ inMsg.type='voice'; inMsg.audioUrl=data.audioSrc||null; inMsg.duration=data.duration||'0:02'; inMsg.text=''; }
-          else if(data.type==='file'){ inMsg.type='file'; inMsg.text='📎 '+(data.fileName||'ملف'); inMsg.fileName=data.fileName||'ملف'; inMsg.fileSize=data.fileSize||''; inMsg.fileSrc=data.fileSrc||null; }
-          else if(data.type==='liveLocation'){ inMsg.type='liveLocation'; inMsg.lat=data.lat; inMsg.lng=data.lng; inMsg.name=data.locName||'الموقع'; inMsg.live=true; }
-          else if(data.imgs&&data.imgs.length){ inMsg.type='images'; inMsg.imgs=data.imgs; }
-          convos[cid].push(inMsg);
-          // Send read receipt
-          if(activeChat&&activeChat.id===cid){
-            sbCloud('messages',{method:'POST',body:JSON.stringify({room:chatRoom,role:'read_receipt',msg:JSON.stringify({readBy:myId,msgTs:data.ts,ts:Date.now()}),ts:Date.now()})}).catch(()=>{});
-          }
-          const ct=contacts.find(c=>c.id===cid);
-          if(ct){ ct.lastMsg=data.text||'📎'; ct.lastTime='الآن'; ct.unread=(ct.unread||0)+(activeChat&&activeChat.id===cid?0:1); }
-          gotNew=true;
-          // Show push notification if not in this chat
-          if(!activeChat||activeChat.id!==cid){
-            showPushNotif(ct||{name:data.fromName||'رسالة جديدة',color:'B'}, data.text||'📎 مرفق');
-          }
-        }catch(e){}
-      });
-      if(gotNew){ renderChatList(); if(activeChat&&activeChat.id===cid) renderMsgs(cid); saveToStorage(); }
-    }catch(e){}
-  },3000);
-}
 
 function stopMsgPolling(cid){
   if(_msgPollTimers[cid]){ clearInterval(_msgPollTimers[cid]); delete _msgPollTimers[cid]; }
